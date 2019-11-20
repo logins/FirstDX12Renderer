@@ -155,6 +155,7 @@
   <ItemGroup>
     <ClInclude Include="Helpers.h" />
     <ClInclude Include="pch.h" />
+    <ClInclude Include="Platform\DX12\d3dx12.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="Engine.cpp" />

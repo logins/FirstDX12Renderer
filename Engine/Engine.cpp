@@ -9,6 +9,7 @@
 #include <windows.h> //For window handling
 #include <wrl.h> //For WRL::ComPtr
 #include <d3d12.h>
+#include "Platform/DX12/d3dx12.h" //Helper functions from https://github.com/Microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12
 #include <dxgi1_6.h> //For SwapChain4
 #include <shellapi.h>//for CommandLineToArgvW .. getting command line arguments
 #include <assert.h>
@@ -376,6 +377,34 @@ ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ComPtr<ID3D12Device> currentDe
 	ThrowIfFailed(currentDevice->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&descriptorHeap)));
 
 	return descriptorHeap;
+}
+
+void UpdateRenderTargetViews(ComPtr<ID3D12Device2> currentDevice, ComPtr<IDXGISwapChain4> swapChain, ComPtr<ID3D12DescriptorHeap> rtvDescrHeap)
+{
+	//RTV Descriptor size is vendor-dependendent. 
+	//We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
+	auto rtvDescriptorSize = currentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV); 
+
+	//To iterate trough the Descriptor Heap, we use a Descriptor Handle initially pointing at the heap start
+	CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvDescrHeap->GetCPUDescriptorHandleForHeapStart());
+
+	for (int i = 0; i < g_NumFrames; i++)
+	{
+		ComPtr<ID3D12Resource> backBuffer;
+		ThrowIfFailed(swapChain->GetBuffer(i, IID_PPV_ARGS(&backBuffer)));
+
+		//Create RTV and store reference where rtvDescrHeap Handle is currently pointing to
+		currentDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, rtvHandle);
+
+		g_BackBuffers[i] = backBuffer;
+
+		//Increment rtvDescrHeap Handle pointing position
+		rtvHandle.Offset(rtvDescriptorSize);
+
+	}
+
+
+
 }
 
 int main()
