@@ -14,6 +14,8 @@
 #include <shellapi.h>//for CommandLineToArgvW .. getting command line arguments
 #include <assert.h>
 #include <algorithm>
+#include <chrono>
+#include <debugapi.h>
 
 
 
@@ -403,8 +405,125 @@ void UpdateRenderTargetViews(ComPtr<ID3D12Device2> currentDevice, ComPtr<IDXGISw
 
 	}
 
+}
 
+ComPtr<ID3D12CommandAllocator> CreateCommandAllocator(ComPtr<ID3D12Device2> currentDevice, D3D12_COMMAND_LIST_TYPE cmdListType)
+{
+	ComPtr<ID3D12CommandAllocator> cmdAllocator;
+	ThrowIfFailed(currentDevice->CreateCommandAllocator(cmdListType, IID_PPV_ARGS(&cmdAllocator)));
 
+	return cmdAllocator;
+}
+
+ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12Device2> currentDevice, 
+	ComPtr<ID3D12CommandAllocator> cmdAllocator, D3D12_COMMAND_LIST_TYPE cmdListType)
+{
+	ComPtr<ID3D12GraphicsCommandList> cmdList;
+
+	ThrowIfFailed(currentDevice->CreateCommandList(0, cmdListType, cmdAllocator.Get(), nullptr, IID_PPV_ARGS(&cmdList)));
+
+	return cmdList;
+}
+
+ComPtr<ID3D12Fence> CreateFence(ComPtr<ID3D12Device2> currentDevice)
+{
+	ComPtr<ID3D12Fence> fence;
+
+	ThrowIfFailed(currentDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+
+	return fence;
+}
+
+//Used for handling CPU fence event
+HANDLE CreateFenceEventHandle()
+{
+	HANDLE fenceEvent;
+	fenceEvent = ::CreateEvent(NULL, FALSE, FALSE, NULL);
+	assert(fenceEvent && "Failed to create fence event.");
+
+	return fenceEvent;
+}
+//Command Queue Signal Fence (GPU)
+uint64_t Signal(ComPtr<ID3D12CommandQueue> cmdQueue, ComPtr<ID3D12Fence> fence, uint64_t& fenceValue)
+{
+	uint64_t fenceValueForSignal = ++fenceValue;
+	ThrowIfFailed(cmdQueue->Signal(fence.Get(), fenceValueForSignal));
+
+	return fenceValueForSignal;
+}
+
+//This will stall the main thread up until the requested fence value is reached OR duration has expired
+void WaitForFenceValue(ComPtr<ID3D12Fence> fence, uint64_t fenceValue, HANDLE fenceEvent,
+	std::chrono::milliseconds duration = std::chrono::milliseconds::max())
+{
+	if (fence->GetCompletedValue() < fenceValue)
+	{
+		ThrowIfFailed(fence->SetEventOnCompletion(fenceValue, fenceEvent));
+
+		::WaitForSingleObject(fenceEvent, static_cast<DWORD>(duration.count())); //count returns the number of ticks
+	}
+}
+
+//Flush will stall the main thread up until all the previous rendering commands sent on the command queue have been executed.
+//This is done by signaling the referenced fence and waiting for the value to be reached. When that happens, fenceEvent gets executed.
+void Flush(ComPtr<ID3D12CommandQueue> cmdQueue, ComPtr<ID3D12Fence> fence, uint64_t& fenceValue, HANDLE fenceEvent)
+{
+	uint64_t fenceValueForSignal = Signal(cmdQueue, fence, fenceValue);
+	WaitForFenceValue(fence, fenceValue, fenceEvent);
+}
+
+void Update()
+{
+	static uint64_t frameCounter = 0;
+	static double elapsedSeconds = 0;
+	static std::chrono::high_resolution_clock clock;
+	static auto t0 = clock.now();
+
+	//Content will go here
+
+	frameCounter++;
+	auto t1 = clock.now();
+	auto deltaTime = t1 - t0;
+	t0 = t1;
+
+	elapsedSeconds += deltaTime.count() * 1e-9; //Conversion from nanoseconds into seconds
+	//NOTE: alternatively we can do a dutation_cast
+	//std::chrono::duration_cast<std::chrono::seconds>(deltaTime).count();
+	if (elapsedSeconds > 1.0)// This will ensure the debug print is done at max once per second
+	{
+		char buffer[500];
+		auto fps = frameCounter / elapsedSeconds;
+		sprintf_s(buffer, 500, "FPS: %f\n", fps);
+		OutputDebugStringA(buffer);
+
+		frameCounter = 0;
+		elapsedSeconds = 0.0;
+
+	}
+}
+
+void Render()
+{
+	auto cmdAllocator = g_CommandAllocators[g_CurrentBackBufferIndex];
+	auto backBuffer = g_BackBuffers[g_CurrentBackBufferIndex];
+
+	cmdAllocator->Reset();
+	g_CommandList->Reset(cmdAllocator.Get(), nullptr);
+
+	//Clear render target
+	{
+		//Transitioning current backbuffer in render target state
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+			backBuffer.Get(),
+			D3D12_RESOURCE_STATE_PRESENT,
+			D3D12_RESOURCE_STATE_RENDER_TARGET); //Note: this barrier will transition ALL subresources to the same state
+
+		g_CommandList->ResourceBarrier(1, &barrier);
+
+		FLOAT clearColor[] = { 0.4f, 0.6f, 0.9f, 1.0f };
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(g_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), g_CurrentBackBufferIndex, g_RTVDescriptorSize);
+		g_CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
+	}
 }
 
 int main()
