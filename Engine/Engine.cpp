@@ -524,6 +524,74 @@ void Render()
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtv(g_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), g_CurrentBackBufferIndex, g_RTVDescriptorSize);
 		g_CommandList->ClearRenderTargetView(rtv, clearColor, 0, nullptr);
 	}
+
+	//Present current render target
+	{
+		//Transition back buffer to present state
+		CD3DX12_RESOURCE_BARRIER barrier = CD3DX12_RESOURCE_BARRIER::Transition(
+		backBuffer.Get(), //current back buffer
+			D3D12_RESOURCE_STATE_RENDER_TARGET, //previous state
+			D3D12_RESOURCE_STATE_PRESENT //wanted state
+		);
+		g_CommandList->ResourceBarrier(1, &barrier);
+	}
+
+	//NOTE: Close() must be called on the CommandList before being executed by the command queue!
+	ThrowIfFailed(g_CommandList->Close());
+
+	//Finally executing the filled Command List into the Command Queue
+	ID3D12CommandList* const cmdLists[] = {
+		g_CommandList.Get()
+	};
+
+	g_CommandQueue->ExecuteCommandLists(_countof(cmdLists), cmdLists);
+
+	//Presenting the frame
+	UINT syncInterval = g_VSync ? 1 : 0;
+	UINT presentFlags = g_TearingSupported && !g_VSync ? DXGI_PRESENT_ALLOW_TEARING : 0; //NOTE: Present ALSO need to have flag AllowTearing (other than in SwapChain creation)
+	ThrowIfFailed(g_SwapChain->Present(syncInterval, presentFlags));
+
+	//Signal fence for the current backbuffer
+	g_FrameFenceValues[g_CurrentBackBufferIndex] = Signal(g_CommandQueue, g_Fence, g_FenceValue);
+
+	//update BackBuffer index
+	g_CurrentBackBufferIndex = g_SwapChain->GetCurrentBackBufferIndex();
+	//NOTE: when using Swap Effect Flip Discard, the order of back buffer indices is NOT guaranteed to be sequential!
+
+
+	//Wait for the just retrieved fence value to be reached
+	WaitForFenceValue(g_Fence, g_FrameFenceValues[g_CurrentBackBufferIndex], g_FenceEvent);
+
+}
+
+void Resize(uint32_t width, uint32_t height)
+{
+	if (g_ClientWidth != width || g_ClientHeight != height)
+	{
+		//Don't allow 0 size swap chain back buffers
+		g_ClientWidth = std::max(1u, width);
+		g_ClientHeight = std::max(1u, height);
+
+		//Flush the GPU queue to make sure the swap chain's back buffers
+		//are not being referenced by an in-flight command list.
+		Flush(g_CommandQueue, g_Fence, g_FenceValue, g_FenceEvent);
+	}
+
+	//NOTE: Any references to the back buffers must be released
+	//before the swap chain can be resized!
+	for (int i = 0; i < g_NumFrames; ++i)
+	{
+		g_BackBuffers[i].Reset();
+		g_FrameFenceValues[i] = g_FrameFenceValues[g_CurrentBackBufferIndex];
+	}
+
+	//Finally resizing the SwapChain and relative Descriptor Heap
+	DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
+	ThrowIfFailed(g_SwapChain->GetDesc(&swapChainDesc));
+	ThrowIfFailed(g_SwapChain->ResizeBuffers(g_NumFrames, g_ClientWidth, g_ClientHeight, swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
+	g_CurrentBackBufferIndex = g_SwapChain->GetCurrentBackBufferIndex();
+	UpdateRenderTargetViews(g_Device, g_SwapChain, g_RTVDescriptorHeap);
+
 }
 
 int main()
