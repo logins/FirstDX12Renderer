@@ -18,7 +18,6 @@
 #include <debugapi.h>
 
 
-
 // The min/max macros conflict with like-named member functions.
 // Only use std::min and std::max defined in <algorithm>.
 #if defined(min)
@@ -49,7 +48,7 @@ HWND g_hWnd;
 RECT g_WindowRect;
 
 //Window callback function
-LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM) { return 0; };
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 
 //D3D12 Objects
 using namespace Microsoft::WRL;
@@ -533,7 +532,9 @@ void Render()
 			D3D12_RESOURCE_STATE_RENDER_TARGET, //previous state
 			D3D12_RESOURCE_STATE_PRESENT //wanted state
 		);
+
 		g_CommandList->ResourceBarrier(1, &barrier);
+
 	}
 
 	//NOTE: Close() must be called on the CommandList before being executed by the command queue!
@@ -552,6 +553,7 @@ void Render()
 	ThrowIfFailed(g_SwapChain->Present(syncInterval, presentFlags));
 
 	//Signal fence for the current backbuffer
+	//This fence value returned from the Signal operation is used to stall the CPU thread until any (writable - such as the render targets) resources are finished being used
 	g_FrameFenceValues[g_CurrentBackBufferIndex] = Signal(g_CommandQueue, g_Fence, g_FenceValue);
 
 	//update BackBuffer index
@@ -564,6 +566,9 @@ void Render()
 
 }
 
+//NOTE: whenever a resize happens, ALL the backbuffer resources referenced by the SwapChain need to be released.
+//In order to do it, we first need to Flush the GPU for any "in-flight" command.
+//After swapchainìs resize back buffers, RTVs derscriptor heap is also updated.
 void Resize(uint32_t width, uint32_t height)
 {
 	if (g_ClientWidth != width || g_ClientHeight != height)
@@ -579,6 +584,7 @@ void Resize(uint32_t width, uint32_t height)
 
 	//NOTE: Any references to the back buffers must be released
 	//before the swap chain can be resized!
+	//All the per-frame fence values are also reset to the fence value of the current backbuffer index.
 	for (int i = 0; i < g_NumFrames; ++i)
 	{
 		g_BackBuffers[i].Reset();
@@ -587,21 +593,207 @@ void Resize(uint32_t width, uint32_t height)
 
 	//Finally resizing the SwapChain and relative Descriptor Heap
 	DXGI_SWAP_CHAIN_DESC swapChainDesc = {};
-	ThrowIfFailed(g_SwapChain->GetDesc(&swapChainDesc));
+	ThrowIfFailed(g_SwapChain->GetDesc(&swapChainDesc)); //We get the current swapchain's desc so we can resize with same flags and same bugger color format
 	ThrowIfFailed(g_SwapChain->ResizeBuffers(g_NumFrames, g_ClientWidth, g_ClientHeight, swapChainDesc.BufferDesc.Format, swapChainDesc.Flags));
 	g_CurrentBackBufferIndex = g_SwapChain->GetCurrentBackBufferIndex();
 	UpdateRenderTargetViews(g_Device, g_SwapChain, g_RTVDescriptorHeap);
 
 }
 
+//NOTE: This will switch to fullscreen Borderless Window (FSBW) instead of the real one.
+//By using a flip-mode swapchain, we don't need Windows to take full ownership of the application
+//so we can obtain maximum framerate in borderless as well.
+void SetFullscreenState(bool isNowFullscreen)
+{
+	if (g_FullScreen != isNowFullscreen)
+	{
+		g_FullScreen = isNowFullscreen;
+		if (g_FullScreen)
+		{
+			//store previous window dimensions
+			::GetWindowRect(g_hWnd, &g_WindowRect);
+
+			UINT windowStyle = WS_OVERLAPPEDWINDOW & ~(WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
+
+			::SetWindowLongW(g_hWnd, GWL_STYLE, windowStyle); //Apply borderless window style
+
+			HMONITOR nearestMonitor = ::MonitorFromWindow(g_hWnd, MONITOR_DEFAULTTONEAREST);
+			MONITORINFOEX monitorInfo = {};
+			monitorInfo.cbSize = sizeof(MONITORINFOEX); //required to fill cbsize in oder to use this struct type
+			::GetMonitorInfo(nearestMonitor, &monitorInfo);
+
+			::SetWindowPos(g_hWnd, HWND_TOP, //This will place the window above all the topmost windows group!
+				monitorInfo.rcMonitor.left,
+				monitorInfo.rcMonitor.top,
+				monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
+				monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top,
+				SWP_FRAMECHANGED //Applies chosen window style using the SetWindowLong function. It will trigger a  WM_NCCALCSIZE message to the window, even if the size is not changed
+				| SWP_NOACTIVATE //This will make the window to not activate by itself when the position is changed. 
+				//If this flag is not present, the window is activated and moved to either the topmost or the non-topmost group, depending on the settings of hWndInsertAfter parameter.
+				);
+			//The actual call to show the window!
+			::ShowWindow(g_hWnd, SW_MAXIMIZE);
+		}
+		else
+		{
+			::SetWindowLong(g_hWnd, GWL_STYLE, WS_OVERLAPPEDWINDOW);
+
+			::SetWindowPos(g_hWnd, HWND_NOTOPMOST, //This will place the window above all the non-topmost windows!
+				g_WindowRect.left,
+				g_WindowRect.top,
+				g_WindowRect.right - g_WindowRect.left,
+				g_WindowRect.top - g_WindowRect.top,
+				SWP_FRAMECHANGED | SWP_NOACTIVATE
+				);
+
+			::ShowWindow(g_hWnd, SW_NORMAL);
+		}
+
+	}
+}
+
+LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	if (g_IsInitialized) //preventing the application to handle events before the necessary dx12 objects are initialised
+	{
+		bool alt = (::GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
+		switch (message)
+		{
+		case WM_PAINT:
+			Update();
+			Render();
+			break;
+		case WM_SYSKEYDOWN: //When a system key is pressed (eg. Alt)
+		case WM_KEYDOWN: //When a non-system key is pressed
+		{
+			switch (wParam)
+			{
+			case 'V':
+				g_VSync = !g_VSync;
+				break;
+			case VK_ESCAPE:
+				::PostQuitMessage(0); //Causes the application  to terminate
+				break;
+			case VK_RETURN:
+				if (alt)
+				{
+			case VK_F11:
+				SetFullscreenState(!g_FullScreen);
+				}
+				break;
+			}
+			break;
+		}
+		//NOTE: Alt+Enter is the default way to switch to fullscreen, but in this way it will not take effect
+		case WM_SYSCHAR:
+			break;
+		case WM_SIZE:
+		{
+			RECT clientRect = {};
+			::GetClientRect(g_hWnd, &clientRect);
+			int width = 0;
+			int height = 0;
+			Resize(width, height);
+			break;
+		}
+		case WM_DESTROY: //called when X is pressed in the top right
+			::PostQuitMessage(0);
+			break;
+		default:
+			return ::DefWindowProcW(g_hWnd, message, wParam, lParam); //Message will be handled by the Default Window Procedure !
+		}
+	}
+	else
+	{
+		return ::DefWindowProcW(g_hWnd, message, wParam, lParam);
+	}
+
+	return 0;
+}
+
+int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
+{
+
+}
 int main()
 {
 
     std::cout << "Hello DX12!\n"; 
+	
+	// Windows 10 Creators update adds Per Monitor V2 DPI awareness context.
+	// Using this awareness context allows the client area of the window 
+	// to achieve 100% scaling while still allowing non-client window content to 
+	// be rendered in a DPI sensitive fashion.
+	::SetThreadDpiAwarenessContext(DPI_AWARENESS_CONTEXT_PER_MONITOR_AWARE_V2);
+	//This means that the swap chain buffers will be resized to fill the 
+	//total number of screen pixels(true 4K or 8K resolutions) when resizing the client area 
+	//of the window instead of scaling the client area based on the DPI scaling settings.
 
+	const wchar_t* windowClassName = L"DX12WindowClass";
+	ParseCommandLineArguments();
+
+	//Enable DX12 Debug Layer
+	::EnableDebugLayer(); //NOTE: this needs to be called BEFORE creating the device!
+
+	g_TearingSupported = CheckTearingSupport();
+
+	HINSTANCE hInstance = GetModuleHandle(NULL);
+
+	::RegisterWindowClass(hInstance, windowClassName);
+	g_hWnd = CreateHWND(windowClassName, hInstance, L"My first DX12 Window", g_ClientWidth, g_ClientHeight);
+
+	//Initialise clobal window rect variable
+	::GetWindowRect(g_hWnd, &g_WindowRect);
+
+	//Create all the needed DX12 object
+	ComPtr<IDXGIAdapter4> dxgiAdapter4 = GetAdapter(g_UseWarp);
+	g_Device = CreateDevice(dxgiAdapter4);
+	g_CommandQueue = CreateCommandQueue(g_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+	g_SwapChain = CreateSwapChain(g_hWnd,g_CommandQueue,g_ClientWidth, g_ClientHeight, g_NumFrames);
+	g_CurrentBackBufferIndex = g_SwapChain->GetCurrentBackBufferIndex();
+	
+	g_RTVDescriptorHeap = CreateDescriptorHeap(g_Device, D3D12_DESCRIPTOR_HEAP_TYPE_RTV,g_NumFrames);
+	g_RTVDescriptorSize = g_Device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+	UpdateRenderTargetViews(g_Device, g_SwapChain, g_RTVDescriptorHeap);
+
+	//Create Command List and Allocators
+	for (int i = 0; i < g_NumFrames; i++)//there needs to be one command allocator per each in-flight render frames
+	{
+		g_CommandAllocators[i] = CreateCommandAllocator(g_Device, D3D12_COMMAND_LIST_TYPE_DIRECT);
+	}
+	g_CommandList = CreateCommandList(g_Device, g_CommandAllocators[g_CurrentBackBufferIndex], D3D12_COMMAND_LIST_TYPE_DIRECT);
+
+	//Create fence objects
+	g_Fence = CreateFence(g_Device);
+	g_FenceEvent = CreateFenceEventHandle();
+
+	//All should be initialised, show the window
+	g_IsInitialized = true;
+
+	::ShowWindow(g_hWnd, SW_SHOW);
+
+	//Application Main Loop
+	MSG msg = {};
+	while (msg.message != WM_QUIT)
+	{
+		if (::PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+		{
+			::TranslateMessage(&msg);
+			::DispatchMessage(&msg);
+		}
+	}
+
+	//Make sure command queue has finished all in-flight commands before closing
+	Flush(g_CommandQueue, g_Fence, g_FenceValue, g_FenceEvent);
+
+	//Closing event handle
+	::CloseHandle(g_FenceEvent);
+	
 	//Wait for Enter key press before returning
 	getchar();
 
+	return 0;
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu
