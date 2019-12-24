@@ -700,21 +700,18 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			::PostQuitMessage(0);
 			break;
 		default:
-			return ::DefWindowProcW(g_hWnd, message, wParam, lParam); //Message will be handled by the Default Window Procedure !
+			return ::DefWindowProcW(hwnd, message, wParam, lParam); //Message will be handled by the Default Window Procedure !
 		}
 	}
 	else
 	{
-		return ::DefWindowProcW(g_hWnd, message, wParam, lParam);
+		return ::DefWindowProcW(hwnd, message, wParam, lParam);
 	}
 
+	//NOTE: IF WM_NCCREATE message will be handled retuning 0, window creation will fail!
 	return 0;
 }
 
-int CALLBACK wWinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PWSTR lpCmdLine, int nCmdShow)
-{
-
-}
 int main()
 {
 
