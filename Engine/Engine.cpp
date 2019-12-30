@@ -421,6 +421,9 @@ ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12Device2> curren
 
 	ThrowIfFailed(currentDevice->CreateCommandList(0, cmdListType, cmdAllocator.Get(), nullptr, IID_PPV_ARGS(&cmdList)));
 
+	//NOTE: By default the Command list will be created in Open state, we manually need to close it!
+	ThrowIfFailed(cmdList->Close());
+
 	return cmdList;
 }
 
@@ -730,13 +733,13 @@ int main()
 	ParseCommandLineArguments();
 
 	//Enable DX12 Debug Layer
-	::EnableDebugLayer(); //NOTE: this needs to be called BEFORE creating the device!
+	EnableDebugLayer(); //NOTE: this needs to be called BEFORE creating the device!
 
 	g_TearingSupported = CheckTearingSupport();
 
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 
-	::RegisterWindowClass(hInstance, windowClassName);
+	RegisterWindowClass(hInstance, windowClassName);
 	g_hWnd = CreateHWND(windowClassName, hInstance, L"My first DX12 Window", g_ClientWidth, g_ClientHeight);
 
 	//Initialise clobal window rect variable
