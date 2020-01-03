@@ -6,7 +6,9 @@
 
 #include "Helpers.h"
 
-#include <windows.h> //For window handling
+
+#define WIN32_LEAN_AND_MEAN //This will shrink the inclusion of windows.h to the essential functions
+#include <Windows.h> //For window handling
 #include <wrl.h> //For WRL::ComPtr
 #include <d3d12.h>
 #include "Platform/DX12/d3dx12.h" //Helper functions from https://github.com/Microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12
@@ -422,6 +424,7 @@ ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12Device2> curren
 	ThrowIfFailed(currentDevice->CreateCommandList(0, cmdListType, cmdAllocator.Get(), nullptr, IID_PPV_ARGS(&cmdList)));
 
 	//NOTE: By default the Command list will be created in Open state, we manually need to close it!
+	//This will allow resetting it at the beginning of the Render function before recording any command.
 	ThrowIfFailed(cmdList->Close());
 
 	return cmdList;
@@ -645,7 +648,7 @@ void SetFullscreenState(bool isNowFullscreen)
 				g_WindowRect.left,
 				g_WindowRect.top,
 				g_WindowRect.right - g_WindowRect.left,
-				g_WindowRect.top - g_WindowRect.top,
+				g_WindowRect.bottom - g_WindowRect.top,
 				SWP_FRAMECHANGED | SWP_NOACTIVATE
 				);
 
@@ -694,8 +697,9 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 		{
 			RECT clientRect = {};
 			::GetClientRect(g_hWnd, &clientRect);
-			int width = 0;
-			int height = 0;
+			int width = clientRect.right-clientRect.left;
+			int height = clientRect.bottom-clientRect.top;
+
 			Resize(width, height);
 			break;
 		}
