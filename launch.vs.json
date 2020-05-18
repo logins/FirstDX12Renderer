@@ -1,0 +1,12 @@
+{
+  "version": "0.2.1",
+  "defaults": {},
+  "configurations": [
+    {
+      "type": "default",
+      "project": "CMakeLists.txt",
+      "projectTarget": "part1.exe (Part1\\part1.exe)",
+      "name": "Part 1"
+    }
+  ]
+}

@@ -1,0 +1,38 @@
+﻿{
+  // See https://go.microsoft.com//fwlink//?linkid=834763 for more information about this file.
+  //"environments" block will define "variables" field common to EVERY configuration block
+  "environments": [
+    {
+      "NINJA_STATUS": "[${name}][Done Rules %f/%t %es]",
+      "BUILD_ROOT": "${projectDir}\\_build\\${name}",
+      "INSTALL_ROOT": "${projectDir}\\_install\\${name}"
+
+    }
+  ],
+  "configurations": [
+    {
+      "name": "x64-Debug",
+      "generator": "Ninja",
+      "configurationType": "Debug",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "buildRoot": "${env.BUILD_ROOT}",
+      "installRoot": "${env.INSTALL_ROOT}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "-v",
+      "ctestCommandArgs": "",
+      "variables": []
+    },
+    {
+      "name": "x64-Release",
+      "generator": "Ninja",
+      "configurationType": "RelWithDebInfo",
+      "buildRoot": "${env.BUILD_ROOT}",
+      "installRoot": "${env.INSTALL_ROOT}",
+      "cmakeCommandArgs": "",
+      "buildCommandArgs": "-v",
+      "ctestCommandArgs": "",
+      "inheritEnvironments": [ "msvc_x64_x64" ],
+      "variables": []
+    }
+  ]
+}

@@ -11,7 +11,7 @@
 #include <Windows.h> //For window handling
 #include <wrl.h> //For WRL::ComPtr
 #include <d3d12.h>
-#include "Platform/DX12/d3dx12.h" //Helper functions from https://github.com/Microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12
+#include <d3dx12.h> //Helper functions from https://github.com/Microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12
 #include <dxgi1_6.h> //For SwapChain4
 #include <shellapi.h>//for CommandLineToArgvW .. getting command line arguments
 #include <assert.h>
