@@ -10,14 +10,11 @@ if(NOT DEFINED MSVC)
 endif()
 	
 
-set(DXC_BUILD_ARCH "x64")
-include("${CMAKE_CURRENT_LIST_DIR}/cmake/FindD3D12.cmake")
-
-# Modules used by every part target
-message("Found the following D3D12 Libraries: ${D3D12_LIB_NAMES}")
-
+add_subdirectory(lib)
 
 add_subdirectory(Part1)
+
+add_subdirectory(Part2)
 
 
 
