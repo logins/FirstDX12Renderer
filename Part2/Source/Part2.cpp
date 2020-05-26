@@ -1,6 +1,5 @@
 
 #include <iostream>
-
 #include <D3D12GEPUtils.h>
 
 int main()
