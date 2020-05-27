@@ -746,7 +746,7 @@ int main()
 	RegisterWindowClass(hInstance, windowClassName);
 	g_hWnd = CreateHWND(windowClassName, hInstance, L"My first DX12 Window", g_ClientWidth, g_ClientHeight);
 
-	//Initialise clobal window rect variable
+	//Initialise global window rect variable
 	::GetWindowRect(g_hWnd, &g_WindowRect);
 
 	//Create all the needed DX12 object
