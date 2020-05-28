@@ -1,11 +1,10 @@
 #include "D3D12GEPUtils.h"
+#include "D3D12UtilsInternal.h"
 #include <assert.h>
 #include <algorithm>
 
 namespace D3D12GEPUtils
 {
-	const uint32_t D3D12Window::m_DefaultBufferCount = 3;
-
 	D3D12Window::D3D12Window(const wchar_t* InWindowClassName, const wchar_t* InWindowTitle,
 		uint32_t InWinWidth, uint32_t InWinHeight,
 		uint32_t InBufWidth, uint32_t InBufHeight,
@@ -97,9 +96,8 @@ namespace D3D12GEPUtils
 		// Disable Alt+Enter hotkey, necessery for allow tearing feature
 		ThrowIfFailed(dxgiFactory4->MakeWindowAssociation(m_HWND, DXGI_MWA_NO_ALT_ENTER));
 
-		// Cast to swapchain 4
+		// Cast to swapchain 4 and assign to member variable
 		ThrowIfFailed(swapChain1.As(&m_SwapChain));
-
 	}
 
 	void D3D12Window::RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName)
@@ -123,6 +121,90 @@ namespace D3D12GEPUtils
 		assert(atom > 0);
 	}
 
+	void PrintHello()
+	{
+		std::cout << "Hello From D3D12GEPUtils Library!" << std::endl;
+
+		D3D12GEPUtils::ThisIsMyInternalFunction();
+	}
+
+	ComPtr<IDXGIAdapter4> GetMainAdapter(bool InUseWarp)
+	{
+		// Note: warp is a virtual platform that provides backward compatibility to DX12 for older graphics devices.
+		// More info at: https://docs.microsoft.com/en-us/windows/win32/direct3darticles/directx-warp#what-is-warp 
+		ComPtr<IDXGIFactory4> dxgiFactory;
+		UINT createFactoryFlags = 0;
+
+#ifdef _DEBUG
+		createFactoryFlags |= DXGI_CREATE_FACTORY_DEBUG;
+#endif
+		ThrowIfFailed(::CreateDXGIFactory2(createFactoryFlags, IID_PPV_ARGS(&dxgiFactory)));
+
+		ComPtr<IDXGIAdapter1> dxgiAdapter1;
+		ComPtr<IDXGIAdapter4> dxgiAdapter4;
+
+		if (InUseWarp)
+		{
+			// Retrieve the first adapter found from the factory
+			ThrowIfFailed(dxgiFactory->EnumWarpAdapter(IID_PPV_ARGS(&dxgiAdapter1)));
+			// Try casting it to adapter4
+			ThrowIfFailed(dxgiAdapter1.As(&dxgiAdapter4));
+		}
+		else
+		{
+			SIZE_T maxDedicatedVideoMemory = 0;
+			// Inspecting all the devices found and taking the one with largest video memory
+			for (UINT i =0; dxgiFactory->EnumAdapters1(i, &dxgiAdapter1) != DXGI_ERROR_NOT_FOUND; ++i)
+			{
+				DXGI_ADAPTER_DESC1 dxgiAdapterDesc;
+				dxgiAdapter1->GetDesc1(&dxgiAdapterDesc);
+				if ((dxgiAdapterDesc.Flags & DXGI_ADAPTER_FLAG_SOFTWARE) == 0 // Avoid the adapter called the "Microsoft Basic Render Driver" adapter, which is a default adapter without display outputs
+					&& SUCCEEDED(::D3D12CreateDevice(dxgiAdapter1.Get(),
+						D3D_FEATURE_LEVEL_12_0, __uuidof(ID3D12Device), nullptr)) // Check if current adapter can create a D3D12 device without actually creating it
+					&& dxgiAdapterDesc.DedicatedVideoMemory > maxDedicatedVideoMemory
+					)
+				{
+					maxDedicatedVideoMemory = dxgiAdapterDesc.DedicatedVideoMemory;
+					ThrowIfFailed(dxgiAdapter1.As(&dxgiAdapter4));
+				}
+			}
+		}
+		return dxgiAdapter4;
+	}
+
+	ComPtr<ID3D12Device2> CreateDevice(ComPtr<IDXGIAdapter4> InAdapter)
+	{
+		ComPtr<ID3D12Device2> d3dDevice2;
+		ThrowIfFailed(::D3D12CreateDevice(InAdapter.Get(), D3D_FEATURE_LEVEL_12_0, IID_PPV_ARGS(&d3dDevice2)));
+#if _DEBUG // Adding Info Queue filters
+		ComPtr<ID3D12InfoQueue> infoQueue;
+		if (SUCCEEDED(d3dDevice2.As(&infoQueue)))
+		{
+			// When a message with the following severities passes trough the Storage Filter, the program will break.
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
+			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+		}
+		// Following message severities will be suppressed
+		D3D12_MESSAGE_SEVERITY suppressedSeverities[] = { D3D12_MESSAGE_SEVERITY_INFO };
+
+		// Following messages will be suppressed based on their id
+		D3D12_MESSAGE_ID denyIds[] = {
+			D3D12_MESSAGE_ID_CLEARRENDERTARGETVIEW_MISMATCHINGCLEARVALUE,
+			D3D12_MESSAGE_ID_MAP_INVALID_NULLRANGE,
+			D3D12_MESSAGE_ID_UNMAP_INVALID_NULLRANGE
+		};
+
+		D3D12_INFO_QUEUE_FILTER infoQueueFilter = {};
+		infoQueueFilter.DenyList.NumSeverities = _countof(suppressedSeverities);
+		infoQueueFilter.DenyList.pSeverityList = suppressedSeverities;
+		infoQueueFilter.DenyList.NumIDs = _countof(denyIds);
+		infoQueueFilter.DenyList.pIDList = denyIds;
+		// Note: we can also deny entire message categories
+		ThrowIfFailed(infoQueue->PushStorageFilter(&infoQueueFilter));
+#endif
+		return d3dDevice2;
+	}
 
 }
 

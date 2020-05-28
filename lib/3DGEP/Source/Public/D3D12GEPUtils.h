@@ -5,19 +5,17 @@
 #include <wrl.h>
 #include <dxgi1_6.h>
 #include <d3d12.h>
-#include <D3D12UtilsInternal.h>
 
 
 namespace D3D12GEPUtils {
 
 	using namespace Microsoft::WRL;
 
-	void PrintHello()
-	{
-		std::cout << "Hello From D3D12GEPUtils Library!" << std::endl;
+	void PrintHello();
 
-		ThisIsMyInternalFunction();
-	}
+	ComPtr<IDXGIAdapter4> GetMainAdapter(bool InUseWarp);
+
+	ComPtr<ID3D12Device2> CreateDevice(ComPtr<IDXGIAdapter4> InAdapter);
 
 	inline void ThrowIfFailed(HRESULT hr)
 	{
@@ -46,12 +44,14 @@ namespace D3D12GEPUtils {
 
 		void CreateSwapChain(ComPtr<ID3D12CommandQueue> InCmdQueue, uint32_t InBufWidth, uint32_t InBufHeight);
 
+		
+		// Default number of buffers handled by the swapchain
+		static const uint32_t m_DefaultBufferCount = 3;
+
 		HWND m_HWND;
 		ComPtr<IDXGISwapChain4> m_SwapChain;
-
+		ComPtr<ID3D12Resource> m_BackBuffers[m_DefaultBufferCount];
 		bool m_IsInitialized = false;
 
-		// Default number of buffers handled by the swapchain
-		static const uint32_t m_DefaultBufferCount;
 	};
 }

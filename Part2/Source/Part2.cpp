@@ -8,6 +8,8 @@ int main()
 
 	D3D12GEPUtils::PrintHello();
 
+	D3D12GEPUtils::GetMainAdapter(false);
+
 
 	//Wait for Enter key press before returning
 	getchar();
