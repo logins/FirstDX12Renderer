@@ -2,23 +2,41 @@
 #include "D3D12UtilsInternal.h"
 #include <assert.h>
 #include <algorithm>
+#include "../../DX12/Include/d3dx12.h"
 
 namespace D3D12GEPUtils
 {
-	D3D12Window::D3D12Window(const wchar_t* InWindowClassName, const wchar_t* InWindowTitle,
+	void D3D12Window::Initialize(const wchar_t* InWindowClassName, const wchar_t* InWindowTitle,
 		uint32_t InWinWidth, uint32_t InWinHeight,
 		uint32_t InBufWidth, uint32_t InBufHeight,
-		ComPtr<ID3D12CommandQueue> InCmdQueue)
+		ComPtr<ID3D12CommandQueue> InCmdQueue, WNDPROC InWndProc)
 	{
 		HINSTANCE InHInstance = ::GetModuleHandle(NULL); //Created windows will always refer to the current application instance
 
-		RegisterWindowClass(InHInstance, InWindowClassName);
+		RegisterWindowClass(InHInstance, InWindowClassName, InWndProc);
 
 		CreateHWND(InWindowClassName, InHInstance, InWindowTitle, InWinWidth, InWinHeight);
 
 		CreateSwapChain(InCmdQueue, InBufWidth, InBufHeight);
 
+		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
+
+		UpdateRenderTargetViews();
+
 		m_IsInitialized = true;
+	}
+
+	void D3D12Window::SetFullscreenState(bool InNowFullScreen)
+	{
+		if (m_IsInitialized && (m_IsFullScreen == InNowFullScreen))
+			return;
+		// TODO Implement FullScreen State Change
+		m_IsFullScreen = InNowFullScreen;
+	}
+
+	void D3D12Window::Resize(int32_t InNewWidth, int32_t InNewHeight)
+	{
+		// TODO implement resize
 	}
 
 	void D3D12Window::CreateHWND(const wchar_t* InWindowClassName, HINSTANCE InHInstance, const wchar_t* InWindowTitle, uint32_t width, uint32_t height)
@@ -100,13 +118,37 @@ namespace D3D12GEPUtils
 		ThrowIfFailed(swapChain1.As(&m_SwapChain));
 	}
 
-	void D3D12Window::RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName)
+	void D3D12Window::UpdateRenderTargetViews()
+	{
+		// RTV Descriptor Size is vendor-dependent.
+		// We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
+		UINT rtvIncSize = m_CurrentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		//Getting a descriptor handle to iterate trough the descriptor heap elements
+		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescHeapHandle(m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
+		for (UINT bufferIdx = 0; bufferIdx < m_DefaultBufferCount; bufferIdx++)
+		{
+			ComPtr<ID3D12Resource> backBuffer;
+			// Retrieve interface to the current backBuffer
+			ThrowIfFailed(m_SwapChain->GetBuffer(bufferIdx, IID_PPV_ARGS(&backBuffer)));
+			// Create the RTV and store the reference of the current backBuffer, which is where rtvDescHeapHandle is pointing to
+			// Either the pointer to the resource or the resource descriptor must be provided to create the view.
+			m_CurrentDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, rtvDescHeapHandle);
+
+			m_BackBuffers[bufferIdx] = backBuffer;
+
+			// Move the CPU descriptor handle to the next element on the heap
+			rtvDescHeapHandle.Offset(rtvIncSize);
+		}
+	}
+
+	void D3D12Window::RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName, WNDPROC InWndProc)
 	{
 		// Creating a window class to represent out render window
 		WNDCLASSEXW windowClass = {};
 
 		windowClass.cbSize = sizeof(WNDCLASSEXW);
 		windowClass.style = CS_HREDRAW | CS_VREDRAW; // Redraw window if movement or size adjustments horizontally or vertically
+		windowClass.lpfnWndProc = InWndProc;// TODO write the WndProc function!
 		windowClass.cbClsExtra = 0; // Extra bytes to allocate after window class
 		windowClass.cbWndExtra = 0; // Extra bytes to allocate after window instance
 		windowClass.hInstance = hInst;
@@ -204,6 +246,84 @@ namespace D3D12GEPUtils
 		ThrowIfFailed(infoQueue->PushStorageFilter(&infoQueueFilter));
 #endif
 		return d3dDevice2;
+	}
+
+	ComPtr<ID3D12CommandQueue> CreateCommandQueue(ComPtr<ID3D12Device2> InDevice, D3D12_COMMAND_LIST_TYPE InType)
+	{
+		ComPtr<ID3D12CommandQueue> d3d12CmdQueue;
+
+		D3D12_COMMAND_QUEUE_DESC cmdQueueDesc = {};
+		cmdQueueDesc.Type = InType;
+		cmdQueueDesc.Priority = D3D12_COMMAND_QUEUE_PRIORITY_NORMAL;
+		cmdQueueDesc.NodeMask = 0; // Assuming using 1 GPU
+		cmdQueueDesc.Flags = D3D12_COMMAND_QUEUE_FLAG_NONE;
+
+		ThrowIfFailed(InDevice->CreateCommandQueue(&cmdQueueDesc, IID_PPV_ARGS(&d3d12CmdQueue)));
+
+		return d3d12CmdQueue;
+	}
+
+	ComPtr<ID3D12DescriptorHeap> CreateDescriptorHeap(ComPtr<ID3D12Device2> InDevice, D3D12_DESCRIPTOR_HEAP_TYPE InType, UINT InNumDescriptors)
+	{
+		ComPtr<ID3D12DescriptorHeap> descrHeap;
+
+		D3D12_DESCRIPTOR_HEAP_DESC descrHeapDesc = {};
+		descrHeapDesc.Type = InType;
+		descrHeapDesc.NumDescriptors = InNumDescriptors;
+		descrHeapDesc.NodeMask = 0;
+		descrHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+
+		ThrowIfFailed(InDevice->CreateDescriptorHeap(&descrHeapDesc, IID_PPV_ARGS(&descrHeap)));
+
+		return descrHeap;
+	}
+
+	ComPtr<ID3D12CommandAllocator> CreateCommandAllocator(ComPtr<ID3D12Device2> InDevice, D3D12_COMMAND_LIST_TYPE InCmdListType)
+	{
+		ComPtr<ID3D12CommandAllocator> cmdAllocator;
+		ThrowIfFailed(InDevice->CreateCommandAllocator(InCmdListType, IID_PPV_ARGS(&cmdAllocator)));
+		return cmdAllocator;
+	}
+
+	ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12Device2> InDevice, ComPtr<ID3D12CommandAllocator> InCmdAllocator, D3D12_COMMAND_LIST_TYPE InCmdListType)
+	{
+		ComPtr<ID3D12GraphicsCommandList> cmdList;
+		ThrowIfFailed(InDevice->CreateCommandList(0, InCmdListType, InCmdAllocator.Get(), nullptr, IID_PPV_ARGS(&cmdList)));
+		// Note: PSO parameter is optional and we can initialize the command list with it
+		// Note: the initial state of a newly created command list is Open, so we manually need to close it.
+		ThrowIfFailed(cmdList->Close()); // Close it because the beginning of the render method will execute reset on the cmdList
+	
+		return cmdList;
+	}	
+
+	ComPtr<ID3D12Fence> CreateFence(ComPtr<ID3D12Device2> InDevice)
+	{
+		ComPtr<ID3D12Fence> fence;
+		ThrowIfFailed(InDevice->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence)));
+		return fence;
+	}
+
+	HANDLE CreateFenceEventHandle()
+	{
+		HANDLE eventHandle;
+		eventHandle = ::CreateEvent(
+			NULL,	// Handle cannot be inherited by child processes
+			FALSE,	// This is going to be an auto-reset event object, after being signaled, it will automatically return in non-signaled state
+			FALSE,	// Initial event state is non-signaled 
+			NULL);	// Name of the event object, for events comparison
+		assert(eventHandle && "[D3D12GEPUtils] Failed to create fence event.");
+
+		return eventHandle;
+	}
+
+	void WaitForFenceValue(ComPtr<ID3D12Fence> InFence, uint64_t InFenceValue, HANDLE InFenceEvent, std::chrono::milliseconds InMaxDuration /*= std::chrono::milliseconds::max()*/)
+	{
+		if (InFence->GetCompletedValue() < InFenceValue)
+		{
+			ThrowIfFailed(InFence->SetEventOnCompletion(InFenceValue, InFenceEvent));
+
+			::WaitForSingleObject(InFenceEvent, static_cast<DWORD>(InMaxDuration.count())); // count() returns the number of ticks
+		}
 	}
 
 }
