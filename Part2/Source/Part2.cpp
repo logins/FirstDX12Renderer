@@ -14,6 +14,10 @@ int main()
 
 	Part2::Get()->Initialize();
 
+	Part2::Get()->Start();
+
+	// TODO deallocate D3D resources
+
 	//Wait for Enter key press before returning
 	getchar();
 }
@@ -49,6 +53,27 @@ void Part2::Initialize()
 	m_MainWindow.Initialize(windowInitInput);
 
 	m_IsInitialized = true;
+}
+
+void Part2::Start()
+{
+	if (!m_IsInitialized)
+		return;
+
+	m_MainWindow.ShowWindow();
+
+	// Application's main loop
+	MSG windowMessage = {};
+	while (windowMessage.message != WM_QUIT)
+	{
+		if (::PeekMessage(&windowMessage, NULL, 0, 0, PM_REMOVE))
+		{
+			::TranslateMessage(&windowMessage);
+			::DispatchMessage(&windowMessage);
+		}
+
+		// TODO continue here
+	}
 }
 
 void Part2::OnMainWindowPaint()

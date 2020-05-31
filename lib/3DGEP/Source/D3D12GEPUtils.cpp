@@ -15,6 +15,7 @@ namespace D3D12GEPUtils
 	{
 		HINSTANCE InHInstance = ::GetModuleHandle(NULL); //Created windows will always refer to the current application instance
 		m_CurrentDevice = InInitParams.graphicsDevice;
+		m_CommandQueue = InInitParams.CmdQueue;
 		m_Fence = InInitParams.Fence;
 		m_FenceEvent = D3D12GEPUtils::CreateFenceEventHandle();
 
@@ -31,6 +32,12 @@ namespace D3D12GEPUtils
 		UpdateRenderTargetViews();
 
 		m_IsInitialized = true;
+
+	}
+
+	void D3D12Window::ShowWindow()
+	{
+		::ShowWindow(m_HWND, SW_SHOW);
 	}
 
 	void D3D12Window::SetFullscreenState(bool InNowFullScreen)

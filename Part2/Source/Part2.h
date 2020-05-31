@@ -10,6 +10,7 @@ public:
 	~Part2() { m_Instance = nullptr; }
 	static Part2* Get();
 	void Initialize();
+	void Start();
 private:
 	// Singleton : Default constructor, copy constructor and assingment operators to be private
 	Part2() {};

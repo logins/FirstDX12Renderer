@@ -67,6 +67,8 @@ namespace D3D12GEPUtils {
 		D3D12Window() {};
 		void Initialize(D3D12WindowInitInput InInitParams);
 
+		void ShowWindow();
+
 		inline bool IsFullScreen() { return m_IsFullScreen; };
 		void SetFullscreenState(bool InNowFullScreen);
 
