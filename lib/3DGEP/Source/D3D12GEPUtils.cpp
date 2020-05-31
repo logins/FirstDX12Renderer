@@ -2,24 +2,31 @@
 #include "D3D12UtilsInternal.h"
 #include <assert.h>
 #include <algorithm>
-#include "../../DX12/Include/d3dx12.h"
+#include <d3dx12.h>
+
+#ifdef max
+#undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
+#undef min
+#endif
 
 namespace D3D12GEPUtils
 {
-	void D3D12Window::Initialize(const wchar_t* InWindowClassName, const wchar_t* InWindowTitle,
-		uint32_t InWinWidth, uint32_t InWinHeight,
-		uint32_t InBufWidth, uint32_t InBufHeight,
-		ComPtr<ID3D12CommandQueue> InCmdQueue, WNDPROC InWndProc)
+	void D3D12Window::Initialize(D3D12WindowInitInput InInitParams)
 	{
 		HINSTANCE InHInstance = ::GetModuleHandle(NULL); //Created windows will always refer to the current application instance
+		m_CurrentDevice = InInitParams.graphicsDevice;
+		m_Fence = InInitParams.Fence;
+		m_FenceEvent = D3D12GEPUtils::CreateFenceEventHandle();
 
-		RegisterWindowClass(InHInstance, InWindowClassName, InWndProc);
+		RegisterWindowClass(InHInstance, InInitParams.WindowClassName, InInitParams.WndProc);
 
-		CreateHWND(InWindowClassName, InHInstance, InWindowTitle, InWinWidth, InWinHeight);
+		CreateHWND(InInitParams.WindowClassName, InHInstance, InInitParams.WindowTitle, InInitParams.WinWidth, InInitParams.WinHeight);
 
-		CreateSwapChain(InCmdQueue, InBufWidth, InBufHeight);
+		CreateSwapChain(InInitParams.CmdQueue, InInitParams.BufWidth, InInitParams.BufHeight);
 
 		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
+
+		m_RTVDescriptorHeap = D3D12GEPUtils::CreateDescriptorHeap(m_CurrentDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, m_DefaultBufferCount);
 
 		UpdateRenderTargetViews();
 
@@ -30,13 +37,71 @@ namespace D3D12GEPUtils
 	{
 		if (m_IsInitialized && (m_IsFullScreen == InNowFullScreen))
 			return;
-		// TODO Implement FullScreen State Change
+		
+		if (InNowFullScreen)
+		{
+			// Store previous window dimensions to be able to turn back to window mode
+			::GetWindowRect(m_HWND, &m_WindowModeRect);
+
+			UINT fullscreenStyle = WS_OVERLAPPEDWINDOW & ~(WS_CAPTION | WS_SYSMENU | WS_THICKFRAME | WS_MINIMIZEBOX | WS_MAXIMIZEBOX);
+			::SetWindowLongW(m_HWND, GWL_STYLE, fullscreenStyle);
+
+			HMONITOR nearestMonitor = ::MonitorFromWindow(m_HWND, MONITOR_DEFAULTTONEAREST);
+			MONITORINFOEX monitorInfo = {};
+			monitorInfo.cbSize = sizeof(MONITORINFOEX); // Fill cbSize is required to use MONITORINFOEX
+			::GetMonitorInfo(nearestMonitor, &monitorInfo);
+
+			::SetWindowPos(m_HWND, HWND_TOP, // This will place window on top of all the others
+				monitorInfo.rcMonitor.left,
+				monitorInfo.rcMonitor.top,
+				monitorInfo.rcMonitor.right - monitorInfo.rcMonitor.left,
+				monitorInfo.rcMonitor.bottom - monitorInfo.rcMonitor.top,
+				SWP_FRAMECHANGED | // Will apply the window style set with ::SetWindowLongW and send a WM_NCCALCSIZE message to the window
+				SWP_NOACTIVATE // Do not trigger window activation while repositioning
+				);
+			::ShowWindow(m_HWND, SW_MAXIMIZE); // The actual window set fullscreen command
+		} 
+		else // From fullscreen to window
+		{
+			::SetWindowLong(m_HWND, GWL_STYLE, WS_OVERLAPPEDWINDOW);
+
+			::SetWindowPos(m_HWND, HWND_NOTOPMOST, // Generic window setting
+				m_WindowModeRect.left,
+				m_WindowModeRect.top,
+				m_WindowModeRect.right - m_WindowModeRect.left,
+				m_WindowModeRect.bottom - m_WindowModeRect.top,
+				SWP_FRAMECHANGED | SWP_NOACTIVATE
+				);
+			::ShowWindow(m_HWND, SW_NORMAL);
+		}
+
 		m_IsFullScreen = InNowFullScreen;
 	}
 
-	void D3D12Window::Resize(int32_t InNewWidth, int32_t InNewHeight)
+	// Note: When a window resize happens, all the swapchain backbuffers need to be released.
+	// Before doing it, we need to wait for the GPU to be done with them, by flushing.
+	void D3D12Window::Resize(uint32_t InNewWidth, uint32_t InNewHeight)
 	{
-		// TODO implement resize
+		// Don't allow 0 size swap chain buffers
+		InNewWidth = std::max(1u, InNewWidth);
+		InNewHeight = std::max(1u, InNewHeight);
+
+		// Flush GPU to ensure no commands are "in-flight" on the backbuffers
+		D3D12GEPUtils::FlushCmdQueue(m_CommandQueue, m_Fence, m_FenceEvent, m_LastSeenFenceValue);
+
+		// All the backbuffers references must be released before resizing the swapchain
+		for (int32_t i = 0; i < m_DefaultBufferCount; i++)
+		{
+			m_BackBuffers[i].Reset();
+			m_FrameFenceValues[i] = m_FrameFenceValues[m_CurrentBackBufferIndex];
+		}
+
+		// Resizing swapchain and relative backbuffers' descriptor heap
+		DXGI_SWAP_CHAIN_DESC swapchain_desc = {};
+		ThrowIfFailed(m_SwapChain->GetDesc(&swapchain_desc)); // Maintain previous swapchain settings after resizing
+		ThrowIfFailed(m_SwapChain->ResizeBuffers(m_DefaultBufferCount, InNewWidth, InNewHeight, swapchain_desc.BufferDesc.Format, swapchain_desc.Flags));
+		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
+		UpdateRenderTargetViews();
 	}
 
 	void D3D12Window::CreateHWND(const wchar_t* InWindowClassName, HINSTANCE InHInstance, const wchar_t* InWindowTitle, uint32_t width, uint32_t height)
@@ -69,6 +134,7 @@ namespace D3D12GEPUtils
 			InHInstance,
 			nullptr
 		);
+
 		//Check for valid return value
 		assert(currentHWND && "Failed to create the HWND for the current window.");
 
@@ -148,7 +214,7 @@ namespace D3D12GEPUtils
 
 		windowClass.cbSize = sizeof(WNDCLASSEXW);
 		windowClass.style = CS_HREDRAW | CS_VREDRAW; // Redraw window if movement or size adjustments horizontally or vertically
-		windowClass.lpfnWndProc = InWndProc;// TODO write the WndProc function!
+		windowClass.lpfnWndProc = InWndProc;
 		windowClass.cbClsExtra = 0; // Extra bytes to allocate after window class
 		windowClass.cbWndExtra = 0; // Extra bytes to allocate after window instance
 		windowClass.hInstance = hInst;
@@ -226,6 +292,10 @@ namespace D3D12GEPUtils
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_CORRUPTION, TRUE);
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_ERROR, TRUE);
 			infoQueue->SetBreakOnSeverity(D3D12_MESSAGE_SEVERITY_WARNING, TRUE);
+		}
+		else
+		{
+			assert("We were not able to get the InfoQueue from device... Maybe the Debug Layer is disabled..");
 		}
 		// Following message severities will be suppressed
 		D3D12_MESSAGE_SEVERITY suppressedSeverities[] = { D3D12_MESSAGE_SEVERITY_INFO };
@@ -324,6 +394,32 @@ namespace D3D12GEPUtils
 
 			::WaitForSingleObject(InFenceEvent, static_cast<DWORD>(InMaxDuration.count())); // count() returns the number of ticks
 		}
+	}
+
+	void SignalCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, uint64_t& OutFenceValue)
+	{
+		++OutFenceValue;
+
+		ThrowIfFailed(InCmdQueue->Signal(InFence.Get(), OutFenceValue));
+	}
+
+	void FlushCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, HANDLE InFenceEvent, uint64_t& OutFenceValue)
+	{
+		SignalCmdQueue(InCmdQueue, InFence, OutFenceValue);
+
+		WaitForFenceValue(InFence, OutFenceValue, InFenceEvent);
+	}
+
+	// Note: enabling debug layer after creating a device will cause the runtime to remove the device.
+	// Always enable debug layer before the device to be created.
+	void EnableDebugLayer()
+	{
+#ifdef _DEBUG
+		ComPtr<ID3D12Debug> debugInterface;
+		ThrowIfFailed(::D3D12GetDebugInterface(IID_PPV_ARGS(&debugInterface)));
+
+		debugInterface->EnableDebugLayer();
+#endif
 	}
 
 }

@@ -11,4 +11,4 @@ target_include_directories( part1
 		${CMAKE_SOURCE_DIR}/lib/DX12/Include
 )
 
-target_link_libraries(part1 d3d12.lib dxgi.lib)
+target_link_libraries(part1 d3d12.lib dxgi.lib d3dx12.h)

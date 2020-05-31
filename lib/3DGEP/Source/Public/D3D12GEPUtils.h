@@ -34,10 +34,14 @@ namespace D3D12GEPUtils {
 
 	HANDLE CreateFenceEventHandle();
 
-	uint64_t SignalCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, uint64_t& OutFenceValue);
+	void SignalCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, uint64_t& OutFenceValue);
 
 	// Stalls the thread up until the InFenceEvent is signaled with InFenceValue, or when optional InMaxDuration has passed
 	void WaitForFenceValue(ComPtr<ID3D12Fence> InFence, uint64_t InFenceValue, HANDLE InFenceEvent, std::chrono::milliseconds InMaxDuration = std::chrono::milliseconds::max());
+
+	static void FlushCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, HANDLE InFenceEvent, uint64_t& OutFenceValue);
+
+	void EnableDebugLayer();
 
 	inline void ThrowIfFailed(HRESULT hr)
 	{
@@ -46,23 +50,27 @@ namespace D3D12GEPUtils {
 			throw std::exception();
 		}
 	}
-
 	class D3D12Window
 	{
 
 	public:
+		// Struct containing the many params used to initialize a D3D12Window
+		struct D3D12WindowInitInput
+		{
+			const wchar_t* WindowClassName; const wchar_t* WindowTitle;
+			ComPtr<ID3D12Device2> graphicsDevice;
+			uint32_t WinWidth; uint32_t WinHeight;
+			uint32_t BufWidth; uint32_t BufHeight;
+			ComPtr<ID3D12CommandQueue> CmdQueue; WNDPROC WndProc;
+			ComPtr<ID3D12Fence> Fence;
+		};
 		D3D12Window() {};
-		void Initialize(const wchar_t* InWindowClassName, const wchar_t* InWindowTitle, 
-			uint32_t InWinWidth, uint32_t InWinHeight, 
-			uint32_t InBufWidth, uint32_t InBufHeight,
-			ComPtr<ID3D12CommandQueue> InCmdQueue,
-			WNDPROC InWndProc
-			);
+		void Initialize(D3D12WindowInitInput InInitParams);
 
 		inline bool IsFullScreen() { return m_IsFullScreen; };
 		void SetFullscreenState(bool InNowFullScreen);
 
-		void Resize(int32_t InNewWidth, int32_t InNewHeight);
+		void Resize(uint32_t InNewWidth, uint32_t InNewHeight);
 	private:
 
 		void RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName, WNDPROC InWndProc);
@@ -79,9 +87,15 @@ namespace D3D12GEPUtils {
 		static const uint32_t m_DefaultBufferCount = 3;
 
 		ComPtr<ID3D12Device2> m_CurrentDevice;
+		ComPtr<ID3D12CommandQueue> m_CommandQueue;
+		ComPtr<ID3D12Fence> m_Fence;
+		HANDLE m_FenceEvent;
+		uint64_t m_LastSeenFenceValue = 0;
 		HWND m_HWND;
+		RECT m_WindowModeRect;
 		ComPtr<IDXGISwapChain4> m_SwapChain;
 		ComPtr<ID3D12Resource> m_BackBuffers[m_DefaultBufferCount];
+		uint64_t m_FrameFenceValues[m_DefaultBufferCount];
 		UINT m_CurrentBackBufferIndex = 0;
 		ComPtr<ID3D12DescriptorHeap> m_RTVDescriptorHeap;
 

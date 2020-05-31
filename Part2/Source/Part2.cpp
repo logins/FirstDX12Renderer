@@ -1,7 +1,10 @@
 #include <Part2.h>
 #include <iostream>
 #include <D3D12GEPUtils.h>
+#include <wrl.h> //For WRL::ComPtr
+#include <dxgi1_6.h>
 
+using namespace Microsoft::WRL;
 
 int main()
 {
@@ -27,9 +30,23 @@ Part2* Part2::Get()
 void Part2::Initialize()
 {
 	// Create all the D3D objects requited for rendering and create the main window
-	D3D12GEPUtils::GetMainAdapter(false);
+	ComPtr<IDXGIAdapter4> adapter = D3D12GEPUtils::GetMainAdapter(false);
+	// Note: Debug Layer needs to be created before creating the Device
+	D3D12GEPUtils::EnableDebugLayer();
+	ComPtr<ID3D12Device2> graphicsDevice = D3D12GEPUtils::CreateDevice(adapter);
+	ComPtr<ID3D12CommandQueue> cmdQueue = D3D12GEPUtils::CreateCommandQueue(graphicsDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
+	ComPtr<ID3D12Fence> fence = D3D12GEPUtils::CreateFence(graphicsDevice);
+	uint32_t mainWindowWidth = 1024, mainWindowHeight = 768;
 
-	// TODO initialize main window here
+	// Initialize main render window
+	D3D12GEPUtils::D3D12Window::D3D12WindowInitInput windowInitInput = {
+		L"DX12WindowClass", L"Part2 Main Window",
+		graphicsDevice,
+		mainWindowWidth, mainWindowHeight, // Window sizes
+		mainWindowWidth, mainWindowHeight, // BackBuffer sizes
+		cmdQueue, MainWndProc, fence
+	};
+	m_MainWindow.Initialize(windowInitInput);
 
 	m_IsInitialized = true;
 }
@@ -41,10 +58,12 @@ void Part2::OnMainWindowPaint()
 	// OnRender
 }
 
-LRESULT CALLBACK Part2::MainWndProc(HWND InHWND, UINT InMsg, WPARAM InWParam, LPARAM InLParam)
+LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InWParam, LPARAM InLParam)
 {
-	if (!m_IsInitialized) // Preventing application to process events when all the necessery D3D12 objects are not initialized yet
-		return 0;
+	// Preventing application to process events when all the necessery D3D12 objects are not initialized yet
+	// Note: Do Not Return 0, otherwise HWND window creation will fail with no message!!
+	if (!m_IsInitialized)
+		return ::DefWindowProcW(InHWND, InMsg, InWParam, InLParam);
 
 	bool altKeyDown = (::GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
 	switch (InMsg)

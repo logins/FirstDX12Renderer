@@ -16,7 +16,11 @@ private:
 	Part2(const Part2&);
 	Part2& operator=(const Part2&);
 private:
-	LRESULT CALLBACK MainWndProc(HWND InHWND, UINT InMsg, WPARAM InWParam, LPARAM InLParam);
+	// WndProc functions need to be static, so we have to create a wrapper to transfer the event to the singleton's internal wndProc
+	static LRESULT CALLBACK MainWndProc(HWND InHWND, UINT InMsg, WPARAM InWParam, LPARAM InLParam) {
+		return Get()->MainWndProc_Internal(InHWND, InMsg, InWParam, InLParam);
+	};
+	LRESULT CALLBACK MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InWParam, LPARAM InLParam);
 	void OnMainWindowPaint();
 
 	D3D12GEPUtils::D3D12Window m_MainWindow;
