@@ -492,7 +492,7 @@ void Update()
 	t0 = t1;
 
 	elapsedSeconds += deltaTime.count() * 1e-9; //Conversion from nanoseconds into seconds
-	//NOTE: alternatively we can do a dutation_cast
+	//NOTE: alternatively we can do a duration_cast
 	//std::chrono::duration_cast<std::chrono::seconds>(deltaTime).count();
 	if (elapsedSeconds > 1.0)// This will ensure the debug print is done at max once per second
 	{

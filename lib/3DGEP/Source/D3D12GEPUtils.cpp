@@ -18,6 +18,10 @@ namespace D3D12GEPUtils
 		m_CommandQueue = InInitParams.CmdQueue;
 		m_Fence = InInitParams.Fence;
 		m_FenceEvent = D3D12GEPUtils::CreateFenceEventHandle();
+		// RTV Descriptor Size is vendor-dependent.
+		// We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
+		m_RTVDescIncrementSize = m_CurrentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+		m_TearingSupported = CheckTearingSupport();
 
 		RegisterWindowClass(InHInstance, InInitParams.WindowClassName, InInitParams.WndProc);
 
@@ -38,6 +42,35 @@ namespace D3D12GEPUtils
 	void D3D12Window::ShowWindow()
 	{
 		::ShowWindow(m_HWND, SW_SHOW);
+	}
+
+	void D3D12Window::Close()
+	{
+		::CloseHandle(m_FenceEvent);
+	}
+
+	void D3D12Window::Present()
+{
+		UINT presentFlags = m_TearingSupported && !m_VSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
+		ThrowIfFailed(m_SwapChain->Present(m_VSync, presentFlags));
+
+		// Signal fence for the current backbuffer "on the fly"
+		uint64_t currentFenceValue;
+		D3D12GEPUtils::SignalCmdQueue(m_CommandQueue, m_Fence, currentFenceValue);
+		m_FrameFenceValues[m_CurrentBackBufferIndex] = currentFenceValue;
+
+		// Update current backbuffer index and wait for the present operation to be finished (it will when the fence value will be reached)
+		// Note: the present operation changed the swapchain's current backbuffer index to the next available !
+		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
+
+		WaitForFenceValue(m_Fence, currentFenceValue, m_FenceEvent);
+	}
+
+	CD3DX12_CPU_DESCRIPTOR_HANDLE D3D12Window::GetCurrentRTVDescHandle()
+{
+		return CD3DX12_CPU_DESCRIPTOR_HANDLE(
+			m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(), 
+			m_CurrentBackBufferIndex, m_RTVDescIncrementSize);
 	}
 
 	void D3D12Window::SetFullscreenState(bool InNowFullScreen)
@@ -168,7 +201,7 @@ namespace D3D12GEPUtils
 		swapChainDesc.Scaling = DXGI_SCALING_STRETCH; // Stretch buffer content to match window size
 		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD; // Discards previous backbuffers content
 		swapChainDesc.AlphaMode = DXGI_ALPHA_MODE_UNSPECIFIED;
-		swapChainDesc.Flags = CheckTearingSupport() ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0; // Tearing feature is required for variable refresh rate displays.
+		swapChainDesc.Flags = m_TearingSupported ? DXGI_SWAP_CHAIN_FLAG_ALLOW_TEARING : 0; // Tearing feature is required for variable refresh rate displays.
 		// Allow Tearing has also to be set in Present settings.  It can only be used in windowed mode. 
 		// To use this flag in full screen Win32 apps, the application should present to a fullscreen borderless window
 		// and disable automatic ALT+ENTER fullscreen switching using IDXGIFactory::MakeWindowAssociation.
@@ -193,9 +226,6 @@ namespace D3D12GEPUtils
 
 	void D3D12Window::UpdateRenderTargetViews()
 	{
-		// RTV Descriptor Size is vendor-dependent.
-		// We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
-		UINT rtvIncSize = m_CurrentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		//Getting a descriptor handle to iterate trough the descriptor heap elements
 		CD3DX12_CPU_DESCRIPTOR_HANDLE rtvDescHeapHandle(m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart());
 		for (UINT bufferIdx = 0; bufferIdx < m_DefaultBufferCount; bufferIdx++)
@@ -210,7 +240,7 @@ namespace D3D12GEPUtils
 			m_BackBuffers[bufferIdx] = backBuffer;
 
 			// Move the CPU descriptor handle to the next element on the heap
-			rtvDescHeapHandle.Offset(rtvIncSize);
+			rtvDescHeapHandle.Offset(m_RTVDescIncrementSize);
 		}
 	}
 

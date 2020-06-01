@@ -7,6 +7,7 @@
 #include <wrl.h>
 #include <dxgi1_6.h>
 #include <d3d12.h>
+#include <d3dx12.h>
 
 #ifdef max
 #undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
@@ -39,7 +40,7 @@ namespace D3D12GEPUtils {
 	// Stalls the thread up until the InFenceEvent is signaled with InFenceValue, or when optional InMaxDuration has passed
 	void WaitForFenceValue(ComPtr<ID3D12Fence> InFence, uint64_t InFenceValue, HANDLE InFenceEvent, std::chrono::milliseconds InMaxDuration = std::chrono::milliseconds::max());
 
-	static void FlushCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, HANDLE InFenceEvent, uint64_t& OutFenceValue);
+	void FlushCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, HANDLE InFenceEvent, uint64_t& OutFenceValue);
 
 	void EnableDebugLayer();
 
@@ -68,6 +69,18 @@ namespace D3D12GEPUtils {
 		void Initialize(D3D12WindowInitInput InInitParams);
 
 		void ShowWindow();
+
+		void Close();
+
+		void Present();
+
+		uint32_t GetCurrentBackbufferIndex() const { return m_CurrentBackBufferIndex; }
+
+		ComPtr<ID3D12Resource> GetCurrentBackbuffer() { return m_BackBuffers[m_CurrentBackBufferIndex]; }
+		ComPtr<ID3D12Resource> GetBackbufferAtIndex(uint32_t InIdx) { InIdx < m_DefaultBufferCount ? m_BackBuffers[InIdx] : nullptr; }
+
+		// Returns the CPU descriptor handle of the render target view of the backbuffer at the current index
+		CD3DX12_CPU_DESCRIPTOR_HANDLE GetCurrentRTVDescHandle();
 
 		inline bool IsFullScreen() { return m_IsFullScreen; };
 		void SetFullscreenState(bool InNowFullScreen);
@@ -100,8 +113,10 @@ namespace D3D12GEPUtils {
 		uint64_t m_FrameFenceValues[m_DefaultBufferCount];
 		UINT m_CurrentBackBufferIndex = 0;
 		ComPtr<ID3D12DescriptorHeap> m_RTVDescriptorHeap;
-
+		UINT m_RTVDescIncrementSize = 0;
 		bool m_IsFullScreen = false;
+		bool m_VSync = false;
+		bool m_TearingSupported = false;
 
 		bool m_IsInitialized = false;
 	};
