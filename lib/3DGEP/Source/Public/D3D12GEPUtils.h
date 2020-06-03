@@ -79,11 +79,17 @@ namespace D3D12GEPUtils {
 		ComPtr<ID3D12Resource> GetCurrentBackbuffer() { return m_BackBuffers[m_CurrentBackBufferIndex]; }
 		ComPtr<ID3D12Resource> GetBackbufferAtIndex(uint32_t InIdx) { InIdx < m_DefaultBufferCount ? m_BackBuffers[InIdx] : nullptr; }
 
+		// Current allocator will be reset, then the commandlist will be reset and bound to the current allocator
+		ComPtr<ID3D12GraphicsCommandList> ResetCmdListWithCurrentAllocator();
+
 		// Returns the CPU descriptor handle of the render target view of the backbuffer at the current index
 		CD3DX12_CPU_DESCRIPTOR_HANDLE GetCurrentRTVDescHandle();
 
 		inline bool IsFullScreen() { return m_IsFullScreen; };
 		void SetFullscreenState(bool InNowFullScreen);
+
+		bool IsVSyncEnabled() const { return m_VSync; }
+		void SetVSync(bool InNowEnabled) { m_VSync = InNowEnabled; }
 
 		void Resize(uint32_t InNewWidth, uint32_t InNewHeight);
 	private:
@@ -110,6 +116,8 @@ namespace D3D12GEPUtils {
 		RECT m_WindowModeRect;
 		ComPtr<IDXGISwapChain4> m_SwapChain;
 		ComPtr<ID3D12Resource> m_BackBuffers[m_DefaultBufferCount];
+		ComPtr<ID3D12CommandAllocator> m_CmdAllocators[m_DefaultBufferCount];
+		ComPtr<ID3D12GraphicsCommandList> m_CmdList;
 		uint64_t m_FrameFenceValues[m_DefaultBufferCount];
 		UINT m_CurrentBackBufferIndex = 0;
 		ComPtr<ID3D12DescriptorHeap> m_RTVDescriptorHeap;

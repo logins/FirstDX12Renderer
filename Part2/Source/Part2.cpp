@@ -50,13 +50,7 @@ void Part2::Initialize()
 	};
 	m_MainWindow.Initialize(windowInitInput);
 
-	for (uint32_t i = 0; i < m_NumCmdAllocators; i++)
-	{
-		m_CmdAllocators[i] = D3D12GEPUtils::CreateCommandAllocator(graphicsDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
-	}
-
-	m_CmdList = D3D12GEPUtils::CreateCommandList(graphicsDevice, m_CmdAllocators[m_MainWindow.GetCurrentBackbufferIndex()], D3D12_COMMAND_LIST_TYPE_DIRECT);
-
+	
 	m_IsInitialized = true;
 }
 
@@ -115,11 +109,9 @@ void Part2::Update()
 
 void Part2::Render()
 {
-	auto cmdAllocator = m_CmdAllocators[m_MainWindow.GetCurrentBackbufferIndex()];
 	auto backBuffer = m_MainWindow.GetCurrentBackbuffer();
 
-	cmdAllocator->Reset(); // Note: the associated command list needs to be closed
-	m_CmdList->Reset(cmdAllocator.Get(), nullptr);
+	ID3D12GraphicsCommandList* cmdList = m_MainWindow.ResetCmdListWithCurrentAllocator().Get();
 
 	// Clear render target
 	{
@@ -130,10 +122,10 @@ void Part2::Render()
 			// are first filled and then presented to the main window repetitevely.
 			D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
 
-		m_CmdList->ResourceBarrier(1, &transitionBarrier);
+		cmdList->ResourceBarrier(1, &transitionBarrier);
 
 		FLOAT clearColor[] = { .4f, .6f, .9f, 1.f };
-		m_CmdList->ClearRenderTargetView(m_MainWindow.GetCurrentRTVDescHandle(), clearColor, 0, nullptr);
+		cmdList->ClearRenderTargetView(m_MainWindow.GetCurrentRTVDescHandle(), clearColor, 0, nullptr);
 	}
 
 	// Execute command list and present current render target from the main window
@@ -142,12 +134,12 @@ void Part2::Render()
 			backBuffer.Get(),
 			D3D12_RESOURCE_STATE_RENDER_TARGET, D3D12_RESOURCE_STATE_PRESENT);
 
-		m_CmdList->ResourceBarrier(1, &transitionBarrier);
+		cmdList->ResourceBarrier(1, &transitionBarrier);
 
 		// Mandatory for the command list to close before getting executed by the command queue
-		D3D12GEPUtils::ThrowIfFailed(m_CmdList->Close());
+		D3D12GEPUtils::ThrowIfFailed(cmdList->Close());
 
-		ID3D12CommandList* const cmdLists[] = { m_CmdList.Get() };
+		ID3D12CommandList* const cmdLists[] = { cmdList };
 		m_CmdQueue->ExecuteCommandLists(1, cmdLists);
 
 		m_MainWindow.Present();
@@ -184,7 +176,7 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 		switch (InWParam)
 		{
 		case 'V':
-			m_VSyncEnabled = !m_VSyncEnabled;
+			m_MainWindow.SetVSync(!m_MainWindow.IsVSyncEnabled());
 			break;
 		case VK_ESCAPE:
 			QuitApplication();

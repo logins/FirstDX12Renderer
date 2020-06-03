@@ -38,11 +38,9 @@ private:
 	ComPtr<ID3D12Fence> m_Fence;
 	HANDLE m_FenceEvent;
 	D3D12GEPUtils::D3D12Window m_MainWindow;
-	ComPtr<ID3D12GraphicsCommandList> m_CmdList;
-	ComPtr<ID3D12CommandAllocator> m_CmdAllocators[m_NumCmdAllocators];
 
 	bool m_IsInitialized = false;
 	static Part2* m_Instance; //Note: This is just a declaration, not a definition! m_Instance must be explicitly defined
-	bool m_VSyncEnabled = false;
+	
 };
 #endif // Part2_h__

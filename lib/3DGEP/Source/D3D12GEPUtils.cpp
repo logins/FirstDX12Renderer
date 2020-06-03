@@ -18,11 +18,16 @@ namespace D3D12GEPUtils
 		m_CommandQueue = InInitParams.CmdQueue;
 		m_Fence = InInitParams.Fence;
 		m_FenceEvent = D3D12GEPUtils::CreateFenceEventHandle();
+		for (uint32_t i = 0; i < m_DefaultBufferCount; i++)
+		{
+			m_CmdAllocators[i] = D3D12GEPUtils::CreateCommandAllocator(m_CurrentDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
+		}
 		// RTV Descriptor Size is vendor-dependent.
 		// We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
 		m_RTVDescIncrementSize = m_CurrentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		m_TearingSupported = CheckTearingSupport();
-
+		// TODO check vsync support and store it to m_vSync
+		
 		RegisterWindowClass(InHInstance, InInitParams.WindowClassName, InInitParams.WndProc);
 
 		CreateHWND(InInitParams.WindowClassName, InHInstance, InInitParams.WindowTitle, InInitParams.WinWidth, InInitParams.WinHeight);
@@ -30,6 +35,8 @@ namespace D3D12GEPUtils
 		CreateSwapChain(InInitParams.CmdQueue, InInitParams.BufWidth, InInitParams.BufHeight);
 
 		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
+
+		m_CmdList = D3D12GEPUtils::CreateCommandList(m_CurrentDevice, m_CmdAllocators[m_CurrentBackBufferIndex], D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 		m_RTVDescriptorHeap = D3D12GEPUtils::CreateDescriptorHeap(m_CurrentDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, m_DefaultBufferCount);
 
@@ -50,9 +57,9 @@ namespace D3D12GEPUtils
 	}
 
 	void D3D12Window::Present()
-{
-		UINT presentFlags = m_TearingSupported && !m_VSync ? DXGI_PRESENT_ALLOW_TEARING : 0;
-		ThrowIfFailed(m_SwapChain->Present(m_VSync, presentFlags));
+	{
+		UINT presentFlags = m_TearingSupported && !IsVSyncEnabled() ? DXGI_PRESENT_ALLOW_TEARING : 0;
+		ThrowIfFailed(m_SwapChain->Present(IsVSyncEnabled(), presentFlags));
 
 		// Signal fence for the current backbuffer "on the fly"
 		uint64_t currentFenceValue;
@@ -64,6 +71,18 @@ namespace D3D12GEPUtils
 		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
 		WaitForFenceValue(m_Fence, currentFenceValue, m_FenceEvent);
+	}
+
+	ComPtr<ID3D12GraphicsCommandList> D3D12Window::ResetCmdListWithCurrentAllocator()
+{
+		ID3D12CommandAllocator* currentCmdAllocator = m_CmdAllocators[m_CurrentBackBufferIndex].Get();
+		// We assume that the current allocator can be reset (all the commands previously queued in it have to be completed)
+		// and the corresponding command list was closed.
+		currentCmdAllocator->Reset();
+
+		m_CmdList->Reset(currentCmdAllocator, nullptr); // A dummy initial pipeline state will be set by the runtime
+
+		return m_CmdList;
 	}
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE D3D12Window::GetCurrentRTVDescHandle()
