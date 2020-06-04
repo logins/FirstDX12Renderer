@@ -3,7 +3,7 @@
 
 #include <Windows.h>
 #include <wrl.h>
-#include <D3D12GEPUtils.h>
+#include <D3D12Window.h>
 
 using namespace Microsoft::WRL;
 

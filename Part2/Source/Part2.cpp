@@ -1,6 +1,7 @@
 #include <Part2.h>
 #include <iostream>
 #include <D3D12GEPUtils.h>
+#include <D3D12Window.h>
 #include <wrl.h> //For WRL::ComPtr
 #include <dxgi1_6.h>
 #include <d3dx12.h>
