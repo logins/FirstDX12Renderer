@@ -10,6 +10,7 @@ target_include_directories( part2
 		${CMAKE_CURRENT_SOURCE_DIR}/Source
 		${CMAKE_SOURCE_DIR}/lib/DX12/Include
 		${CMAKE_SOURCE_DIR}/lib/3DGEP/Source
+		${CMAKE_SOURCE_DIR}/lib/eigen/Eigen/src
 )
 
-target_link_libraries(part2 d3d12.lib dxgi.lib 3dgep)
+target_link_libraries(part2 d3d12.lib dxgi.lib 3dgep eigen)

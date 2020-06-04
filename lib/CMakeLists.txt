@@ -4,3 +4,5 @@ add_subdirectory(DX12)
 
 add_subdirectory(3DGEP)
 
+add_subdirectory(eigen)
+

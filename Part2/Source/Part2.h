@@ -4,6 +4,7 @@
 #include <Windows.h>
 #include <wrl.h>
 #include <D3D12Window.h>
+#include <Eigen/Core>
 
 using namespace Microsoft::WRL;
 
@@ -59,7 +60,10 @@ private:
 
 	float m_FoV;
 
-	// TODO MVP matrices here
+	// Model, View, Projection Matrices
+	Eigen::Matrix4f m_ModelMatrix;
+	Eigen::Matrix4f m_ViewMatrix;
+	Eigen::Matrix4f m_ProjMatrix;
 
 	bool m_IsInitialized = false;
 	static Part2* m_Instance; //Note: This is just a declaration, not a definition! m_Instance must be explicitly defined
