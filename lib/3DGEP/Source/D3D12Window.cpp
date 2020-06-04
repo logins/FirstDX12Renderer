@@ -66,6 +66,7 @@ namespace D3D12GEPUtils
 		// Note: the present operation changed the swapchain's current backbuffer index to the next available !
 		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
+		// Blocking current thread up until current fence value is reached
 		WaitForFenceValue(m_Fence, currentFenceValue, m_FenceEvent);
 	}
 

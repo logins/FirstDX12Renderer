@@ -39,6 +39,28 @@ private:
 	HANDLE m_FenceEvent;
 	D3D12GEPUtils::D3D12Window m_MainWindow;
 
+	// Vertex buffer for the cube
+	ComPtr<ID3D12Resource> m_VertexBuffer;
+	D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
+	// Index buffer for the cube
+	ComPtr<ID3D12Resource> m_IndexBuffer;
+	D3D12_INDEX_BUFFER_VIEW m_IndexBufferView;
+	// DepthStencil buffer
+	ComPtr<ID3D12Resource> m_DSBuffer;
+	// DS buffer views need to be contained in a heap even if we use just one
+	ComPtr<ID3D12DescriptorHeap> m_DSVHeap;
+	// Root Signature
+	ComPtr<ID3D12RootSignature> m_RootSignature;
+	// Pipeline State Object
+	ComPtr<ID3D12PipelineState> m_PipelineState;
+
+	D3D12_VIEWPORT m_Viewport;
+	D3D12_RECT m_ScissorRect;
+
+	float m_FoV;
+
+	// TODO MVP matrices here
+
 	bool m_IsInitialized = false;
 	static Part2* m_Instance; //Note: This is just a declaration, not a definition! m_Instance must be explicitly defined
 	

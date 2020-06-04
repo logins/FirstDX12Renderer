@@ -35,7 +35,13 @@ namespace D3D12GEPUtils {
 
 	HANDLE CreateFenceEventHandle();
 
-	void UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList> InCmdList, ID3D12Resource** InDestResource, ID3D12Resource** InIntermediateResource,
+	void TransitionResource(ComPtr<ID3D12GraphicsCommandList2> InCmdList, ComPtr<ID3D12Resource> InResource, D3D12_RESOURCE_STATES InBeforeStates, D3D12_RESOURCE_STATES InAfterStates);
+
+	void ClearRTV(ComPtr<ID3D12GraphicsCommandList2> InCmdList, D3D12_CPU_DESCRIPTOR_HANDLE InRTVCPUDescHandle, FLOAT* InClearColor);
+
+	void ClearDepth(ComPtr<ID3D12GraphicsCommandList2> InCmdList, D3D12_CPU_DESCRIPTOR_HANDLE InDepthCPUDescHandle, FLOAT InDepth = 1.0f);
+
+	void UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> InCmdList, ID3D12Resource** InDestResource, ID3D12Resource** InIntermediateResource,
 		size_t InNunElements, size_t InElementSize, const void* InBufferData, D3D12_RESOURCE_FLAGS InFlags
 		);
 
