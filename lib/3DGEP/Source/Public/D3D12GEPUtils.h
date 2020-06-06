@@ -61,6 +61,8 @@ namespace D3D12GEPUtils {
 
 	void ReadFileToBlob(LPCWSTR InFilePath, ID3DBlob** OutFileBlob);
 
+	ComPtr<ID3D12RootSignature> SerializeAndCreateRootSignature(ComPtr<ID3D12Device2> InDevice, CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC* InRootSigDesc, D3D_ROOT_SIGNATURE_VERSION InVersion);
+
 	inline void ThrowIfFailed(HRESULT hr)
 	{
 		if (FAILED(hr))

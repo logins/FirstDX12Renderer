@@ -245,5 +245,19 @@ namespace D3D12GEPUtils
 		return ThrowIfFailed(::D3DReadFileToBlob(InFilePath, OutFileBlob));
 	}
 
+	ComPtr<ID3D12RootSignature> SerializeAndCreateRootSignature(ComPtr<ID3D12Device2> InDevice, CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC* InRootSigDesc, D3D_ROOT_SIGNATURE_VERSION InVersion)
+	{
+		// Create Root Signature Blob
+		ComPtr<ID3DBlob> rootSignatureBlob;
+		ComPtr<ID3DBlob> errorBlob;
+		ThrowIfFailed(::D3DX12SerializeVersionedRootSignature(InRootSigDesc, InVersion, 
+			rootSignatureBlob.GetAddressOf(), errorBlob.GetAddressOf()));
+		// Create the Root Signature object from the blob
+		ComPtr<ID3D12RootSignature> rootSignature;
+		ThrowIfFailed(InDevice->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
+
+		return rootSignature;
+	}
+
 }
 

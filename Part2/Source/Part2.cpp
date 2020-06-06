@@ -94,7 +94,7 @@ void Part2::LoadContent()
 	dsvHeapDesc.NodeMask = 0;
 	D3D12GEPUtils::ThrowIfFailed(m_GraphicsDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
 
-	// --- SHADER LOADING ---
+	// --- Shader Loading ---
 	// Note: to generate the .cso file I will be using the offline method, using fxc.exe integrated in visual studio (but downloadable separately).
 	// fxc command can be used by opening a developer command console in the hlsl shader folder.
 	// To generate VertexShader.cso I will be using: fxc /Zi /T vs_5_1 /Fo VertexShader.cso VertexShader.hlsl
@@ -106,6 +106,76 @@ void Part2::LoadContent()
 	ComPtr<ID3DBlob> pixelShaderBlob;
 	D3D12GEPUtils::ReadFileToBlob(PART2_SHADERS_PATH(PixelShader.cso), &pixelShaderBlob);
 	
+	// Create the Vertex Input Layout
+	//LPCSTR SemanticName; UINT SemanticIndex; DXGI_FORMAT Format; UINT InputSlot;
+	//UINT AlignedByteOffset; D3D12_INPUT_CLASSIFICATION InputSlotClass; UINT InstanceDataStepRate;
+	D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+		D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+		D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+	};
+
+	//Create Root Signature
+	D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+	featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+	if (FAILED(m_GraphicsDevice->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(D3D12_FEATURE_DATA_ROOT_SIGNATURE))))
+	{
+		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+	}
+	// Allow Input layout access to shader resources (in out case, the MVP matrix) 
+	// and deny it to other stages (small optimization)
+	D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = 
+		D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+		D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+	// Using a single 32-bit constant root parameter (MVP matrix) that is used by the vertex shader
+	CD3DX12_ROOT_PARAMETER1 rootParameters[1];
+	rootParameters[0].InitAsConstants(sizeof(Eigen::Matrix4f) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+	// Init Root Signature Desc
+	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
+	rootSignatureDesc.Init_1_1(_countof(rootParameters), rootParameters, 0U, nullptr, rootSignatureFlags);
+	// Create Root Signature serialized blob and then the object from it
+	m_RootSignature = D3D12GEPUtils::SerializeAndCreateRootSignature(m_GraphicsDevice, &rootSignatureDesc, featureData.HighestVersion);
+
+	//RTV Formats
+	D3D12_RT_FORMAT_ARRAY rtvFormats = {};
+	rtvFormats.NumRenderTargets = 1;
+	rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM; // Note: texel data of the render target is 4x 8bit channels of range [0,1]
+	// Pipeline State Stream definition and fill
+	struct PipelineStateStreamType {
+		CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
+		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopology;
+			CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT InputLayout;
+			CD3DX12_PIPELINE_STATE_STREAM_VS VertexShader;
+			CD3DX12_PIPELINE_STATE_STREAM_PS PixelShader;
+			CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
+			CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
+	} pipelineStateStream;
+	pipelineStateStream.pRootSignature = m_RootSignature.Get();
+	pipelineStateStream.PrimitiveTopology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
+	pipelineStateStream.VertexShader = CD3DX12_SHADER_BYTECODE(vertexShaderBlob.Get());
+	pipelineStateStream.PixelShader = CD3DX12_SHADER_BYTECODE(pixelShaderBlob.Get());
+	pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	pipelineStateStream.RTVFormats = rtvFormats;
+
+	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
+		sizeof(pipelineStateStream), &pipelineStateStream
+	};
+	D3D12GEPUtils::ThrowIfFailed(m_GraphicsDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
+	
+	// Executing command list
+	loadContentCmdList->Close();
+	ID3D12CommandList* const ppCommandLists[] = { loadContentCmdList.Get() };
+	m_CmdQueue->ExecuteCommandLists(1, ppCommandLists);
+	uint64_t loadContentFenceValue;
+	D3D12GEPUtils::SignalCmdQueue(m_CmdQueue, m_Fence, loadContentFenceValue);
+	D3D12GEPUtils::WaitForFenceValue(m_Fence, loadContentFenceValue, m_FenceEvent);
+
+	// TODO Tutorial2::ResizeDepthBuffer
 }
 
 void Part2::Run()
