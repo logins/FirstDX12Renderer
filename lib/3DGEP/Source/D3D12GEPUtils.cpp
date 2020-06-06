@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <algorithm>
 #include <d3dx12.h>
+#include <d3dcompiler.h>
 
 #ifdef max
 #undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
@@ -139,13 +140,14 @@ namespace D3D12GEPUtils
 		return cmdAllocator;
 	}
 
-	ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12Device2> InDevice, ComPtr<ID3D12CommandAllocator> InCmdAllocator, D3D12_COMMAND_LIST_TYPE InCmdListType)
+	ComPtr<ID3D12GraphicsCommandList2> CreateCommandList(ComPtr<ID3D12Device2> InDevice, ComPtr<ID3D12CommandAllocator> InCmdAllocator, D3D12_COMMAND_LIST_TYPE InCmdListType, bool InInitClosed /*= true*/)
 	{
-		ComPtr<ID3D12GraphicsCommandList> cmdList;
+		ComPtr<ID3D12GraphicsCommandList2> cmdList;
 		ThrowIfFailed(InDevice->CreateCommandList(0, InCmdListType, InCmdAllocator.Get(), nullptr, IID_PPV_ARGS(&cmdList)));
 		// Note: PSO parameter is optional and we can initialize the command list with it
 		// Note: the initial state of a newly created command list is Open, so we manually need to close it.
-		ThrowIfFailed(cmdList->Close()); // Close it because the beginning of the render method will execute reset on the cmdList
+		if(InInitClosed)
+			ThrowIfFailed(cmdList->Close()); // Close it because the beginning of the render method will execute reset on the cmdList
 	
 		return cmdList;
 	}	
@@ -180,6 +182,38 @@ namespace D3D12GEPUtils
 		}
 	}
 
+	void UpdateBufferResource(ComPtr<ID3D12Device2> InDevice, ComPtr<ID3D12GraphicsCommandList2> InCmdList, ID3D12Resource** InDestResource, ID3D12Resource** InIntermediateResource, size_t InNunElements, size_t InElementSize, const void* InBufferData, D3D12_RESOURCE_FLAGS InFlags)
+	{
+		// Note: ID3D12Resource** InDestResource, ID3D12Resource** InIntermediateResource are CPU Buffer Data !!!
+		// We create them on CPU, then we use them to update the corresponding SubResouce on the GPU!
+		size_t bufferSize = InNunElements * InElementSize;
+		// Create a committed resource for the GPU resource in a default heap
+		// Note: CreateCommittedResource will allocate a resource heap and a resource in it in GPU memory, then it will return the corresponding GPUVirtualAddress that will be stored inside the ID3D12Resource object,
+		// so that we can reference that GPU memory address from CPU side.
+		CreateCommittedResource(InDevice, InDestResource, D3D12_HEAP_TYPE_DEFAULT, bufferSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST);
+		if (InBufferData)
+		{ // Create a committed resource in an upload heap to upload content to the first resource
+			CreateCommittedResource(InDevice, InIntermediateResource, D3D12_HEAP_TYPE_UPLOAD, bufferSize, InFlags, D3D12_RESOURCE_STATE_GENERIC_READ);
+
+			// Now that both copy and dest resource are created on CPU, we can use them to update the corresponding GPU SubResource
+			D3D12_SUBRESOURCE_DATA subresourceData = {};
+			subresourceData.pData = InBufferData; // Pointer to the memory block that contains the subresource data on CPU
+			subresourceData.RowPitch = bufferSize; // Physical size in Bytes of the subresource data
+			subresourceData.SlicePitch = subresourceData.RowPitch; // Size of each slice for the resource, since we assume only 1 slice, this corresponds to the size of the entire resource
+			::UpdateSubresources(InCmdList.Get(), *InDestResource, *InIntermediateResource, 0, 0, 1, &subresourceData);
+		}
+	}
+
+	void CreateCommittedResource(ComPtr<ID3D12Device2> InDevice, ID3D12Resource** InResource, D3D12_HEAP_TYPE InHeapType, uint64_t InBufferSize, D3D12_RESOURCE_FLAGS InFlags, D3D12_RESOURCE_STATES InInitialStates)
+	{
+		ThrowIfFailed(InDevice->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(InHeapType),
+			D3D12_HEAP_FLAG_NONE, &CD3DX12_RESOURCE_DESC::Buffer(InBufferSize, InFlags),
+			InInitialStates,
+			nullptr, IID_PPV_ARGS(InResource)
+		));
+	}
+
 	void SignalCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, uint64_t& OutFenceValue)
 	{
 		++OutFenceValue;
@@ -204,6 +238,11 @@ namespace D3D12GEPUtils
 
 		debugInterface->EnableDebugLayer();
 #endif
+	}
+
+	void ReadFileToBlob(LPCWSTR InFilePath, ID3DBlob** OutFileBlob)
+	{
+		return ThrowIfFailed(::D3DReadFileToBlob(InFilePath, OutFileBlob));
 	}
 
 }

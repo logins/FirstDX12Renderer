@@ -13,6 +13,9 @@
 #undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
 #endif
 
+#define Q(x) L#x
+#define LQUOTE(x) Q(x)
+
 namespace D3D12GEPUtils {
 
 	using namespace Microsoft::WRL;
@@ -29,7 +32,7 @@ namespace D3D12GEPUtils {
 
 	ComPtr<ID3D12CommandAllocator> CreateCommandAllocator(ComPtr<ID3D12Device2> InDevice, D3D12_COMMAND_LIST_TYPE InCmdListType);
 
-	ComPtr<ID3D12GraphicsCommandList> CreateCommandList(ComPtr<ID3D12Device2> InDevice, ComPtr<ID3D12CommandAllocator> InCmdAllocator, D3D12_COMMAND_LIST_TYPE InCmdListType);
+	ComPtr<ID3D12GraphicsCommandList2> CreateCommandList(ComPtr<ID3D12Device2> InDevice, ComPtr<ID3D12CommandAllocator> InCmdAllocator, D3D12_COMMAND_LIST_TYPE InCmdListType, bool InInitClosed = true);
 
 	ComPtr<ID3D12Fence> CreateFence(ComPtr<ID3D12Device2> InDevice);
 
@@ -41,11 +44,11 @@ namespace D3D12GEPUtils {
 
 	void ClearDepth(ComPtr<ID3D12GraphicsCommandList2> InCmdList, D3D12_CPU_DESCRIPTOR_HANDLE InDepthCPUDescHandle, FLOAT InDepth = 1.0f);
 
-	void UpdateBufferResource(ComPtr<ID3D12GraphicsCommandList2> InCmdList, ID3D12Resource** InDestResource, ID3D12Resource** InIntermediateResource,
-		size_t InNunElements, size_t InElementSize, const void* InBufferData, D3D12_RESOURCE_FLAGS InFlags
+	void UpdateBufferResource(ComPtr<ID3D12Device2> InDevice, ComPtr<ID3D12GraphicsCommandList2> InCmdList, ID3D12Resource** InDestResource, ID3D12Resource** InIntermediateResource,
+		size_t InNunElements, size_t InElementSize, const void* InBufferData, D3D12_RESOURCE_FLAGS InFlags = D3D12_RESOURCE_FLAG_NONE
 		);
 
-	ComPtr<ID3D12Resource> CreateCommittedResource();
+	void CreateCommittedResource(ComPtr<ID3D12Device2> InDevice, ID3D12Resource** InResource, D3D12_HEAP_TYPE InHeapType, uint64_t InBufferSize, D3D12_RESOURCE_FLAGS InFlags, D3D12_RESOURCE_STATES InInitialStates);
 
 	void SignalCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, uint64_t& OutFenceValue);
 
@@ -55,6 +58,8 @@ namespace D3D12GEPUtils {
 	void FlushCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, HANDLE InFenceEvent, uint64_t& OutFenceValue);
 
 	void EnableDebugLayer();
+
+	void ReadFileToBlob(LPCWSTR InFilePath, ID3DBlob** OutFileBlob);
 
 	inline void ThrowIfFailed(HRESULT hr)
 	{

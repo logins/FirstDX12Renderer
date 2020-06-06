@@ -15,4 +15,4 @@ target_include_directories(3dgep #Note: Only the Public folder will be seen by t
         ${CMAKE_CURRENT_LIST_DIR}/Source
 )
 
-target_link_libraries(3dgep d3d12.lib dxgi.lib d3dx12.h)
+target_link_libraries(3dgep d3d12.lib dxgi.lib d3dx12.h d3dcompiler.lib dxguid.lib)

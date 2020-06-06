@@ -22,6 +22,8 @@ private:
 	Part2& operator=(const Part2&);
 	void QuitApplication();
 private:
+	// Load graphics resources for the colored cube
+	void LoadContent();
 	// Update and Render scene content and resources
 	void Update();
 	void Render();
@@ -35,6 +37,7 @@ private:
 
 	static const uint8_t m_NumCmdAllocators = 3;
 
+	ComPtr<ID3D12Device2> m_GraphicsDevice;
 	ComPtr<ID3D12CommandQueue> m_CmdQueue;
 	ComPtr<ID3D12Fence> m_Fence;
 	HANDLE m_FenceEvent;
@@ -64,6 +67,33 @@ private:
 	Eigen::Matrix4f m_ModelMatrix;
 	Eigen::Matrix4f m_ViewMatrix;
 	Eigen::Matrix4f m_ProjMatrix;
+
+	// Vertex data for colored cube
+	struct VertexPosColor
+	{
+		Eigen::Vector3f Position;
+		Eigen::Vector3f Color;
+	};
+
+	const VertexPosColor m_VertexData[8] = {
+		{ Eigen::Vector3f(-1.f, -1.f, -1.f), Eigen::Vector3f(0.f, 0.f, 0.f) }, // 0
+		{ Eigen::Vector3f(-1.f, 1.f, -1.f), Eigen::Vector3f(0.f, 1.f, 0.f) }, // 1
+		{ Eigen::Vector3f(1.f, 1.f, -1.f), Eigen::Vector3f(1.f, 1.f, 0.f) }, // 2
+		{ Eigen::Vector3f(1.f, -1.f, -1.f), Eigen::Vector3f(1.f, 0.f, 0.f) }, // 3
+		{ Eigen::Vector3f(-1.f, -1.f, 1.f), Eigen::Vector3f(0.f, 0.f, 1.f) }, // 4
+		{ Eigen::Vector3f(-1.f, 1.f, 1.f), Eigen::Vector3f(0.f, 1.f, 1.f) }, // 5
+		{ Eigen::Vector3f(1.f, 1.f, 1.f), Eigen::Vector3f(1.f, 1.f, 1.f) }, // 6
+		{ Eigen::Vector3f(1.f, -1.f, 1.f), Eigen::Vector3f(1.f, 0.f, 1.f) }  // 7
+	};
+
+	const WORD m_IndexData[36] = {
+		0, 1, 2, 0, 2, 3,
+		4, 6, 5, 4, 7, 6,
+		4, 5, 1, 4, 1, 0,
+		3, 2, 6, 3, 6, 7,
+		1, 5, 6, 1, 6, 2,
+		4, 0, 3, 4, 3, 7
+	};
 
 	bool m_IsInitialized = false;
 	static Part2* m_Instance; //Note: This is just a declaration, not a definition! m_Instance must be explicitly defined

@@ -36,7 +36,7 @@ find_path(DXGI_INCLUDE_DIR    # Set variable DXGI_INCLUDE_DIR
 set(D3D12_INCLUDE_DIRS ${D3D12_INCLUDE_DIR} ${DXGI_INCLUDE_DIR})
 
 # Find D3D libraries
-set(D3D12_LIB_NAMES d3d12.lib dxgi.lib d3dcompiler.lib)
+set(D3D12_LIB_NAMES d3d12.lib dxgi.lib d3dcompiler.lib dxguid.lib)
 
 if ("${DXC_BUILD_ARCH}" STREQUAL "x64" )
     set(D3D12_HINTS_PATH ${WIN10_SDK_PATH}/Lib/${WIN10_SDK_VERSION}/um/x64)

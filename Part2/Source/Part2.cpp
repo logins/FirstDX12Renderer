@@ -6,6 +6,8 @@
 #include <dxgi1_6.h>
 #include <d3dx12.h>
 
+#define PART2_SHADERS_PATH(NAME) LQUOTE(PART2_PROJ_ROOT_PATH/shaders/NAME)
+
 using namespace Microsoft::WRL;
 
 int main()
@@ -35,24 +37,75 @@ void Part2::Initialize()
 	ComPtr<IDXGIAdapter4> adapter = D3D12GEPUtils::GetMainAdapter(false);
 	// Note: Debug Layer needs to be created before creating the Device
 	D3D12GEPUtils::EnableDebugLayer();
-	ComPtr<ID3D12Device2> graphicsDevice = D3D12GEPUtils::CreateDevice(adapter);
-	m_CmdQueue = D3D12GEPUtils::CreateCommandQueue(graphicsDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
-	m_Fence = D3D12GEPUtils::CreateFence(graphicsDevice);
+	m_GraphicsDevice = D3D12GEPUtils::CreateDevice(adapter);
+	m_CmdQueue = D3D12GEPUtils::CreateCommandQueue(m_GraphicsDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
+	m_Fence = D3D12GEPUtils::CreateFence(m_GraphicsDevice);
 	m_FenceEvent = D3D12GEPUtils::CreateFenceEventHandle();
+
+	m_ScissorRect = CD3DX12_RECT(0l, 0l, LONG_MAX, LONG_MAX);
+
 	uint32_t mainWindowWidth = 1024, mainWindowHeight = 768;
+
+	m_Viewport = CD3DX12_VIEWPORT(0.f, 0.f, static_cast<float>(mainWindowWidth), static_cast<float>(mainWindowHeight));
+	m_FoV = 45.f;
 
 	// Initialize main render window
 	D3D12GEPUtils::D3D12Window::D3D12WindowInitInput windowInitInput = {
 		L"DX12WindowClass", L"Part2 Main Window",
-		graphicsDevice,
+		m_GraphicsDevice,
 		mainWindowWidth, mainWindowHeight, // Window sizes
 		mainWindowWidth, mainWindowHeight, // BackBuffer sizes
 		m_CmdQueue, MainWndProc, m_Fence
 	};
 	m_MainWindow.Initialize(windowInitInput);
 
+	LoadContent();
 	
 	m_IsInitialized = true;
+}
+
+void Part2::LoadContent()
+{
+	ComPtr<ID3D12CommandAllocator> loadContentCmdAllocator = D3D12GEPUtils::CreateCommandAllocator(m_GraphicsDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
+	ComPtr<ID3D12GraphicsCommandList2> loadContentCmdList = D3D12GEPUtils::CreateCommandList(m_GraphicsDevice, loadContentCmdAllocator, D3D12_COMMAND_LIST_TYPE_DIRECT, false);
+	// Upload vertex buffer data
+	ComPtr<ID3D12Resource> intermediateVertexBuffer;
+	D3D12GEPUtils::UpdateBufferResource(m_GraphicsDevice, loadContentCmdList, m_VertexBuffer.GetAddressOf(), intermediateVertexBuffer.GetAddressOf(),
+		_countof(m_VertexData), sizeof(VertexPosColor), m_VertexData);
+	// Create the Vertex Buffer View associated to m_VertexBuffer
+	m_VertexBufferView.BufferLocation = m_VertexBuffer->GetGPUVirtualAddress();
+	m_VertexBufferView.SizeInBytes = sizeof(m_VertexData); // Size in bytes of the whole buffer
+	m_VertexBufferView.StrideInBytes = sizeof(VertexPosColor); // Stride Size = Size of a single element
+
+	// Upload index buffer data
+	ComPtr<ID3D12Resource> intermediateIndexBuffer;
+	D3D12GEPUtils::UpdateBufferResource(m_GraphicsDevice, loadContentCmdList, m_IndexBuffer.GetAddressOf(), intermediateIndexBuffer.GetAddressOf(),
+		_countof(m_IndexData), sizeof(WORD), m_IndexData);
+	// Create the Index Buffer View associated to m_IndexBuffer
+	m_IndexBufferView.BufferLocation = m_IndexBuffer->GetGPUVirtualAddress();
+	m_IndexBufferView.SizeInBytes = sizeof(m_IndexData);
+	m_IndexBufferView.Format = DXGI_FORMAT_R16_UINT; // Single channel 16 bits, because WORD = unsigned short = 2 bytes = 16 bits
+
+	// Create Descriptor Heap for the DepthStencil View
+	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {}; // Note: DepthStencil View requires storage in a heap even if we are going to use only 1 view
+	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+	dsvHeapDesc.NumDescriptors = 1;
+	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+	dsvHeapDesc.NodeMask = 0;
+	D3D12GEPUtils::ThrowIfFailed(m_GraphicsDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+
+	// --- SHADER LOADING ---
+	// Note: to generate the .cso file I will be using the offline method, using fxc.exe integrated in visual studio (but downloadable separately).
+	// fxc command can be used by opening a developer command console in the hlsl shader folder.
+	// To generate VertexShader.cso I will be using: fxc /Zi /T vs_5_1 /Fo VertexShader.cso VertexShader.hlsl
+	// To generate PixelShader.cso I will be using: fxc /Zi /T ps_5_1 /Fo PixelShader.cso PixelShader.hlsl
+	// Load the Vertex Shader
+	ComPtr<ID3DBlob> vertexShaderBlob; 
+	D3D12GEPUtils::ReadFileToBlob(PART2_SHADERS_PATH(VertexShader.cso), &vertexShaderBlob);
+	// Load the Pixel Shader
+	ComPtr<ID3DBlob> pixelShaderBlob;
+	D3D12GEPUtils::ReadFileToBlob(PART2_SHADERS_PATH(PixelShader.cso), &pixelShaderBlob);
+	
 }
 
 void Part2::Run()
