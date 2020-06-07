@@ -158,6 +158,10 @@ namespace D3D12GEPUtils
 		ThrowIfFailed(m_SwapChain->ResizeBuffers(m_DefaultBufferCount, InNewWidth, InNewHeight, swapchain_desc.BufferDesc.Format, swapchain_desc.Flags));
 		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 		UpdateRenderTargetViews();
+
+		// TODO Update Viewport
+
+		// TODO Update DepthStencil
 	}
 
 	void D3D12Window::CreateHWND(const wchar_t* InWindowClassName, HINSTANCE InHInstance, const wchar_t* InWindowTitle, uint32_t width, uint32_t height)

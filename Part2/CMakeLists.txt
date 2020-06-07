@@ -13,7 +13,7 @@ target_include_directories( part2
 		${CMAKE_SOURCE_DIR}/lib/eigen/Eigen/src
 )
 
-target_link_libraries(part2 3dgep eigen)
+target_link_libraries(part2 3dgep)
 
 # Allowing reference of Part2 root path
 target_compile_definitions(part2 PRIVATE PART2_PROJ_ROOT_PATH=${CMAKE_CURRENT_SOURCE_DIR})

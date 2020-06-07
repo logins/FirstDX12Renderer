@@ -5,6 +5,7 @@
 #include <wrl.h> //For WRL::ComPtr
 #include <dxgi1_6.h>
 #include <d3dx12.h>
+#include <GEPUtilsGeometry.h>
 
 #define PART2_SHADERS_PATH(NAME) LQUOTE(PART2_PROJ_ROOT_PATH/shaders/NAME)
 
@@ -220,7 +221,18 @@ void Part2::Update()
 	static std::chrono::high_resolution_clock clock;
 	auto t0 = clock.now();
 
-	// TODO update content will go here
+
+	// Update the Model Matrix
+	float rotAngle = 3.14f; // TODO change this to rotating based on total elapsed time
+	Eigen::Vector3f rotationAxis(0.f, 1.f, 1.f);
+	Eigen::Transform<float, 3, Eigen::Affine> transf; 
+	transf = Eigen::AngleAxisf(rotAngle, rotationAxis);//;
+	m_ModelMatrix = transf.matrix();
+	// Update the View Matrix
+	const Eigen::Vector4f eyePosition = Eigen::Vector4f(0, 0, -10, 1);
+	const Eigen::Vector4f focusPoint = Eigen::Vector4f(0, 0, 0, 1);
+	const Eigen::Vector4f upDirection = Eigen::Vector4f(0, 1, 0, 0);
+	m_ViewMatrix = GEPUtils::Geometry::LookAt(eyePosition, focusPoint, upDirection);
 
 	frameCounter++;
 	auto t1 = clock.now();

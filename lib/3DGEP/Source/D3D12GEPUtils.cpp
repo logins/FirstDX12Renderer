@@ -228,7 +228,7 @@ namespace D3D12GEPUtils
 		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
 		dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
 		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
-		dsvDesc.Texture1D = { 0 };
+		dsvDesc.Texture2D = { 0 };
 		dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
 		InDevice->CreateDepthStencilView(InResource, &dsvDesc, InDSVCPUDescHandle);
 	}
