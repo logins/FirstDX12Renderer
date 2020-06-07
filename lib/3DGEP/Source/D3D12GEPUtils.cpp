@@ -214,6 +214,25 @@ namespace D3D12GEPUtils
 		));
 	}
 
+	void CreateDepthStencilCommittedResource(ComPtr<ID3D12Device2> InDevice, ID3D12Resource** InResource, uint64_t InWidth, uint64_t InHeight, D3D12_RESOURCE_STATES InInitialStates, D3D12_CLEAR_VALUE* InClearValue)
+	{
+		ThrowIfFailed(InDevice->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE, &CD3DX12_RESOURCE_DESC::Tex2D(DXGI_FORMAT_D32_FLOAT, InWidth, InHeight, 1, 0, 1, 0, D3D12_RESOURCE_FLAG_ALLOW_DEPTH_STENCIL),
+			InInitialStates, InClearValue, IID_PPV_ARGS(InResource)
+		));
+	}
+
+	void CreateDepthStencilView(ComPtr<ID3D12Device2> InDevice, ID3D12Resource* InResource, D3D12_CPU_DESCRIPTOR_HANDLE& InDSVCPUDescHandle)
+	{
+		D3D12_DEPTH_STENCIL_VIEW_DESC dsvDesc = {};
+		dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+		dsvDesc.ViewDimension = D3D12_DSV_DIMENSION_TEXTURE2D;
+		dsvDesc.Texture1D = { 0 };
+		dsvDesc.Flags = D3D12_DSV_FLAG_NONE;
+		InDevice->CreateDepthStencilView(InResource, &dsvDesc, InDSVCPUDescHandle);
+	}
+
 	void SignalCmdQueue(ComPtr<ID3D12CommandQueue> InCmdQueue, ComPtr<ID3D12Fence> InFence, uint64_t& OutFenceValue)
 	{
 		++OutFenceValue;

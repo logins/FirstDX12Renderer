@@ -175,7 +175,15 @@ void Part2::LoadContent()
 	D3D12GEPUtils::SignalCmdQueue(m_CmdQueue, m_Fence, loadContentFenceValue);
 	D3D12GEPUtils::WaitForFenceValue(m_Fence, loadContentFenceValue, m_FenceEvent);
 
-	// TODO Tutorial2::ResizeDepthBuffer
+	// Allocate DepthStencil resource in GPU
+	D3D12_CLEAR_VALUE optimizedClearValue = {};
+	optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+	optimizedClearValue.DepthStencil = { 1.f, 0 };
+	D3D12GEPUtils::CreateDepthStencilCommittedResource(m_GraphicsDevice, m_DSBuffer.GetAddressOf(), 1024, 768,
+		D3D12_RESOURCE_STATE_DEPTH_WRITE, &optimizedClearValue);
+	// Update DepthStencil View
+	D3D12GEPUtils::CreateDepthStencilView(m_GraphicsDevice, m_DSBuffer.Get(), m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
+
 }
 
 void Part2::Run()
