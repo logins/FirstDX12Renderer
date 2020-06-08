@@ -226,13 +226,17 @@ void Part2::Update()
 	float rotAngle = 3.14f; // TODO change this to rotating based on total elapsed time
 	Eigen::Vector3f rotationAxis(0.f, 1.f, 1.f);
 	Eigen::Transform<float, 3, Eigen::Affine> transf; 
-	transf = Eigen::AngleAxisf(rotAngle, rotationAxis);//;
+	transf = Eigen::AngleAxisf(rotAngle, rotationAxis);
 	m_ModelMatrix = transf.matrix();
 	// Update the View Matrix
 	const Eigen::Vector4f eyePosition = Eigen::Vector4f(0, 0, -10, 1);
 	const Eigen::Vector4f focusPoint = Eigen::Vector4f(0, 0, 0, 1);
 	const Eigen::Vector4f upDirection = Eigen::Vector4f(0, 1, 0, 0);
 	m_ViewMatrix = GEPUtils::Geometry::LookAt(eyePosition, focusPoint, upDirection);
+	// Update the Projection Matrix
+	float aspectRatio = 1024 / 768.f; // TODO change this to dynamic
+	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_FoV, aspectRatio, 0.1f, 100.f);
+
 
 	frameCounter++;
 	auto t1 = clock.now();
@@ -257,7 +261,7 @@ void Part2::Render()
 
 	ID3D12GraphicsCommandList* cmdList = m_MainWindow.ResetCmdListWithCurrentAllocator().Get();
 
-	// Clear render target
+	// Clear render target and depth stencil
 	{
 		// Transitioning current backbuffer resource to render target state
 		CD3DX12_RESOURCE_BARRIER transitionBarrier = CD3DX12_RESOURCE_BARRIER::Transition(
@@ -270,6 +274,34 @@ void Part2::Render()
 
 		FLOAT clearColor[] = { .4f, .6f, .9f, 1.f };
 		cmdList->ClearRenderTargetView(m_MainWindow.GetCurrentRTVDescHandle(), clearColor, 0, nullptr);
+		// Note: Clearing Render Target and Depth Stencil is a good practice, but in this case is also essential.
+		// Without clearing the DepthStencilView, the rasterizer would not be able to use it!!
+		cmdList->ClearDepthStencilView(m_DSVHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+	}
+
+	// Fill Command List Pipeline-related Data
+	{
+		cmdList->SetPipelineState(m_PipelineState.Get());
+		cmdList->SetGraphicsRootSignature(m_RootSignature.Get());
+		
+		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		cmdList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
+		cmdList->IASetIndexBuffer(&m_IndexBufferView);
+
+		cmdList->RSSetViewports(1, &m_Viewport);
+		cmdList->RSSetScissorRects(1, &m_ScissorRect);
+
+		cmdList->OMSetRenderTargets(1, &m_MainWindow.GetCurrentRTVDescHandle(), FALSE, &m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
+		
+	}
+
+	// Fill Command List Buffer Data and Draw Command
+	{
+		Eigen::Matrix4f mvpMatrix = m_ProjMatrix * m_ViewMatrix * m_ModelMatrix;
+		
+		cmdList->SetGraphicsRoot32BitConstants(0, sizeof(Eigen::Matrix4f) / 4, mvpMatrix.data(), 0);
+
+		cmdList->DrawIndexedInstanced(_countof(m_IndexData), 1, 0, 0, 0);
 	}
 
 	// Execute command list and present current render target from the main window

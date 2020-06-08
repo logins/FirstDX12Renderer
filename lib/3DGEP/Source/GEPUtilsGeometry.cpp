@@ -31,19 +31,19 @@ namespace GEPUtils {
 		// make these not templated anymore.
 		template<typename Scalar>
 		Eigen::Matrix<Scalar, 4, 4>
-			Perspective(Scalar fovy, Scalar aspect, Scalar zNear, Scalar zFar)
+			Perspective(Scalar fovy, Scalar aspect, Scalar zNear, Scalar zFar) // TODO Change this to a non-template function
 		{
-			Transform<Scalar, 3, Projective> tr;
+			Eigen::Transform<Scalar, 3, Eigen::Projective> tr;
 			tr.matrix().setZero();
 			assert(aspect > 0);
 			assert(zFar > zNear);
-			Scalar radf = M_PI * fovy / 180.0;
-			Scalar tan_half_fovy = std::tan(radf / 2.0);
-			tr(0, 0) = 1.0 / (aspect * tan_half_fovy);
-			tr(1, 1) = 1.0 / (tan_half_fovy);
+			Scalar radf = 3.141593f * fovy / 180.0f;
+			Scalar tan_half_fovy = std::tan(radf / 2.0f);
+			tr(0, 0) = 1.0f / (aspect * tan_half_fovy);
+			tr(1, 1) = 1.0f / (tan_half_fovy);
 			tr(2, 2) = -(zFar + zNear) / (zFar - zNear);
-			tr(3, 2) = -1.0;
-			tr(2, 3) = -(2.0 * zFar * zNear) / (zFar - zNear);
+			tr(3, 2) = -1.0f;
+			tr(2, 3) = -(2.0f * zFar * zNear) / (zFar - zNear);
 			return tr.matrix();
 		}
 
@@ -79,6 +79,8 @@ namespace GEPUtils {
 		// https://stackoverflow.com/questions/115703/storing-c-template-function-definitions-in-a-cpp-file
 		// The downside is that we need to instantiate the template for each type we need.
 		template Eigen::Matrix<Eigen::Vector4f::Scalar, 4, 4> LookAt(const Eigen::Vector4f& eye, const Eigen::Vector4f& center, const Eigen::Vector4f& up);
+
+		template Eigen::Matrix<float, 4, 4>	Perspective(float fovy, float aspect, float zNear, float zFar);
 
 	}
 }
