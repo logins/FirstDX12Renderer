@@ -22,11 +22,12 @@ private:
 	Part2& operator=(const Part2&);
 	void QuitApplication();
 	struct MouseWheelEventArgs { float WheelDelta; };
-	struct MouseButtonEventArgs {};
+	struct MouseButtonEventArgs { int32_t X; int32_t Y; uint8_t Button; }; // 0=Left, 1=Middle, 2=Right
 	void OnMouseWheel(MouseWheelEventArgs& InEvent);
 	void OnMousePressed(MouseButtonEventArgs& InEvent);
 	void OnMouseReleased(MouseButtonEventArgs& InEvent);
 	bool m_PaintStarted = false;
+	void OnMouseDrag(int32_t InX, int32_t InY);
 private:
 	// Load graphics resources for the colored cube
 	void LoadContent();
@@ -40,7 +41,8 @@ private:
 	};
 	LRESULT CALLBACK MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InWParam, LPARAM InLParam);
 	void OnMainWindowPaint();
-
+	bool m_MouseLeftDrag = false;
+	POINT m_PrevDragCoords = {};
 	static const uint8_t m_NumCmdAllocators = 3;
 
 	ComPtr<ID3D12Device2> m_GraphicsDevice;
@@ -67,7 +69,8 @@ private:
 	D3D12_VIEWPORT m_Viewport;
 	D3D12_RECT m_ScissorRect;
 
-	float m_FoV;
+	float m_FoV = 0;
+	float m_AspectRatio = 0;
 
 	// Model, View, Projection Matrices
 	Eigen::Matrix4f m_ModelMatrix;

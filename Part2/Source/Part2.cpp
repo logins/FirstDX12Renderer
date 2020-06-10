@@ -3,10 +3,11 @@
 #include <algorithm>
 #include <D3D12GEPUtils.h>
 #include <D3D12Window.h>
-#include <wrl.h> //For WRL::ComPtr
+#include <wrl.h> // For WRL::ComPtr
 #include <dxgi1_6.h>
 #include <d3dx12.h>
 #include <GEPUtilsGeometry.h>
+#include <Windowsx.h> // For mouse macros
 
 #if defined(min)
 #undef min
@@ -72,6 +73,18 @@ void Part2::Initialize()
 	LoadContent();
 	
 	m_IsInitialized = true;
+}
+
+void Part2::OnMouseDrag(int32_t InX, int32_t InY)
+{
+	Eigen::Transform<float, 3, Eigen::Affine> tr;
+	tr.matrix().setIdentity();
+	tr.rotate(Eigen::AngleAxisf((InX - m_PrevDragCoords.x) / 1024.f, Eigen::Vector3f::UnitY())) //TODO set variable window size
+		.rotate(Eigen::AngleAxisf((m_PrevDragCoords.y - InY) / 768.f, Eigen::Vector3f::UnitX()));
+	
+	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
+	m_PrevDragCoords.x = InX;
+	m_PrevDragCoords.y = InY;
 }
 
 void Part2::LoadContent()
@@ -194,6 +207,17 @@ void Part2::LoadContent()
 	// Update DepthStencil View
 	D3D12GEPUtils::CreateDepthStencilView(m_GraphicsDevice, m_DSBuffer.Get(), m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
 
+
+	// Initialize the Model Matrix
+	m_ModelMatrix = Eigen::Matrix4f::Identity();
+	// Initialize the View Matrix
+	const Eigen::Vector4f eyePosition = Eigen::Vector4f(0, 0, -10, 1);
+	const Eigen::Vector4f focusPoint = Eigen::Vector4f(0, 0, 0, 1);
+	const Eigen::Vector4f upDirection = Eigen::Vector4f(0, 1, 0, 0);
+	m_ViewMatrix = GEPUtils::Geometry::LookAt(eyePosition, focusPoint, upDirection);
+	// Initialize the Projection Matrix
+	m_AspectRatio = 1024 / 768.f; // TODO change this to dynamic
+	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_FoV, m_AspectRatio, 0.1f, 100.f);
 }
 
 void Part2::Run()
@@ -233,22 +257,6 @@ void Part2::Update()
 	static double elapsedSeconds = 0;
 	static std::chrono::high_resolution_clock clock;
 	auto t0 = clock.now();
-
-
-	// Update the Model Matrix
-	float rotAngle = 3.14f; // TODO change this to rotating based on total elapsed time
-	Eigen::Vector3f rotationAxis(0.f, 1.f, 1.f);
-	Eigen::Transform<float, 3, Eigen::Affine> transf; 
-	transf = Eigen::AngleAxisf(rotAngle, rotationAxis);
-	m_ModelMatrix = transf.matrix();
-	// Update the View Matrix
-	const Eigen::Vector4f eyePosition = Eigen::Vector4f(0, 0, -10, 1);
-	const Eigen::Vector4f focusPoint = Eigen::Vector4f(0, 0, 0, 1);
-	const Eigen::Vector4f upDirection = Eigen::Vector4f(0, 1, 0, 0);
-	m_ViewMatrix = GEPUtils::Geometry::LookAt(eyePosition, focusPoint, upDirection);
-	// Update the Projection Matrix
-	float aspectRatio = 1024 / 768.f; // TODO change this to dynamic
-	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_FoV, aspectRatio, 0.1f, 100.f);
 
 
 	frameCounter++;
@@ -353,6 +361,28 @@ void Part2::OnMouseWheel(MouseWheelEventArgs& e)
 	char buffer[256];
 	::sprintf_s(buffer, "FoV: %f\n", m_FoV);
 	::OutputDebugStringA(buffer);
+
+	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_FoV, m_AspectRatio, 0.1f, 100.f);
+}
+
+void Part2::OnMousePressed(MouseButtonEventArgs& InEvent)
+{
+	switch (InEvent.Button)
+	{
+	case 0:
+		std::cout << "Pressed Left Mouse Button" << std::endl;
+		break;
+	}
+}
+
+void Part2::OnMouseReleased(MouseButtonEventArgs& InEvent)
+{
+	switch (InEvent.Button)
+	{
+	case 0:
+		std::cout << "Released Left Mouse Button" << std::endl;
+		break;
+	}
 }
 
 LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InWParam, LPARAM InLParam)
@@ -393,9 +423,28 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 	}
 	case WM_SYSCHAR:
 		break; // Preventing Alt+Enter hotkey to try switching the window to fullscreen since we are manually handling it with Alt+F11
+	case WM_MOUSEMOVE:
+		if (m_MouseLeftDrag)
+			OnMouseDrag(GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+		break;
 	case WM_MOUSEWHEEL:
-		
 		OnMouseWheel(MouseWheelEventArgs{  static_cast<float>(GET_WHEEL_DELTA_WPARAM(InWParam))  });
+		break;
+	case WM_LBUTTONDOWN:
+	{
+		POINT dragPoint = { GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam) };
+		if (::DragDetect(InHWND, dragPoint))
+		{
+			m_PrevDragCoords.x = dragPoint.x;
+			m_PrevDragCoords.y = dragPoint.y;
+			m_MouseLeftDrag = true;
+		}
+		OnMousePressed(MouseButtonEventArgs{ static_cast<int32_t>(dragPoint.x), static_cast<int32_t>(dragPoint.y), 0 });
+		break;
+	}
+	case WM_LBUTTONUP:
+		m_MouseLeftDrag = false;
+		OnMouseReleased(MouseButtonEventArgs{ GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam), 0 });
 		break;
 	case WM_SIZE:
 	{
