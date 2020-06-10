@@ -21,6 +21,12 @@ private:
 	Part2(const Part2&);
 	Part2& operator=(const Part2&);
 	void QuitApplication();
+	struct MouseWheelEventArgs { float WheelDelta; };
+	struct MouseButtonEventArgs {};
+	void OnMouseWheel(MouseWheelEventArgs& InEvent);
+	void OnMousePressed(MouseButtonEventArgs& InEvent);
+	void OnMouseReleased(MouseButtonEventArgs& InEvent);
+	bool m_PaintStarted = false;
 private:
 	// Load graphics resources for the colored cube
 	void LoadContent();

@@ -1,11 +1,20 @@
 #include <Part2.h>
 #include <iostream>
+#include <algorithm>
 #include <D3D12GEPUtils.h>
 #include <D3D12Window.h>
 #include <wrl.h> //For WRL::ComPtr
 #include <dxgi1_6.h>
 #include <d3dx12.h>
 #include <GEPUtilsGeometry.h>
+
+#if defined(min)
+#undef min
+#endif
+
+#if defined(max)
+#undef max
+#endif
 
 #define PART2_SHADERS_PATH(NAME) LQUOTE(PART2_PROJ_ROOT_PATH/shaders/NAME)
 
@@ -203,11 +212,15 @@ void Part2::Run()
 			::TranslateMessage(&windowMessage);
 			::DispatchMessage(&windowMessage);
 		}
+
+		OnMainWindowPaint();
 	}
 }
 
 void Part2::OnMainWindowPaint()
 {
+	if (!m_PaintStarted)
+		return;
 	// Window paint event will trigger game thread update and render methods (as we are in a simple single threaded example)
 	Update();
 
@@ -333,6 +346,15 @@ void Part2::QuitApplication()
 	::PostQuitMessage(0); // Causes the application to terminate
 }
 
+void Part2::OnMouseWheel(MouseWheelEventArgs& e)
+{
+	m_FoV -= e.WheelDelta / 10.f;
+	m_FoV = std::max(12.0f, std::min(m_FoV, 90.f)); // clamping
+	char buffer[256];
+	::sprintf_s(buffer, "FoV: %f\n", m_FoV);
+	::OutputDebugStringA(buffer);
+}
+
 LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InWParam, LPARAM InLParam)
 {
 	// Preventing application to process events when all the necessery D3D12 objects are not initialized yet
@@ -343,9 +365,10 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 	bool altKeyDown = (::GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
 	switch (InMsg)
 	{
-	case WM_PAINT:
-		OnMainWindowPaint();
-		break;
+		case WM_PAINT:
+			m_PaintStarted = true;
+
+			break;
 	case WM_SYSKEYDOWN: // When a system key is pressed (e.g. Alt key)
 	case  WM_KEYDOWN: // When a non-system key is pressed (e.g. v key)
 	{
@@ -370,6 +393,10 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 	}
 	case WM_SYSCHAR:
 		break; // Preventing Alt+Enter hotkey to try switching the window to fullscreen since we are manually handling it with Alt+F11
+	case WM_MOUSEWHEEL:
+		
+		OnMouseWheel(MouseWheelEventArgs{  static_cast<float>(GET_WHEEL_DELTA_WPARAM(InWParam))  });
+		break;
 	case WM_SIZE:
 	{
 		RECT clientRect = {};

@@ -58,16 +58,16 @@ namespace D3D12GEPUtils
 		ThrowIfFailed(m_SwapChain->Present(IsVSyncEnabled(), presentFlags));
 
 		// Signal fence for the current backbuffer "on the fly"
-		uint64_t currentFenceValue;
-		D3D12GEPUtils::SignalCmdQueue(m_CommandQueue, m_Fence, currentFenceValue);
-		m_FrameFenceValues[m_CurrentBackBufferIndex] = currentFenceValue;
+		D3D12GEPUtils::SignalCmdQueue(m_CommandQueue, m_Fence, m_LastSeenFenceValue);
+		m_FrameFenceValues[m_CurrentBackBufferIndex] = m_LastSeenFenceValue;
 
 		// Update current backbuffer index and wait for the present operation to be finished (it will when the fence value will be reached)
 		// Note: the present operation changed the swapchain's current backbuffer index to the next available !
 		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
-		// Blocking current thread up until current fence value is reached
-		WaitForFenceValue(m_Fence, currentFenceValue, m_FenceEvent);
+		// Note: we are blocking up until the NEW command allocator (obtained with the buffer index After presenting the backbuffer)
+		// finished executing the old commands
+		WaitForFenceValue(m_Fence, m_FrameFenceValues[m_CurrentBackBufferIndex], m_FenceEvent);
 	}
 
 	ComPtr<ID3D12GraphicsCommandList> D3D12Window::ResetCmdListWithCurrentAllocator()

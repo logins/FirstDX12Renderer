@@ -78,7 +78,7 @@ namespace D3D12GEPUtils {
 		ComPtr<ID3D12Resource> m_BackBuffers[m_DefaultBufferCount];
 		ComPtr<ID3D12CommandAllocator> m_CmdAllocators[m_DefaultBufferCount];
 		ComPtr<ID3D12GraphicsCommandList> m_CmdList;
-		uint64_t m_FrameFenceValues[m_DefaultBufferCount];
+		uint64_t m_FrameFenceValues[m_DefaultBufferCount] = { 0 }; // Note: important to initialize every member variable, otherwise it could contain garbage!
 		UINT m_CurrentBackBufferIndex = 0;
 		ComPtr<ID3D12DescriptorHeap> m_RTVDescriptorHeap;
 		UINT m_RTVDescIncrementSize = 0;
