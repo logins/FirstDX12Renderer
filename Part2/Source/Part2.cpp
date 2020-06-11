@@ -75,16 +75,23 @@ void Part2::Initialize()
 	m_IsInitialized = true;
 }
 
-void Part2::OnMouseDrag(int32_t InX, int32_t InY)
+void Part2::OnLeftMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 {
-	Eigen::Transform<float, 3, Eigen::Affine> tr;
-	tr.matrix().setIdentity();
-	tr.rotate(Eigen::AngleAxisf((InX - m_PrevDragCoords.x) / 1024.f, Eigen::Vector3f::UnitY())) //TODO set variable window size
-		.rotate(Eigen::AngleAxisf((m_PrevDragCoords.y - InY) / 768.f, Eigen::Vector3f::UnitX()));
+	Eigen::Transform<float, 3, Eigen::Affine> tr; 
+	tr.setIdentity();
+	tr.rotate(Eigen::AngleAxisf(InDeltaX / 1024.f, Eigen::Vector3f::UnitY())) //TODO set variable window size
+		.rotate(Eigen::AngleAxisf(-InDeltaY / 768.f, Eigen::Vector3f::UnitX()));
 	
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
-	m_PrevDragCoords.x = InX;
-	m_PrevDragCoords.y = InY;
+}
+
+void Part2::OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
+{
+	Eigen::Transform<float, 3, Eigen::Affine> tr; 
+	tr.setIdentity();
+	tr.translate(Eigen::Vector3f(-InDeltaX/1024.f, -InDeltaY/768.f, 0)); //TODO store window sizes
+	
+	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
 }
 
 void Part2::LoadContent()
@@ -305,7 +312,7 @@ void Part2::Render()
 		cmdList->SetPipelineState(m_PipelineState.Get());
 		cmdList->SetGraphicsRootSignature(m_RootSignature.Get());
 		
-		cmdList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+		cmdList->IASetPrimitiveTopology(D3D12_PRIMITIVE_TOPOLOGY::D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 		cmdList->IASetVertexBuffers(0, 1, &m_VertexBufferView);
 		cmdList->IASetIndexBuffer(&m_IndexBufferView);
 
@@ -371,7 +378,12 @@ void Part2::OnMousePressed(MouseButtonEventArgs& InEvent)
 	{
 	case 0:
 		std::cout << "Pressed Left Mouse Button" << std::endl;
+		if(InEvent.DragDetected)
+			m_MouseLeftDrag = true;
 		break;
+	case 2:
+		std::cout << "Pressed Right Mouse Button" << std::endl;
+		m_MouseRightDrag = true;
 	}
 }
 
@@ -381,6 +393,11 @@ void Part2::OnMouseReleased(MouseButtonEventArgs& InEvent)
 	{
 	case 0:
 		std::cout << "Released Left Mouse Button" << std::endl;
+		m_MouseLeftDrag = false;
+		break;
+	case 2:
+		std::cout << "Released Right Mouse Button" << std::endl;
+		m_MouseRightDrag = false;
 		break;
 	}
 }
@@ -424,28 +441,40 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 	case WM_SYSCHAR:
 		break; // Preventing Alt+Enter hotkey to try switching the window to fullscreen since we are manually handling it with Alt+F11
 	case WM_MOUSEMOVE:
-		if (m_MouseLeftDrag)
-			OnMouseDrag(GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+	{
+		POINT newCoords{ GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam) };
+		if(m_MouseLeftDrag)
+			OnLeftMouseDrag(newCoords.x - m_PrevMouseCoords.x, newCoords.y - m_PrevMouseCoords.y);
+		if(m_MouseRightDrag)
+			OnRightMouseDrag(newCoords.x - m_PrevMouseCoords.x, newCoords.y - m_PrevMouseCoords.y);
+
+		m_PrevMouseCoords.x = newCoords.x;
+		m_PrevMouseCoords.y = newCoords.y;
 		break;
+	}
 	case WM_MOUSEWHEEL:
 		OnMouseWheel(MouseWheelEventArgs{  static_cast<float>(GET_WHEEL_DELTA_WPARAM(InWParam))  });
 		break;
 	case WM_LBUTTONDOWN:
+	case WM_MBUTTONDOWN:
+	case WM_RBUTTONDOWN:
 	{
-		POINT dragPoint = { GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam) };
-		if (::DragDetect(InHWND, dragPoint))
-		{
-			m_PrevDragCoords.x = dragPoint.x;
-			m_PrevDragCoords.y = dragPoint.y;
-			m_MouseLeftDrag = true;
-		}
-		OnMousePressed(MouseButtonEventArgs{ static_cast<int32_t>(dragPoint.x), static_cast<int32_t>(dragPoint.y), 0 });
+		POINT dragPoint = { GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam) };	
+		m_PrevMouseCoords.x = dragPoint.x;
+		m_PrevMouseCoords.y = dragPoint.y;
+
+		uint8_t button = InMsg == WM_LBUTTONDOWN ? 0 : InMsg == WM_MBUTTONDOWN ? 1 : InMsg == WM_RBUTTONDOWN ? 2 : 3;
+		OnMousePressed(MouseButtonEventArgs{ static_cast<int32_t>(dragPoint.x), static_cast<int32_t>(dragPoint.y), button, static_cast<bool>(::DragDetect(InHWND, dragPoint)) });
 		break;
 	}
 	case WM_LBUTTONUP:
-		m_MouseLeftDrag = false;
-		OnMouseReleased(MouseButtonEventArgs{ GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam), 0 });
+	case WM_RBUTTONUP:
+	case WM_MBUTTONUP:
+	{
+		uint8_t button = (InMsg == WM_LBUTTONUP) ? 0 : (InMsg == WM_MBUTTONUP) ? 1 : (InMsg == WM_RBUTTONUP) ? 2 : 3;
+		OnMouseReleased(MouseButtonEventArgs{ GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam), button });
 		break;
+	}	
 	case WM_SIZE:
 	{
 		RECT clientRect = {};

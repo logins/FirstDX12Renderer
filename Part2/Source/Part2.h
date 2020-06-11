@@ -22,12 +22,13 @@ private:
 	Part2& operator=(const Part2&);
 	void QuitApplication();
 	struct MouseWheelEventArgs { float WheelDelta; };
-	struct MouseButtonEventArgs { int32_t X; int32_t Y; uint8_t Button; }; // 0=Left, 1=Middle, 2=Right
+	struct MouseButtonEventArgs { int32_t X; int32_t Y; uint8_t Button; bool DragDetected; }; // 0=Left, 1=Middle, 2=Right
 	void OnMouseWheel(MouseWheelEventArgs& InEvent);
 	void OnMousePressed(MouseButtonEventArgs& InEvent);
 	void OnMouseReleased(MouseButtonEventArgs& InEvent);
 	bool m_PaintStarted = false;
-	void OnMouseDrag(int32_t InX, int32_t InY);
+	void OnLeftMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
+	void OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
 private:
 	// Load graphics resources for the colored cube
 	void LoadContent();
@@ -42,7 +43,8 @@ private:
 	LRESULT CALLBACK MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InWParam, LPARAM InLParam);
 	void OnMainWindowPaint();
 	bool m_MouseLeftDrag = false;
-	POINT m_PrevDragCoords = {};
+	bool m_MouseRightDrag = false;
+	POINT m_PrevMouseCoords = {};
 	static const uint8_t m_NumCmdAllocators = 3;
 
 	ComPtr<ID3D12Device2> m_GraphicsDevice;
@@ -103,7 +105,6 @@ private:
 		1, 5, 6, 1, 6, 2,
 		4, 0, 3, 4, 3, 7
 	};
-
 	bool m_IsInitialized = false;
 	static Part2* m_Instance; //Note: This is just a declaration, not a definition! m_Instance must be explicitly defined
 	
