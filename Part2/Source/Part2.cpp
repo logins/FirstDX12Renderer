@@ -79,7 +79,7 @@ void Part2::OnLeftMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 {
 	Eigen::Transform<float, 3, Eigen::Affine> tr; 
 	tr.setIdentity();
-	tr.rotate(Eigen::AngleAxisf(InDeltaX / 1024.f, Eigen::Vector3f::UnitY())) //TODO set variable window size
+	tr.rotate(Eigen::AngleAxisf(-InDeltaX / 1024.f, Eigen::Vector3f::UnitY())) //TODO set variable window size
 		.rotate(Eigen::AngleAxisf(-InDeltaY / 768.f, Eigen::Vector3f::UnitX()));
 	
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
@@ -89,7 +89,7 @@ void Part2::OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 {
 	Eigen::Transform<float, 3, Eigen::Affine> tr; 
 	tr.setIdentity();
-	tr.translate(Eigen::Vector3f(-InDeltaX/1024.f, -InDeltaY/768.f, 0)); //TODO store window sizes
+	tr.translate(Eigen::Vector3f(InDeltaX/1024.f, -InDeltaY/768.f, 0)); //TODO store window sizes
 	
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
 }
@@ -224,7 +224,7 @@ void Part2::LoadContent()
 	m_ViewMatrix = GEPUtils::Geometry::LookAt(eyePosition, focusPoint, upDirection);
 	// Initialize the Projection Matrix
 	m_AspectRatio = 1024 / 768.f; // TODO change this to dynamic
-	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_FoV, m_AspectRatio, 0.1f, 100.f);
+	m_ProjMatrix = GEPUtils::Geometry::Perspective(0.1f, 100.f, m_AspectRatio, 157.9186455f); //TODO make this dynamic
 }
 
 void Part2::Run()
@@ -369,7 +369,7 @@ void Part2::OnMouseWheel(MouseWheelEventArgs& e)
 	::sprintf_s(buffer, "FoV: %f\n", m_FoV);
 	::OutputDebugStringA(buffer);
 
-	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_FoV, m_AspectRatio, 0.1f, 100.f);
+	m_ProjMatrix = GEPUtils::Geometry::Perspective( 0.1f, 100.f, m_AspectRatio, 157.9186455f); // TODO make this dynamic
 }
 
 void Part2::OnMousePressed(MouseButtonEventArgs& InEvent)

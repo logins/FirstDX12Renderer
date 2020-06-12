@@ -31,19 +31,21 @@ namespace GEPUtils {
 		// make these not templated anymore.
 		template<typename Scalar>
 		Eigen::Matrix<Scalar, 4, 4>
-			Perspective(Scalar fovy, Scalar aspect, Scalar zNear, Scalar zFar) // TODO Change this to a non-template function
+			Perspective(Scalar InZNear, Scalar InZFar, Scalar InAspectRatio, Scalar InFovYRad) // TODO Change this to a non-template function
 		{
+			//FROM: https://docs.microsoft.com/en-us/windows/win32/direct3d9/projection-transform
+			// Note: Using the Perspective and LookAt from OpenGL in D3D will render the back faces !!!
 			Eigen::Transform<Scalar, 3, Eigen::Projective> tr;
 			tr.matrix().setZero();
-			assert(aspect > 0);
-			assert(zFar > zNear);
-			Scalar radf = 3.141593f * fovy / 180.0f;
-			Scalar tan_half_fovy = std::tan(radf / 2.0f);
-			tr(0, 0) = 1.0f / (aspect * tan_half_fovy);
-			tr(1, 1) = 1.0f / (tan_half_fovy);
-			tr(2, 2) = -(zFar + zNear) / (zFar - zNear);
-			tr(3, 2) = -1.0f;
-			tr(2, 3) = -(2.0f * zFar * zNear) / (zFar - zNear);
+			assert(InZFar > InZNear);
+			Scalar w = 1.0f / (InAspectRatio*std::tan(InFovYRad / 2.f));
+			Scalar h = 1.0f / std::tan(InFovYRad / 2.f);
+			Scalar Q = InZFar / (InZFar - InZNear);
+			tr(0, 0) = w;
+			tr(1, 1) = h;
+			tr(2, 2) = Q;
+			tr(3, 2) = 1.0f;
+			tr(2, 3) = -Q * InZNear;
 			return tr.matrix();
 		}
 
@@ -52,25 +54,26 @@ namespace GEPUtils {
 		Eigen::Matrix<typename Derived::Scalar, 4, 4>
 			LookAt(Derived const& eye, Derived const& center, Derived const& up)
 		{
+			//FROM: https://docs.microsoft.com/en-us/windows/win32/direct3d9/d3dxmatrixlookatlh
+			// Note: Using the Perspective and LookAt from OpenGL in D3D will render the back faces !!!
 			typedef Eigen::Matrix<typename Derived::Scalar, 4, 4> Matrix4;
 			typedef Eigen::Matrix<typename Derived::Scalar, 3, 1> Vector3;
-			Vector3 f = (center - eye).normalized().head<3>();
-			Vector3 u = up.normalized().head<3>();
-			Vector3 s = f.cross(u).normalized().head<3>();
-			u = s.cross(f);
+			Vector3 zAxis = (center - eye).normalized().head<3>();
+			Vector3 xAxis = up.head<3>().cross(zAxis).normalized().head<3>();
+			Vector3 yAxis = zAxis.cross(xAxis).normalized().head<3>();
 			Matrix4 mat = Matrix4::Zero();
-			mat(0, 0) = s.x();
-			mat(0, 1) = s.y();
-			mat(0, 2) = s.z();
-			mat(0, 3) = -s.dot(eye.head<3>());
-			mat(1, 0) = u.x();
-			mat(1, 1) = u.y();
-			mat(1, 2) = u.z();
-			mat(1, 3) = -u.dot(eye.head<3>());
-			mat(2, 0) = -f.x();
-			mat(2, 1) = -f.y();
-			mat(2, 2) = -f.z();
-			mat(2, 3) = f.dot(eye.head<3>());
+			mat(0, 0) = xAxis.x();
+			mat(0, 1) = xAxis.y();
+			mat(0, 2) = xAxis.z();
+			mat(0, 3) = -xAxis.dot(eye.head<3>());
+			mat(1, 0) = yAxis.x();
+			mat(1, 1) = yAxis.y();
+			mat(1, 2) = yAxis.z();
+			mat(1, 3) = -yAxis.dot(eye.head<3>());
+			mat(2, 0) = zAxis.x();
+			mat(2, 1) = zAxis.y();
+			mat(2, 2) = zAxis.z();
+			mat(2, 3) = -zAxis.dot(eye.head<3>());
 			mat.row(3) << 0, 0, 0, 1;
 			return mat;
 		}
@@ -80,7 +83,7 @@ namespace GEPUtils {
 		// The downside is that we need to instantiate the template for each type we need.
 		template Eigen::Matrix<Eigen::Vector4f::Scalar, 4, 4> LookAt(const Eigen::Vector4f& eye, const Eigen::Vector4f& center, const Eigen::Vector4f& up);
 
-		template Eigen::Matrix<float, 4, 4>	Perspective(float fovy, float aspect, float zNear, float zFar);
+		template Eigen::Matrix<float, 4, 4>	Perspective(float InZNear, float InZFar, float InAspectRatio, float InFovY);
 
 	}
 }

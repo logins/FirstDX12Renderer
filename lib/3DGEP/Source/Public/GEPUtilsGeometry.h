@@ -13,7 +13,7 @@ namespace GEPUtils {
 		/// @see http://www.opengl.org/sdk/docs/man2/xhtml/gluPerspective.xml
 		/// @see glm::perspective
 		template<typename Scalar>
-		Eigen::Matrix<Scalar, 4, 4> Perspective(Scalar fovy, Scalar aspect, Scalar zNear, Scalar zFar);
+		Eigen::Matrix<Scalar, 4, 4> Perspective(Scalar InZNear, Scalar InZFar, Scalar InAspectRatio, Scalar InFovYRad);
 
 
 		/// @brief Returns a view transformation matrix like the one from glu's lookAt
