@@ -71,7 +71,8 @@ private:
 	D3D12_VIEWPORT m_Viewport;
 	D3D12_RECT m_ScissorRect;
 
-	float m_FoV = 0;
+	float m_FoV = 0.f;
+	float m_ZMin = 0.f, m_ZMax = 0.f;
 	float m_AspectRatio = 0;
 
 	// Model, View, Projection Matrices

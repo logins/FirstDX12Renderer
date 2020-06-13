@@ -8,6 +8,7 @@
 #include <d3dx12.h>
 #include <GEPUtilsGeometry.h>
 #include <Windowsx.h> // For mouse macros
+#include <Delegate.h>
 
 #if defined(min)
 #undef min
@@ -58,7 +59,10 @@ void Part2::Initialize()
 	uint32_t mainWindowWidth = 1024, mainWindowHeight = 768;
 
 	m_Viewport = CD3DX12_VIEWPORT(0.f, 0.f, static_cast<float>(mainWindowWidth), static_cast<float>(mainWindowHeight));
-	m_FoV = 45.f;
+	m_FoV = 0.7853981634f;
+	m_ZMin = 0.1f;
+	m_ZMax = 100.f;
+	m_AspectRatio = 1024 / 768.f; // TODO change this to dynamic
 
 	// Initialize main render window
 	D3D12GEPUtils::D3D12Window::D3D12WindowInitInput windowInitInput = {
@@ -223,8 +227,7 @@ void Part2::LoadContent()
 	const Eigen::Vector4f upDirection = Eigen::Vector4f(0, 1, 0, 0);
 	m_ViewMatrix = GEPUtils::Geometry::LookAt(eyePosition, focusPoint, upDirection);
 	// Initialize the Projection Matrix
-	m_AspectRatio = 1024 / 768.f; // TODO change this to dynamic
-	m_ProjMatrix = GEPUtils::Geometry::Perspective(0.1f, 100.f, m_AspectRatio, 157.9186455f); //TODO make this dynamic
+	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_FoV); //TODO make this dynamic
 }
 
 void Part2::Run()
@@ -363,13 +366,13 @@ void Part2::QuitApplication()
 
 void Part2::OnMouseWheel(MouseWheelEventArgs& e)
 {
-	m_FoV -= e.WheelDelta / 10.f;
-	m_FoV = std::max(12.0f, std::min(m_FoV, 90.f)); // clamping
+	m_FoV -= e.WheelDelta / 1200.f;
+	m_FoV = std::max(0.2094395102f, std::min(m_FoV, 1.570796327f)); // clamping
 	char buffer[256];
 	::sprintf_s(buffer, "FoV: %f\n", m_FoV);
 	::OutputDebugStringA(buffer);
 
-	m_ProjMatrix = GEPUtils::Geometry::Perspective( 0.1f, 100.f, m_AspectRatio, 157.9186455f); // TODO make this dynamic
+	m_ProjMatrix = GEPUtils::Geometry::Perspective( m_ZMin, m_ZMax, m_AspectRatio, m_FoV); // TODO make this dynamic
 }
 
 void Part2::OnMousePressed(MouseButtonEventArgs& InEvent)

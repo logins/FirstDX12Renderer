@@ -1,0 +1,51 @@
+#ifndef Delegate_h__
+#define Delegate_h__
+
+namespace GEPUtils {
+
+	// Parameterless, Single Cast Delegate.
+	class SingleCastDelegate
+	{
+	public:
+		SingleCastDelegate() : m_ObjPtr(), m_StubPtr(0) { }
+
+		template <class T, void (T::* TMethod)()>
+		static SingleCastDelegate FromMethod(T* object_ptr)
+		{
+			SingleCastDelegate d;
+			d.m_ObjPtr = object_ptr;
+			d.m_StubPtr = &CreateMethodStub<T, TMethod>;
+			return d;
+		}
+
+		void Trigger() const
+		{
+			return (*m_StubPtr)(m_ObjPtr);
+		}
+
+
+	private:
+		// typedef is a construct that associates a name to a type, it will just ease the reading of a definition.
+		// In this case we are using the syntax to create a name for a function pointer.
+		typedef void (*StubType)(void* m_ObjPtr); 
+		// By using this, writing: 
+		//	StubType m_StubPtr 
+		// will compile the same as: 
+		//	void (*m_StubPtr)(void* m_ObjPtr)
+		// which is a function pointer.
+		
+
+		void* m_ObjPtr;
+		StubType m_StubPtr;
+
+		template <class T, void (T::* TMethod)()>
+		static void CreateMethodStub(void* object_ptr)
+		{
+			T* p = static_cast<T*>(object_ptr);
+			return (p->*TMethod)();
+		}
+
+	};
+
+}
+#endif // Delegate_h__
