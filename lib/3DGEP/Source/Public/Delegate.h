@@ -66,24 +66,29 @@ namespace GEPUtils {
 		template <class T, void (T::* InMemberFn)(PARAMS...)>
 		void Add(T* InObj)
 		{
-			m_InvocationList.push_back(typename InvocationElement(InObj, CreateMemberFnStub<T, InMemberFn>));
+			m_InvocationList.push_back(typename InvocationElement(InObj, GetStubFromMemberFunction<T, InMemberFn>));
 		}
 
 		void Broadcast(PARAMS... InArgs) const 
 		{
 			for (auto& CurrentInvocElement : m_InvocationList)
 			{
-				// Call the function, on the corresponding object, with the given params
+				// Call the function, on the corresponding object, with the given arguments
 				(*(CurrentInvocElement.Stub))(CurrentInvocElement.ObjPtr, InArgs...); 
 			}
 		}
 
 	private:
 
+		// Note: A non-static member function always hides an implicit parameter, a pointer to the objects it belongs.
+		// That is the famous "this" reference we can use inside C++ methods.
+		// Source: https://isocpp.org/wiki/faq/pointers-to-members#addr-of-memfn
+		// The following is a free function pointer definition, which can also be used to store non-static member functions (because they are usually different!!). 
+		// The trick is stating an object pointer as the first parameter, so it can be used with the usual member function call, like shown in Broadcast( .. ).
 		using StubType = void (*)(void* InObjPtr, PARAMS...);
 
 		template <class T, void (T::* InMemberFn)(PARAMS...)>
-		static void CreateMemberFnStub(void* InObj, PARAMS... InParams)
+		static void GetStubFromMemberFunction(void* InObj, PARAMS... InParams)
 		{
 			T* objCastedT = static_cast<T*>(InObj);
 			return (objCastedT->*InMemberFn)(InParams...);
