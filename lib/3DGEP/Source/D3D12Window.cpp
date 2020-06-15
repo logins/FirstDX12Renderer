@@ -36,7 +36,17 @@ namespace D3D12GEPUtils
 
 		m_RTVDescriptorHeap = D3D12GEPUtils::CreateDescriptorHeap(m_CurrentDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, m_DefaultBufferCount);
 
+		// Create Descriptor Heap for the DepthStencil View
+		D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {}; // Note: DepthStencil View requires storage in a heap even if we are going to use only 1 view
+		dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+		dsvHeapDesc.NumDescriptors = 1;
+		dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		dsvHeapDesc.NodeMask = 0;
+		D3D12GEPUtils::ThrowIfFailed(m_CurrentDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+
 		UpdateRenderTargetViews();
+
+		UpdateDepthStencil();
 
 		m_IsInitialized = true;
 
@@ -70,8 +80,8 @@ namespace D3D12GEPUtils
 		WaitForFenceValue(m_Fence, m_FrameFenceValues[m_CurrentBackBufferIndex], m_FenceEvent);
 	}
 
-	ComPtr<ID3D12GraphicsCommandList> D3D12Window::ResetCmdListWithCurrentAllocator()
-	{
+	ComPtr<ID3D12GraphicsCommandList2> D3D12Window::ResetCmdListWithCurrentAllocator()
+{
 		ID3D12CommandAllocator* currentCmdAllocator = m_CmdAllocators[m_CurrentBackBufferIndex].Get();
 		// We assume that the current allocator can be reset (all the commands previously queued in it have to be completed)
 		// and the corresponding command list was closed.
@@ -87,6 +97,11 @@ namespace D3D12GEPUtils
 		return CD3DX12_CPU_DESCRIPTOR_HANDLE(
 			m_RTVDescriptorHeap->GetCPUDescriptorHandleForHeapStart(),
 			m_CurrentBackBufferIndex, m_RTVDescIncrementSize);
+	}
+
+	D3D12_CPU_DESCRIPTOR_HANDLE D3D12Window::GetCuttentDSVDescHandle()
+	{
+		return m_DSVHeap->GetCPUDescriptorHandleForHeapStart();
 	}
 
 	void D3D12Window::SetFullscreenState(bool InNowFullScreen)
@@ -139,8 +154,8 @@ namespace D3D12GEPUtils
 	void D3D12Window::Resize(uint32_t InNewWidth, uint32_t InNewHeight)
 	{
 		// Don't allow 0 size swap chain buffers
-		InNewWidth = std::max(1u, InNewWidth);
-		InNewHeight = std::max(1u, InNewHeight);
+		m_FrameWidth = std::max(1u, InNewWidth);
+		M_FrameHeight = std::max(1u, InNewHeight);
 
 		// Flush GPU to ensure no commands are "in-flight" on the backbuffers
 		D3D12GEPUtils::FlushCmdQueue(m_CommandQueue, m_Fence, m_FenceEvent, m_LastSeenFenceValue);
@@ -155,13 +170,14 @@ namespace D3D12GEPUtils
 		// Resizing swapchain and relative backbuffers' descriptor heap
 		DXGI_SWAP_CHAIN_DESC swapchain_desc = {};
 		ThrowIfFailed(m_SwapChain->GetDesc(&swapchain_desc)); // Maintain previous swapchain settings after resizing
-		ThrowIfFailed(m_SwapChain->ResizeBuffers(m_DefaultBufferCount, InNewWidth, InNewHeight, swapchain_desc.BufferDesc.Format, swapchain_desc.Flags));
+		ThrowIfFailed(m_SwapChain->ResizeBuffers(m_DefaultBufferCount, m_FrameWidth, M_FrameHeight, swapchain_desc.BufferDesc.Format, swapchain_desc.Flags));
 		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 		UpdateRenderTargetViews();
 
-		// TODO Update Viewport
-
 		// TODO Update DepthStencil
+		UpdateDepthStencil();
+
+		// Note: Viewport will be updated by the Application, that in this case acts as a "frame director"
 	}
 
 	void D3D12Window::CreateHWND(const wchar_t* InWindowClassName, HINSTANCE InHInstance, const wchar_t* InWindowTitle, uint32_t width, uint32_t height)
@@ -242,6 +258,20 @@ namespace D3D12GEPUtils
 
 		// Cast to swapchain 4 and assign to member variable
 		ThrowIfFailed(swapChain1.As(&m_SwapChain));
+	}
+
+	void D3D12Window::UpdateDepthStencil()
+	{
+		// Allocate DepthStencil resource in GPU
+		D3D12_CLEAR_VALUE optimizedClearValue = {};
+		optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
+		optimizedClearValue.DepthStencil = { 1.f, 0 }; 
+		// Note: passing the same address of ID3DResource of m_DSBuffer to CreateDepthStencilCommittedResource on a second call of this function
+		// will actually replace (update) the committed resource on the GPU (and so it will recreate the corresponding heap)
+		D3D12GEPUtils::CreateDepthStencilCommittedResource(m_CurrentDevice, m_DSBuffer.GetAddressOf(), m_FrameWidth, M_FrameHeight,
+			D3D12_RESOURCE_STATE_DEPTH_WRITE, &optimizedClearValue);
+		// Need to update the view pointing to the updated resource
+		D3D12GEPUtils::CreateDepthStencilView(m_CurrentDevice, m_DSBuffer.Get(), m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
 	}
 
 	void D3D12Window::UpdateRenderTargetViews()

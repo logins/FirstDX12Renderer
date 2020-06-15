@@ -34,6 +34,23 @@ int main()
 
 }
 
+void Part2::SetFoV(float InFoV)
+{
+	m_FoV = InFoV;
+	char buffer[256];
+	::sprintf_s(buffer, "FoV: %f\n", m_FoV);
+	::OutputDebugStringA(buffer);
+	// Projection Matrix needs updating
+	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_FoV);
+}
+
+void Part2::SetAspectRatio(float InAspectRatio)
+{
+	m_AspectRatio = InAspectRatio;
+	// Projection Matrix needs updating
+	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_FoV);
+}
+
 Part2* Part2::m_Instance; // Necessary (as standard 9.4.2.2 specifies) definition of the singleton instance
 
 Part2* Part2::Get()
@@ -59,11 +76,10 @@ void Part2::Initialize()
 	uint32_t mainWindowWidth = 1024, mainWindowHeight = 768;
 
 	m_Viewport = CD3DX12_VIEWPORT(0.f, 0.f, static_cast<float>(mainWindowWidth), static_cast<float>(mainWindowHeight));
-	m_FoV = 0.7853981634f;
 	m_ZMin = 0.1f;
 	m_ZMax = 100.f;
-	m_AspectRatio = 1024 / 768.f; // TODO change this to dynamic
-
+	SetAspectRatio(mainWindowWidth / static_cast<float>(mainWindowHeight));
+	SetFoV(0.7853981634f);
 	// Initialize main render window
 	D3D12GEPUtils::D3D12Window::D3D12WindowInitInput windowInitInput = {
 		L"DX12WindowClass", L"Part2 Main Window",
@@ -83,8 +99,8 @@ void Part2::OnLeftMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 {
 	Eigen::Transform<float, 3, Eigen::Affine> tr; 
 	tr.setIdentity();
-	tr.rotate(Eigen::AngleAxisf(-InDeltaX / 1024.f, Eigen::Vector3f::UnitY())) //TODO set variable window size
-		.rotate(Eigen::AngleAxisf(-InDeltaY / 768.f, Eigen::Vector3f::UnitX()));
+	tr.rotate(Eigen::AngleAxisf(-InDeltaX / static_cast<float>(m_MainWindow.GetFrameWidth()), Eigen::Vector3f::UnitY()))
+		.rotate(Eigen::AngleAxisf(-InDeltaY / static_cast<float>(m_MainWindow.GetFrameHeight()), Eigen::Vector3f::UnitX()));
 	
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
 }
@@ -93,7 +109,7 @@ void Part2::OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 {
 	Eigen::Transform<float, 3, Eigen::Affine> tr; 
 	tr.setIdentity();
-	tr.translate(Eigen::Vector3f(InDeltaX/1024.f, -InDeltaY/768.f, 0)); //TODO store window sizes
+	tr.translate(Eigen::Vector3f(InDeltaX/ static_cast<float>(m_MainWindow.GetFrameWidth()), -InDeltaY/ static_cast<float>(m_MainWindow.GetFrameHeight()), 0));
 	
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
 }
@@ -120,13 +136,7 @@ void Part2::LoadContent()
 	m_IndexBufferView.SizeInBytes = sizeof(m_IndexData);
 	m_IndexBufferView.Format = DXGI_FORMAT_R16_UINT; // Single channel 16 bits, because WORD = unsigned short = 2 bytes = 16 bits
 
-	// Create Descriptor Heap for the DepthStencil View
-	D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {}; // Note: DepthStencil View requires storage in a heap even if we are going to use only 1 view
-	dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
-	dsvHeapDesc.NumDescriptors = 1;
-	dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
-	dsvHeapDesc.NodeMask = 0;
-	D3D12GEPUtils::ThrowIfFailed(m_GraphicsDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+	
 
 	// --- Shader Loading ---
 	// Note: to generate the .cso file I will be using the offline method, using fxc.exe integrated in visual studio (but downloadable separately).
@@ -209,14 +219,6 @@ void Part2::LoadContent()
 	D3D12GEPUtils::SignalCmdQueue(m_CmdQueue, m_Fence, loadContentFenceValue);
 	D3D12GEPUtils::WaitForFenceValue(m_Fence, loadContentFenceValue, m_FenceEvent);
 
-	// Allocate DepthStencil resource in GPU
-	D3D12_CLEAR_VALUE optimizedClearValue = {};
-	optimizedClearValue.Format = DXGI_FORMAT_D32_FLOAT;
-	optimizedClearValue.DepthStencil = { 1.f, 0 };
-	D3D12GEPUtils::CreateDepthStencilCommittedResource(m_GraphicsDevice, m_DSBuffer.GetAddressOf(), 1024, 768,
-		D3D12_RESOURCE_STATE_DEPTH_WRITE, &optimizedClearValue);
-	// Update DepthStencil View
-	D3D12GEPUtils::CreateDepthStencilView(m_GraphicsDevice, m_DSBuffer.Get(), m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
 
 
 	// Initialize the Model Matrix
@@ -227,7 +229,7 @@ void Part2::LoadContent()
 	const Eigen::Vector4f upDirection = Eigen::Vector4f(0, 1, 0, 0);
 	m_ViewMatrix = GEPUtils::Geometry::LookAt(eyePosition, focusPoint, upDirection);
 	// Initialize the Projection Matrix
-	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_FoV); //TODO make this dynamic
+	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_FoV);
 }
 
 void Part2::Run()
@@ -290,7 +292,7 @@ void Part2::Render()
 {
 	auto backBuffer = m_MainWindow.GetCurrentBackbuffer();
 
-	ID3D12GraphicsCommandList* cmdList = m_MainWindow.ResetCmdListWithCurrentAllocator().Get();
+	ID3D12GraphicsCommandList2* cmdList = m_MainWindow.ResetCmdListWithCurrentAllocator().Get();
 
 	// Clear render target and depth stencil
 	{
@@ -304,10 +306,12 @@ void Part2::Render()
 		cmdList->ResourceBarrier(1, &transitionBarrier);
 
 		FLOAT clearColor[] = { .4f, .6f, .9f, 1.f };
-		cmdList->ClearRenderTargetView(m_MainWindow.GetCurrentRTVDescHandle(), clearColor, 0, nullptr);
+		D3D12GEPUtils::ClearRTV(cmdList, m_MainWindow.GetCurrentRTVDescHandle(), clearColor);
+
 		// Note: Clearing Render Target and Depth Stencil is a good practice, but in this case is also essential.
 		// Without clearing the DepthStencilView, the rasterizer would not be able to use it!!
-		cmdList->ClearDepthStencilView(m_DSVHeap->GetCPUDescriptorHandleForHeapStart(), D3D12_CLEAR_FLAG_DEPTH, 1.0f, 0, 0, nullptr);
+
+		D3D12GEPUtils::ClearDepth(cmdList, m_MainWindow.GetCuttentDSVDescHandle());
 	}
 
 	// Fill Command List Pipeline-related Data
@@ -322,7 +326,7 @@ void Part2::Render()
 		cmdList->RSSetViewports(1, &m_Viewport);
 		cmdList->RSSetScissorRects(1, &m_ScissorRect);
 
-		cmdList->OMSetRenderTargets(1, &m_MainWindow.GetCurrentRTVDescHandle(), FALSE, &m_DSVHeap->GetCPUDescriptorHandleForHeapStart());
+		cmdList->OMSetRenderTargets(1, &m_MainWindow.GetCurrentRTVDescHandle(), FALSE, &m_MainWindow.GetCuttentDSVDescHandle());
 		
 	}
 
@@ -366,13 +370,8 @@ void Part2::QuitApplication()
 
 void Part2::OnMouseWheel(MouseWheelEventArgs& e)
 {
-	m_FoV -= e.WheelDelta / 1200.f;
-	m_FoV = std::max(0.2094395102f, std::min(m_FoV, 1.570796327f)); // clamping
-	char buffer[256];
-	::sprintf_s(buffer, "FoV: %f\n", m_FoV);
-	::OutputDebugStringA(buffer);
-
-	m_ProjMatrix = GEPUtils::Geometry::Perspective( m_ZMin, m_ZMax, m_AspectRatio, m_FoV); // TODO make this dynamic
+	m_FoV-= e.WheelDelta / 1200.f;
+	SetFoV(std::max(0.2094395102f, std::min(m_FoV, 1.570796327f))); // clamping
 }
 
 void Part2::OnMousePressed(MouseButtonEventArgs& InEvent)
@@ -409,16 +408,22 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 {
 	// Preventing application to process events when all the necessery D3D12 objects are not initialized yet
 	// Note: Do Not Return 0, otherwise HWND window creation will fail with no message!!
-	if (!m_IsInitialized)
+	if (!m_IsInitialized) {
+		if (InMsg == WM_CREATE) {
+			// Listen to next time mouse leaves window
+			TRACKMOUSEEVENT trackEvent{ sizeof(TRACKMOUSEEVENT),TME_LEAVE, InHWND, 0 };
+			::TrackMouseEvent(&trackEvent);
+		}
 		return ::DefWindowProcW(InHWND, InMsg, InWParam, InLParam);
+	}
 
 	bool altKeyDown = (::GetAsyncKeyState(VK_MENU) & 0x8000) != 0;
 	switch (InMsg)
 	{
-		case WM_PAINT:
-			m_PaintStarted = true;
+	case WM_PAINT:
+		m_PaintStarted = true;
 
-			break;
+	break;
 	case WM_SYSKEYDOWN: // When a system key is pressed (e.g. Alt key)
 	case  WM_KEYDOWN: // When a non-system key is pressed (e.g. v key)
 	{
@@ -478,6 +483,22 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 		OnMouseReleased(MouseButtonEventArgs{ GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam), button });
 		break;
 	}	
+	case WM_MOUSELEAVE: // When mouse leaves window
+	{
+		m_MouseLeftDrag = false;
+		m_MouseRightDrag = false;
+		// Listen to next time mouse enters the window
+		TRACKMOUSEEVENT trackEvent{ sizeof(TRACKMOUSEEVENT),TME_NONCLIENT, InHWND, 0 };
+		::TrackMouseEvent(&trackEvent);
+		break;
+	}
+	case WM_NCMOUSELEAVE: // When mouse re-enters window
+	{
+		// Listen to next time mouse leaves window
+		TRACKMOUSEEVENT trackEvent{ sizeof(TRACKMOUSEEVENT),TME_LEAVE, InHWND, 0 };
+		::TrackMouseEvent(&trackEvent);
+		break;
+	}
 	case WM_SIZE:
 	{
 		RECT clientRect = {};
@@ -485,6 +506,10 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 		int32_t newWidth = clientRect.right - clientRect.left;
 		int32_t newHeight = clientRect.bottom - clientRect.top;
 		m_MainWindow.Resize(newWidth, newHeight);
+		// Update ViewPort here since the application acts as a "frame director" here
+		m_Viewport.Width = newWidth;
+		m_Viewport.Height = newHeight;
+		SetAspectRatio(newWidth / static_cast<float>(newHeight));
 		break;
 	}
 	case WM_DESTROY: // Called when X is pressed at the top right

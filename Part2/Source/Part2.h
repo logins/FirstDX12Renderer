@@ -36,6 +36,9 @@ private:
 	void Update();
 	void Render();
 
+	void SetFoV(float InFoV);
+	void SetAspectRatio(float InAspectRatio);
+
 	// WndProc functions need to be static, so we have to create a wrapper to transfer the event to the singleton's internal wndProc
 	static LRESULT CALLBACK MainWndProc(HWND InHWND, UINT InMsg, WPARAM InWParam, LPARAM InLParam) {
 		return Get()->MainWndProc_Internal(InHWND, InMsg, InWParam, InLParam);
@@ -59,10 +62,6 @@ private:
 	// Index buffer for the cube
 	ComPtr<ID3D12Resource> m_IndexBuffer;
 	D3D12_INDEX_BUFFER_VIEW m_IndexBufferView;
-	// DepthStencil buffer
-	ComPtr<ID3D12Resource> m_DSBuffer;
-	// DS buffer views need to be contained in a heap even if we use just one
-	ComPtr<ID3D12DescriptorHeap> m_DSVHeap;
 	// Root Signature
 	ComPtr<ID3D12RootSignature> m_RootSignature;
 	// Pipeline State Object
@@ -74,7 +73,6 @@ private:
 	float m_FoV = 0.f;
 	float m_ZMin = 0.f, m_ZMax = 0.f;
 	float m_AspectRatio = 0;
-
 	// Model, View, Projection Matrices
 	Eigen::Matrix4f m_ModelMatrix;
 	Eigen::Matrix4f m_ViewMatrix;

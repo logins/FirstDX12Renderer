@@ -40,10 +40,12 @@ namespace D3D12GEPUtils {
 		ComPtr<ID3D12Resource> GetBackbufferAtIndex(uint32_t InIdx) { InIdx < m_DefaultBufferCount ? m_BackBuffers[InIdx] : nullptr; }
 
 		// Current allocator will be reset, then the commandlist will be reset and bound to the current allocator
-		ComPtr<ID3D12GraphicsCommandList> ResetCmdListWithCurrentAllocator();
+		ComPtr<ID3D12GraphicsCommandList2> ResetCmdListWithCurrentAllocator();
 
 		// Returns the CPU descriptor handle of the render target view of the backbuffer at the current index
 		CD3DX12_CPU_DESCRIPTOR_HANDLE GetCurrentRTVDescHandle();
+
+		D3D12_CPU_DESCRIPTOR_HANDLE GetCuttentDSVDescHandle();
 
 		inline bool IsFullScreen() { return m_IsFullScreen; };
 		void SetFullscreenState(bool InNowFullScreen);
@@ -52,6 +54,8 @@ namespace D3D12GEPUtils {
 		void SetVSync(bool InNowEnabled) { m_VSync = InNowEnabled; }
 
 		void Resize(uint32_t InNewWidth, uint32_t InNewHeight);
+		UINT GetFrameWidth() const { return m_FrameWidth; }
+		UINT GetFrameHeight() const { return M_FrameHeight; }
 	private:
 
 		void RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName, WNDPROC InWndProc);
@@ -61,6 +65,7 @@ namespace D3D12GEPUtils {
 
 		void CreateSwapChain(ComPtr<ID3D12CommandQueue> InCmdQueue, uint32_t InBufWidth, uint32_t InBufHeight);
 
+		void UpdateDepthStencil();
 		void UpdateRenderTargetViews();
 
 
@@ -74,13 +79,17 @@ namespace D3D12GEPUtils {
 		uint64_t m_LastSeenFenceValue = 0;
 		HWND m_HWND;
 		RECT m_WindowModeRect;
+		UINT m_FrameWidth = 1, M_FrameHeight = 1;
 		ComPtr<IDXGISwapChain4> m_SwapChain;
 		ComPtr<ID3D12Resource> m_BackBuffers[m_DefaultBufferCount];
 		ComPtr<ID3D12CommandAllocator> m_CmdAllocators[m_DefaultBufferCount];
-		ComPtr<ID3D12GraphicsCommandList> m_CmdList;
+		ComPtr<ID3D12GraphicsCommandList2> m_CmdList;
 		uint64_t m_FrameFenceValues[m_DefaultBufferCount] = { 0 }; // Note: important to initialize every member variable, otherwise it could contain garbage!
 		UINT m_CurrentBackBufferIndex = 0;
 		ComPtr<ID3D12DescriptorHeap> m_RTVDescriptorHeap;
+		ComPtr<ID3D12Resource> m_DSBuffer;
+		// DS buffer views need to be contained in a heap even if we use just one
+		ComPtr<ID3D12DescriptorHeap> m_DSVHeap;
 		UINT m_RTVDescIncrementSize = 0;
 		bool m_IsFullScreen = false;
 		bool m_VSync = false;

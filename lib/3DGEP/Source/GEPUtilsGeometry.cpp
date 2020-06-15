@@ -38,8 +38,8 @@ namespace GEPUtils {
 			Eigen::Transform<Scalar, 3, Eigen::Projective> tr;
 			tr.matrix().setZero();
 			assert(InZFar > InZNear);
-			Scalar w = 1.0f / (InAspectRatio*std::tan(InFovYRad / 2.f));
 			Scalar h = 1.0f / std::tan(InFovYRad / 2.f);
+			Scalar w = 1.0f / (InAspectRatio*std::tan(InFovYRad / 2.f));
 			Scalar Q = InZFar / (InZFar - InZNear);
 			tr(0, 0) = w;
 			tr(1, 1) = h;
