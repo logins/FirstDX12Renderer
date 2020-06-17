@@ -221,9 +221,9 @@ void Part2::LoadContent()
 	// Initialize the Model Matrix
 	m_ModelMatrix = Eigen::Matrix4f::Identity();
 	// Initialize the View Matrix
-	const Eigen::Vector4f eyePosition = Eigen::Vector4f(0, 0, -10, 1);
-	const Eigen::Vector4f focusPoint = Eigen::Vector4f(0, 0, 0, 1);
-	const Eigen::Vector4f upDirection = Eigen::Vector4f(0, 1, 0, 0);
+	const Eigen::Vector3f eyePosition = Eigen::Vector3f(0, 0, -10);
+	const Eigen::Vector3f focusPoint = Eigen::Vector3f(0, 0, 0);
+	const Eigen::Vector3f upDirection = Eigen::Vector3f(0, 1, 0);
 	m_ViewMatrix = GEPUtils::Geometry::LookAt(eyePosition, focusPoint, upDirection);
 	// Initialize the Projection Matrix
 	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_FoV);
