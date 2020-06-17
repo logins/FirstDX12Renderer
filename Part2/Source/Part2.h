@@ -51,10 +51,8 @@ private:
 	static const uint8_t m_NumCmdAllocators = 3;
 
 	ComPtr<ID3D12Device2> m_GraphicsDevice;
-	ComPtr<ID3D12CommandQueue> m_CmdQueue;
-	ComPtr<ID3D12Fence> m_Fence;
-	HANDLE m_FenceEvent;
-	D3D12GEPUtils::D3D12Window m_MainWindow;
+	std::shared_ptr<D3D12GEPUtils::D3D12CommandQueue> m_CmdQueue;
+	std::shared_ptr<D3D12GEPUtils::D3D12Window> m_MainWindow;
 
 	// Vertex buffer for the cube
 	ComPtr<ID3D12Resource> m_VertexBuffer;

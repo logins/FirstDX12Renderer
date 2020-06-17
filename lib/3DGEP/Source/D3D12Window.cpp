@@ -11,13 +11,9 @@ namespace D3D12GEPUtils
 	{
 		HINSTANCE InHInstance = ::GetModuleHandle(NULL); //Created windows will always refer to the current application instance
 		m_CurrentDevice = InInitParams.graphicsDevice;
-		m_CommandQueue = InInitParams.CmdQueue;
-		m_Fence = InInitParams.Fence;
-		m_FenceEvent = D3D12GEPUtils::CreateFenceEventHandle();
-		for (uint32_t i = 0; i < m_DefaultBufferCount; i++)
-		{
-			m_CmdAllocators[i] = D3D12GEPUtils::CreateCommandAllocator(m_CurrentDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
-		}
+		
+		m_CmdQueue = InInitParams.CmdQueue;
+		
 		// RTV Descriptor Size is vendor-dependent.
 		// We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
 		m_RTVDescIncrementSize = m_CurrentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -28,11 +24,9 @@ namespace D3D12GEPUtils
 
 		CreateHWND(InInitParams.WindowClassName, InHInstance, InInitParams.WindowTitle, InInitParams.WinWidth, InInitParams.WinHeight);
 
-		CreateSwapChain(InInitParams.CmdQueue, InInitParams.BufWidth, InInitParams.BufHeight);
+		CreateSwapChain(m_CmdQueue->GetD3D12CmdQueue(), InInitParams.BufWidth, InInitParams.BufHeight);
 
 		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
-
-		m_CmdList = D3D12GEPUtils::CreateCommandList(m_CurrentDevice, m_CmdAllocators[m_CurrentBackBufferIndex], D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 		m_RTVDescriptorHeap = D3D12GEPUtils::CreateDescriptorHeap(m_CurrentDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, m_DefaultBufferCount);
 
@@ -59,7 +53,7 @@ namespace D3D12GEPUtils
 
 	void D3D12Window::Close()
 	{
-		::CloseHandle(m_FenceEvent);
+		// TODO Any other objects to take care of on window close?
 	}
 
 	void D3D12Window::Present()
@@ -68,8 +62,7 @@ namespace D3D12GEPUtils
 		ThrowIfFailed(m_SwapChain->Present(IsVSyncEnabled(), presentFlags));
 
 		// Signal fence for the current backbuffer "on the fly"
-		D3D12GEPUtils::SignalCmdQueue(m_CommandQueue, m_Fence, m_LastSeenFenceValue);
-		m_FrameFenceValues[m_CurrentBackBufferIndex] = m_LastSeenFenceValue;
+		m_FrameFenceValues[m_CurrentBackBufferIndex] = m_CmdQueue->Signal();
 
 		// Update current backbuffer index and wait for the present operation to be finished (it will when the fence value will be reached)
 		// Note: the present operation changed the swapchain's current backbuffer index to the next available !
@@ -77,19 +70,7 @@ namespace D3D12GEPUtils
 
 		// Note: we are blocking up until the NEW command allocator (obtained with the buffer index After presenting the backbuffer)
 		// finished executing the old commands
-		WaitForFenceValue(m_Fence, m_FrameFenceValues[m_CurrentBackBufferIndex], m_FenceEvent);
-	}
-
-	ComPtr<ID3D12GraphicsCommandList2> D3D12Window::ResetCmdListWithCurrentAllocator()
-{
-		ID3D12CommandAllocator* currentCmdAllocator = m_CmdAllocators[m_CurrentBackBufferIndex].Get();
-		// We assume that the current allocator can be reset (all the commands previously queued in it have to be completed)
-		// and the corresponding command list was closed.
-		currentCmdAllocator->Reset();
-
-		m_CmdList->Reset(currentCmdAllocator, nullptr); // A dummy initial pipeline state will be set by the runtime
-
-		return m_CmdList;
+		m_CmdQueue->WaitForFenceValue(m_FrameFenceValues[m_CurrentBackBufferIndex]);
 	}
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE D3D12Window::GetCurrentRTVDescHandle()
@@ -158,7 +139,7 @@ namespace D3D12GEPUtils
 		M_FrameHeight = std::max(1u, InNewHeight);
 
 		// Flush GPU to ensure no commands are "in-flight" on the backbuffers
-		D3D12GEPUtils::FlushCmdQueue(m_CommandQueue, m_Fence, m_FenceEvent, m_LastSeenFenceValue);
+		m_CmdQueue->Flush();
 
 		// All the backbuffers references must be released before resizing the swapchain
 		for (int32_t i = 0; i < m_DefaultBufferCount; i++)
@@ -174,7 +155,6 @@ namespace D3D12GEPUtils
 		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 		UpdateRenderTargetViews();
 
-		// TODO Update DepthStencil
 		UpdateDepthStencil();
 
 		// Note: Viewport will be updated by the Application, that in this case acts as a "frame director"
