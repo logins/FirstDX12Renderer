@@ -22,10 +22,12 @@ namespace D3D12GEPUtils {
 			const wchar_t* WindowClassName; const wchar_t* WindowTitle;
 			ComPtr<ID3D12Device2> graphicsDevice;
 			uint32_t WinWidth; uint32_t WinHeight;
-			uint32_t BufWidth; uint32_t BufHeight;
-			std::shared_ptr<D3D12GEPUtils::D3D12CommandQueue> CmdQueue; WNDPROC WndProc;
+			uint32_t BufWidth; uint32_t BufHeight; WNDPROC WndProc;
 		};
-		D3D12Window() {};
+
+		D3D12Window() = delete;
+		D3D12Window(D3D12GEPUtils::D3D12CommandQueue& InCmdQueue) : m_CmdQueue(InCmdQueue) {};
+
 		void Initialize(D3D12WindowInitInput InInitParams);
 
 		void ShowWindow();
@@ -70,7 +72,7 @@ namespace D3D12GEPUtils {
 		static const uint32_t m_DefaultBufferCount = 3;
 
 		ComPtr<ID3D12Device2> m_CurrentDevice;
-		std::shared_ptr<D3D12GEPUtils::D3D12CommandQueue> m_CmdQueue;
+		D3D12GEPUtils::D3D12CommandQueue& m_CmdQueue;
 		HWND m_HWND;
 		RECT m_WindowModeRect;
 		UINT m_FrameWidth = 1, M_FrameHeight = 1;

@@ -11,9 +11,7 @@ namespace D3D12GEPUtils
 	{
 		HINSTANCE InHInstance = ::GetModuleHandle(NULL); //Created windows will always refer to the current application instance
 		m_CurrentDevice = InInitParams.graphicsDevice;
-		
-		m_CmdQueue = InInitParams.CmdQueue;
-		
+				
 		// RTV Descriptor Size is vendor-dependent.
 		// We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
 		m_RTVDescIncrementSize = m_CurrentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -24,7 +22,7 @@ namespace D3D12GEPUtils
 
 		CreateHWND(InInitParams.WindowClassName, InHInstance, InInitParams.WindowTitle, InInitParams.WinWidth, InInitParams.WinHeight);
 
-		CreateSwapChain(m_CmdQueue->GetD3D12CmdQueue(), InInitParams.BufWidth, InInitParams.BufHeight);
+		CreateSwapChain(m_CmdQueue.GetD3D12CmdQueue(), InInitParams.BufWidth, InInitParams.BufHeight);
 
 		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
@@ -62,7 +60,7 @@ namespace D3D12GEPUtils
 		ThrowIfFailed(m_SwapChain->Present(IsVSyncEnabled(), presentFlags));
 
 		// Signal fence for the current backbuffer "on the fly"
-		m_FrameFenceValues[m_CurrentBackBufferIndex] = m_CmdQueue->Signal();
+		m_FrameFenceValues[m_CurrentBackBufferIndex] = m_CmdQueue.Signal();
 
 		// Update current backbuffer index and wait for the present operation to be finished (it will when the fence value will be reached)
 		// Note: the present operation changed the swapchain's current backbuffer index to the next available !
@@ -70,7 +68,7 @@ namespace D3D12GEPUtils
 
 		// Note: we are blocking up until the NEW command allocator (obtained with the buffer index After presenting the backbuffer)
 		// finished executing the old commands
-		m_CmdQueue->WaitForFenceValue(m_FrameFenceValues[m_CurrentBackBufferIndex]);
+		m_CmdQueue.WaitForFenceValue(m_FrameFenceValues[m_CurrentBackBufferIndex]);
 	}
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE D3D12Window::GetCurrentRTVDescHandle()
@@ -139,7 +137,7 @@ namespace D3D12GEPUtils
 		M_FrameHeight = std::max(1u, InNewHeight);
 
 		// Flush GPU to ensure no commands are "in-flight" on the backbuffers
-		m_CmdQueue->Flush();
+		m_CmdQueue.Flush();
 
 		// All the backbuffers references must be released before resizing the swapchain
 		for (int32_t i = 0; i < m_DefaultBufferCount; i++)

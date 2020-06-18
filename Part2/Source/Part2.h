@@ -17,7 +17,7 @@ public:
 	void Run();
 private:
 	// Singleton : Default constructor, copy constructor and assingment operators to be private
-	Part2() {};
+	Part2() : m_MainWindow(m_CmdQueue) {};
 	Part2(const Part2&);
 	Part2& operator=(const Part2&);
 	void QuitApplication();
@@ -51,8 +51,10 @@ private:
 	static const uint8_t m_NumCmdAllocators = 3;
 
 	ComPtr<ID3D12Device2> m_GraphicsDevice;
-	std::shared_ptr<D3D12GEPUtils::D3D12CommandQueue> m_CmdQueue;
-	std::shared_ptr<D3D12GEPUtils::D3D12Window> m_MainWindow;
+
+	D3D12GEPUtils::D3D12CommandQueue m_CmdQueue;
+
+	D3D12GEPUtils::D3D12Window m_MainWindow;
 
 	// Vertex buffer for the cube
 	ComPtr<ID3D12Resource> m_VertexBuffer;
