@@ -8,6 +8,7 @@ This project wants to mainly showcase two topics:
   - Simplest example on how to use Direct3D 12 for real-time graphics applications (e.g. videogames).
   - Part1 executable project is the simplest, and it will show to instatiate and run a resizable D3D12 Window.
   - Part2 executable target will render a cube that can be rotated and moved upon mouse interaction.
+  - Part3 executable target will perform the same as Part2 but with a full graphics abstraction layer.
 
 
 >Note: This repo was tested in VisualStudio 2019 using FolderView Mode and CMake (Ninja generator + msvc compiler).
