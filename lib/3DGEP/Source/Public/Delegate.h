@@ -1,6 +1,8 @@
 #ifndef Delegate_h__
 #define Delegate_h__
 
+#include <list>
+
 namespace GEPUtils {
 
 	// Parameterless, Single Cast Delegate.

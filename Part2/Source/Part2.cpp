@@ -11,6 +11,10 @@
 #include <Windowsx.h> // For mouse macros
 #include <Delegate.h>
 
+
+#include "../../lib/3DGEP/Source/Graphics/Public/Device.h"
+#include "../../lib/3DGEP/Source/Graphics/D3D12/D3D12Device.h"
+
 #if defined(min)
 #undef min
 #endif
@@ -67,9 +71,12 @@ void Part2::Initialize()
 	ComPtr<IDXGIAdapter4> adapter = D3D12GEPUtils::GetMainAdapter(false);
 	// Note: Debug Layer needs to be created before creating the Device
 	D3D12GEPUtils::EnableDebugLayer();
-	m_GraphicsDevice = D3D12GEPUtils::CreateDevice(adapter);
 
-	m_CmdQueue.Init(m_GraphicsDevice, D3D12_COMMAND_LIST_TYPE_DIRECT);
+	m_PlatformAgnosticDevice = GEPUtils::Graphics::CreateDevice();
+
+	m_GraphicsDevice = static_cast<GEPUtils::Graphics::D3D12Device*>(m_PlatformAgnosticDevice.get())->GetInner();//D3D12GEPUtils::CreateDevice(adapter);
+
+	m_CmdQueue = std::make_unique<D3D12GEPUtils::D3D12CommandQueue>(*m_PlatformAgnosticDevice, GEPUtils::Graphics::COMMAND_LIST_TYPE::COMMAND_LIST_TYPE_DIRECT);// D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 	m_ScissorRect = CD3DX12_RECT(0l, 0l, LONG_MAX, LONG_MAX);
 
@@ -84,12 +91,12 @@ void Part2::Initialize()
 	// Initialize main render window
 	D3D12GEPUtils::D3D12Window::D3D12WindowInitInput windowInitInput = {
 		L"DX12WindowClass", L"Part2 Main Window",
-		m_GraphicsDevice,
+		*m_CmdQueue,
 		mainWindowWidth, mainWindowHeight, // Window sizes
 		mainWindowWidth, mainWindowHeight, // BackBuffer sizes
 		MainWndProc
 	};
-	m_MainWindow.Initialize(windowInitInput);
+	m_MainWindow = std::make_unique<D3D12GEPUtils::D3D12Window>(windowInitInput);
 
 	LoadContent();
 	
@@ -100,8 +107,8 @@ void Part2::OnLeftMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 {
 	Eigen::Transform<float, 3, Eigen::Affine> tr; 
 	tr.setIdentity();
-	tr.rotate(Eigen::AngleAxisf(-InDeltaX / static_cast<float>(m_MainWindow.GetFrameWidth()), Eigen::Vector3f::UnitY()))
-		.rotate(Eigen::AngleAxisf(-InDeltaY / static_cast<float>(m_MainWindow.GetFrameHeight()), Eigen::Vector3f::UnitX()));
+	tr.rotate(Eigen::AngleAxisf(-InDeltaX / static_cast<float>(m_MainWindow->GetFrameWidth()), Eigen::Vector3f::UnitY()))
+		.rotate(Eigen::AngleAxisf(-InDeltaY / static_cast<float>(m_MainWindow->GetFrameHeight()), Eigen::Vector3f::UnitX()));
 	
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
 }
@@ -110,14 +117,14 @@ void Part2::OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 {
 	Eigen::Transform<float, 3, Eigen::Affine> tr; 
 	tr.setIdentity();
-	tr.translate(Eigen::Vector3f(InDeltaX/ static_cast<float>(m_MainWindow.GetFrameWidth()), -InDeltaY/ static_cast<float>(m_MainWindow.GetFrameHeight()), 0));
+	tr.translate(Eigen::Vector3f(InDeltaX/ static_cast<float>(m_MainWindow->GetFrameWidth()), -InDeltaY/ static_cast<float>(m_MainWindow->GetFrameHeight()), 0));
 	
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
 }
 
 void Part2::LoadContent()
 {
-	ComPtr<ID3D12GraphicsCommandList2> loadContentCmdList = m_CmdQueue.GetAvailableCmdList();
+	ComPtr<ID3D12GraphicsCommandList2> loadContentCmdList = m_CmdQueue->GetAvailableCmdList();
 	// Upload vertex buffer data
 	ComPtr<ID3D12Resource> intermediateVertexBuffer;
 	D3D12GEPUtils::UpdateBufferResource(m_GraphicsDevice, loadContentCmdList, m_VertexBuffer.GetAddressOf(), intermediateVertexBuffer.GetAddressOf(),
@@ -212,9 +219,9 @@ void Part2::LoadContent()
 	D3D12GEPUtils::ThrowIfFailed(m_GraphicsDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
 	
 	// Executing command list and waiting for full execution
-	m_CmdQueue.ExecuteCmdList(loadContentCmdList);
+	m_CmdQueue->ExecuteCmdList(loadContentCmdList);
 
-	m_CmdQueue.Flush();
+	m_CmdQueue->Flush();
 
 	// Initialize the Model Matrix
 	m_ModelMatrix = Eigen::Matrix4f::Identity();
@@ -232,7 +239,7 @@ void Part2::Run()
 	if (!m_IsInitialized)
 		return;
 
-	m_MainWindow.ShowWindow();
+	m_MainWindow->ShowWindow();
 
 	// Application's main loop is based on received window messages, specifically WM_PAINT will trigger Update() and Render()
 	MSG windowMessage = {};
@@ -255,7 +262,6 @@ void Part2::OnMainWindowPaint()
 	// Window paint event will trigger game thread update and render methods (as we are in a simple single threaded example)
 	Update();
 
-	Render();
 }
 
 void Part2::Update()
@@ -265,6 +271,7 @@ void Part2::Update()
 	static std::chrono::high_resolution_clock clock;
 	auto t0 = clock.now();
 
+	Render();
 
 	frameCounter++;
 	auto t1 = clock.now();
@@ -285,9 +292,9 @@ void Part2::Update()
 
 void Part2::Render()
 {
-	auto backBuffer = m_MainWindow.GetCurrentBackbuffer();
+	auto backBuffer = m_MainWindow->GetCurrentBackbuffer();
 
-	ComPtr<ID3D12GraphicsCommandList2> cmdList = m_CmdQueue.GetAvailableCmdList();
+	ComPtr<ID3D12GraphicsCommandList2> cmdList = m_CmdQueue->GetAvailableCmdList();
 
 	// Clear render target and depth stencil
 	{
@@ -301,12 +308,12 @@ void Part2::Render()
 		cmdList->ResourceBarrier(1, &transitionBarrier);
 
 		FLOAT clearColor[] = { .4f, .6f, .9f, 1.f };
-		D3D12GEPUtils::ClearRTV(cmdList.Get(), m_MainWindow.GetCurrentRTVDescHandle(), clearColor);
+		D3D12GEPUtils::ClearRTV(cmdList.Get(), m_MainWindow->GetCurrentRTVDescHandle(), clearColor);
 
 		// Note: Clearing Render Target and Depth Stencil is a good practice, but in this case is also essential.
 		// Without clearing the DepthStencilView, the rasterizer would not be able to use it!!
 
-		D3D12GEPUtils::ClearDepth(cmdList.Get(), m_MainWindow.GetCuttentDSVDescHandle());
+		D3D12GEPUtils::ClearDepth(cmdList.Get(), m_MainWindow->GetCuttentDSVDescHandle());
 	}
 
 	// Fill Command List Pipeline-related Data
@@ -321,7 +328,7 @@ void Part2::Render()
 		cmdList->RSSetViewports(1, &m_Viewport);
 		cmdList->RSSetScissorRects(1, &m_ScissorRect);
 
-		cmdList->OMSetRenderTargets(1, &m_MainWindow.GetCurrentRTVDescHandle(), FALSE, &m_MainWindow.GetCuttentDSVDescHandle());
+		cmdList->OMSetRenderTargets(1, &m_MainWindow->GetCurrentRTVDescHandle(), FALSE, &m_MainWindow->GetCuttentDSVDescHandle());
 		
 	}
 
@@ -343,9 +350,9 @@ void Part2::Render()
 		cmdList->ResourceBarrier(1, &transitionBarrier);
 
 		// Mandatory for the command list to close before getting executed by the command queue
-		m_CmdQueue.ExecuteCmdList(cmdList);
+		m_CmdQueue->ExecuteCmdList(cmdList);
 
-		m_MainWindow.Present();
+		m_MainWindow->Present();
 
 	}
 }
@@ -353,9 +360,9 @@ void Part2::Render()
 void Part2::QuitApplication()
 {
 	// TODO make sure all the instantiated objects are cleaned up (see output log when closing application if there were some forgotten live objects)
-	m_MainWindow.Close();
+	m_MainWindow->Close();
 
-	m_CmdQueue.Flush();
+	m_CmdQueue->Flush();
 
 	::PostQuitMessage(0); // Causes the application to terminate
 }
@@ -422,7 +429,7 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 		switch (InWParam)
 		{
 		case 'V':
-			m_MainWindow.SetVSync(!m_MainWindow.IsVSyncEnabled());
+			m_MainWindow->SetVSync(!m_MainWindow->IsVSyncEnabled());
 			break;
 		case VK_ESCAPE:
 			QuitApplication();
@@ -431,7 +438,7 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 			if (altKeyDown)
 			{
 			case VK_F11:
-				m_MainWindow.SetFullscreenState(!m_MainWindow.IsFullScreen());
+				m_MainWindow->SetFullscreenState(!m_MainWindow->IsFullScreen());
 			}
 			break;
 		default:
@@ -497,7 +504,7 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 		::GetClientRect(InHWND, &clientRect);
 		int32_t newWidth = clientRect.right - clientRect.left;
 		int32_t newHeight = clientRect.bottom - clientRect.top;
-		m_MainWindow.Resize(newWidth, newHeight);
+		m_MainWindow->Resize(newWidth, newHeight);
 		// Update ViewPort here since the application acts as a "frame director" here
 		m_Viewport.Width = static_cast<FLOAT>(newWidth);
 		m_Viewport.Height = static_cast<FLOAT>(newHeight);

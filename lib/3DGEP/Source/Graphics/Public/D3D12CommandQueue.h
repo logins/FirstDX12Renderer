@@ -4,12 +4,15 @@
 #include <wrl.h>
 #include <d3d12.h>
 #include <queue> // For std::queue
+#include "CommandQueue.h"
 
 namespace D3D12GEPUtils {
 
-	class D3D12CommandQueue
+	class D3D12CommandQueue : public GEPUtils::Graphics::CommandQueue
 	{
 	public:
+
+		D3D12CommandQueue(class GEPUtils::Graphics::Device& InDevice, GEPUtils::Graphics::COMMAND_LIST_TYPE InCmdListType);
 
 		~D3D12CommandQueue();
 
@@ -17,15 +20,25 @@ namespace D3D12GEPUtils {
 
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> GetAvailableCmdList();
 
+		// Platform-agnostic version
+		virtual GEPUtils::Graphics::CommandList& GetAvailableCommandList() override;
+
 		uint64_t ExecuteCmdList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> InCmdList);
+
+		// Platform-agnostic version
+		virtual uint64_t ExecuteCmdList(GEPUtils::Graphics::CommandList& InCmdList) override;
+
 
 		uint64_t Signal();
 		bool IsFenceComplete(uint64_t InFenceValue);
 		void WaitForFenceValue(uint64_t InFenceValue);
 		// Signals the fence and stalls the thread it is invoked on to wait for the just signaled fence value
-		void Flush();
+		virtual void Flush();
 
 		Microsoft::WRL::ComPtr<ID3D12CommandQueue> GetD3D12CmdQueue() const { return m_CmdQueue; }
+
+		Microsoft::WRL::ComPtr<ID3D12Device2> GetD3D12Device() const { return m_Device; };
+
 
 	private:
 		// Keep track of command allocators in current execution

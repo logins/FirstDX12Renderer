@@ -6,6 +6,8 @@
 #include <D3D12Window.h>
 #include <Eigen/Core>
 
+namespace GEPUtils { namespace Graphics { class Device; } }
+
 using namespace Microsoft::WRL;
 
 class Part2
@@ -16,8 +18,8 @@ public:
 	void Initialize();
 	void Run();
 private:
-	// Singleton : Default constructor, copy constructor and assingment operators to be private
-	Part2() : m_MainWindow(m_CmdQueue) {};
+	// Singleton : copy constructor and assingment operators to be private
+	Part2() { }
 	Part2(const Part2&);
 	Part2& operator=(const Part2&);
 	void QuitApplication();
@@ -50,11 +52,12 @@ private:
 	POINT m_PrevMouseCoords = {};
 	static const uint8_t m_NumCmdAllocators = 3;
 
+	std::unique_ptr<GEPUtils::Graphics::Device> m_PlatformAgnosticDevice;
 	ComPtr<ID3D12Device2> m_GraphicsDevice;
 
-	D3D12GEPUtils::D3D12CommandQueue m_CmdQueue;
+	std::unique_ptr<D3D12GEPUtils::D3D12CommandQueue> m_CmdQueue;
 
-	D3D12GEPUtils::D3D12Window m_MainWindow;
+	std::unique_ptr<D3D12GEPUtils::D3D12Window> m_MainWindow;
 
 	// Vertex buffer for the cube
 	ComPtr<ID3D12Resource> m_VertexBuffer;

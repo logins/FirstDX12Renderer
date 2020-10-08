@@ -1,9 +1,20 @@
 #include "D3D12CommandQueue.h"
 #include <D3D12GEPUtils.h>
+#include "D3D12Device.h"
+#include "D3D12UtilsInternal.h"
+#include "D3D12CommandList.h"
+#include "../Public/CommandList.h"
 
 namespace D3D12GEPUtils {
 
 	using namespace Microsoft::WRL;
+
+	D3D12CommandQueue::D3D12CommandQueue(GEPUtils::Graphics::Device& InDevice, GEPUtils::Graphics::COMMAND_LIST_TYPE InCmdListType)
+		: GEPUtils::Graphics::CommandQueue(InDevice)
+	{
+		// Note: static cast reference conversion because at this point we should be certain that the device is a D3D12 one
+		Init(static_cast<GEPUtils::Graphics::D3D12Device&>(InDevice).GetInner(), D3D12GEPUtils::CmdListTypeToD3D12(InCmdListType));
+	}
 
 	D3D12CommandQueue::~D3D12CommandQueue()
 	{
@@ -64,6 +75,50 @@ namespace D3D12GEPUtils {
 		return cmdList;
 	}
 
+	// Platform-agnostic version
+	GEPUtils::Graphics::CommandList& D3D12CommandQueue::GetAvailableCommandList()
+	{
+		// Get an available command allocator first
+		ComPtr<ID3D12CommandAllocator> cmdAllocator;
+		// Check first if we have an available allocator in the queue (each allocator uniquely corresponds to a different list)
+		// Note: an allocator is available if the relative commands have been fully executed, 
+		// so if the relative fence value has been reached by the command queue
+		if (!m_CmdAllocators.empty() && IsFenceComplete(m_CmdAllocators.front().FenceValue))
+		{
+			cmdAllocator = m_CmdAllocators.front().CmdAllocator;
+			m_CmdAllocators.pop();
+
+			D3D12GEPUtils::ThrowIfFailed(cmdAllocator->Reset());
+		}
+		else
+		{
+			cmdAllocator = D3D12GEPUtils::CreateCommandAllocator(m_Device, m_CmdListType);
+		}
+
+		// Then get an available command list
+		if (!m_CmdListsAvailable.empty())
+		{
+			GEPUtils::Graphics::D3D12CommandList* outObj = static_cast<GEPUtils::Graphics::D3D12CommandList*>(m_CmdListsAvailable.front());
+			
+			auto cmdList = outObj->GetInner();
+			m_CmdListsAvailable.pop();
+			// Resetting the command list with the previously selected command allocator (so binding the two together)
+			cmdList->Reset(cmdAllocator.Get(), nullptr);
+			// Reference the chosen command allocator in the command list's private data, so we can retrieve it on the fly when we need it
+			D3D12GEPUtils::ThrowIfFailed(outObj->GetInner()->SetPrivateDataInterface(__uuidof(cmdAllocator), cmdAllocator.Get()));
+			// Note: setting a ComPtr as private data Does increment the reference count of that ComPtr !!
+			return *outObj;
+		}
+		
+		// If here, we need to create a new command list
+		m_CmdListPool.emplace(std::make_unique<GEPUtils::Graphics::D3D12CommandList>(D3D12GEPUtils::CreateCommandList(m_Device, cmdAllocator, m_CmdListType, false), m_GraphicsDevice));
+		GEPUtils::Graphics::D3D12CommandList& outObj = *static_cast<GEPUtils::Graphics::D3D12CommandList*>(m_CmdListPool.back().get());
+		
+		D3D12GEPUtils::ThrowIfFailed(outObj.GetInner()->SetPrivateDataInterface(__uuidof(cmdAllocator), cmdAllocator.Get()));
+		
+		return outObj;
+	}
+
 	uint64_t D3D12CommandQueue::ExecuteCmdList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> InCmdList)
 	{
 		InCmdList->Close();
@@ -79,6 +134,33 @@ namespace D3D12GEPUtils {
 
 		m_CmdAllocators.emplace( CmdAllocatorEntry{fenceValue, cmdAllocator} ); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
 		m_CmdLists.push(InCmdList);
+
+		// We do not need the local command allocator Pointer anymore, we can release it because the allocator reference is stored in the queue
+		cmdAllocator->Release();
+
+		return fenceValue;
+	}
+
+	// Platform-agnostic version
+	uint64_t D3D12CommandQueue::ExecuteCmdList(GEPUtils::Graphics::CommandList& InCmdList)
+	{
+		InCmdList.Close();
+
+		ID3D12CommandAllocator* cmdAllocator;
+		UINT dataSize = sizeof(cmdAllocator);
+
+		auto d3d12CmdList = static_cast<GEPUtils::Graphics::D3D12CommandList&>(InCmdList).GetInner();
+
+		D3D12GEPUtils::ThrowIfFailed(d3d12CmdList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &dataSize, &cmdAllocator));
+
+		ID3D12CommandList* const ppCmdLists[] = { d3d12CmdList.Get() };
+
+		m_CmdQueue->ExecuteCommandLists(1, ppCmdLists);
+		uint64_t fenceValue = Signal();
+
+		m_CmdAllocators.emplace(CmdAllocatorEntry{ fenceValue, cmdAllocator }); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
+		
+		m_CmdListsAvailable.push(&InCmdList);
 
 		// We do not need the local command allocator Pointer anymore, we can release it because the allocator reference is stored in the queue
 		cmdAllocator->Release();
@@ -106,5 +188,6 @@ namespace D3D12GEPUtils {
 	{
 		D3D12GEPUtils::FlushCmdQueue(m_CmdQueue, m_Fence, m_FenceEvent, m_LastSeenFenceValue);
 	}
+
 
 }

@@ -3,20 +3,30 @@
 #include <assert.h>
 #include <D3D12GEPUtils.h>
 #include <D3D12UtilsInternal.h>
-
+#include <Windowsx.h>
 
 namespace D3D12GEPUtils
 {
-	void D3D12Window::Initialize(D3D12WindowInitInput InInitParams)
+	D3D12Window::D3D12Window(const D3D12WindowInitInput& InInitParams)
+		: m_CmdQueue(InInitParams.CmdQueue)
+	{
+		Initialize(InInitParams);
+	}
+
+	void D3D12Window::Initialize(const D3D12WindowInitInput& InInitParams)
 	{
 		HINSTANCE InHInstance = ::GetModuleHandle(NULL); //Created windows will always refer to the current application instance
-		m_CurrentDevice = InInitParams.graphicsDevice;
-				
+		m_CurrentDevice = m_CmdQueue.GetD3D12Device();
+		
 		// RTV Descriptor Size is vendor-dependent.
 		// We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
 		m_RTVDescIncrementSize = m_CurrentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
 		m_TearingSupported = D3D12GEPUtils::CheckTearingSupport();
 		// TODO check vsync support and store it to m_vSync
+
+		m_BackBuffers.reserve(m_DefaultBufferCount);
+		for(int i=0; i < m_DefaultBufferCount; i++)
+			m_BackBuffers.push_back(std::make_unique<D3D12GEPUtils::D3D12Resource>(nullptr));
 
 		RegisterWindowClass(InHInstance, InInitParams.WindowClassName, InInitParams.WndProc);
 
@@ -69,6 +79,16 @@ namespace D3D12GEPUtils
 		// Note: we are blocking up until the NEW command allocator (obtained with the buffer index After presenting the backbuffer)
 		// finished executing the old commands
 		m_CmdQueue.WaitForFenceValue(m_FrameFenceValues[m_CurrentBackBufferIndex]);
+	}
+
+	ComPtr<ID3D12Resource> D3D12Window::GetCurrentBackbuffer()
+	{
+		return static_cast<D3D12GEPUtils::D3D12Resource*>(m_BackBuffers[m_CurrentBackBufferIndex].get())->GetInner();
+	}
+
+	ComPtr<ID3D12Resource> D3D12Window::GetBackbufferAtIndex(uint32_t InIdx)
+	{
+		return InIdx < m_DefaultBufferCount ? static_cast<D3D12GEPUtils::D3D12Resource*>(m_BackBuffers[InIdx].get())->GetInner() : nullptr;
 	}
 
 	CD3DX12_CPU_DESCRIPTOR_HANDLE D3D12Window::GetCurrentRTVDescHandle()
@@ -142,7 +162,7 @@ namespace D3D12GEPUtils
 		// All the backbuffers references must be released before resizing the swapchain
 		for (int32_t i = 0; i < m_DefaultBufferCount; i++)
 		{
-			m_BackBuffers[i].Reset();
+			static_cast<D3D12GEPUtils::D3D12Resource*>(m_BackBuffers[i].get())->GetInner().Reset();
 			m_FrameFenceValues[i] = m_FrameFenceValues[m_CurrentBackBufferIndex];
 		}
 
@@ -156,6 +176,24 @@ namespace D3D12GEPUtils
 		UpdateDepthStencil();
 
 		// Note: Viewport will be updated by the Application, that in this case acts as a "frame director"
+	}
+
+	void D3D12Window::Init()
+	{
+		// TODO remove this
+	}
+
+	GEPUtils::Graphics::CpuDescHandle& D3D12Window::GetCurrentRTVDescriptorHandle()
+	{
+		// Every time these objects are constructed, maybe we can store them somewhere later on
+		CurrentRtvDescHandle = D3D12GEPUtils::D3D12CpuDescriptorHandle(GetCurrentRTVDescHandle());
+		return CurrentRtvDescHandle;
+	}
+
+	GEPUtils::Graphics::CpuDescHandle& D3D12Window::GetCurrentDSVDescriptorHandle()
+	{
+		CurrentDsvDescHandle = D3D12GEPUtils::D3D12CpuDescriptorHandle(CD3DX12_CPU_DESCRIPTOR_HANDLE(GetCuttentDSVDescHandle()));
+		return CurrentDsvDescHandle;
 	}
 
 	void D3D12Window::CreateHWND(const wchar_t* InWindowClassName, HINSTANCE InHInstance, const wchar_t* InWindowTitle, uint32_t width, uint32_t height)
@@ -186,7 +224,7 @@ namespace D3D12GEPUtils
 			NULL,
 			NULL,
 			InHInstance,
-			nullptr
+			this
 		);
 
 		//Check for valid return value
@@ -265,11 +303,79 @@ namespace D3D12GEPUtils
 			// Either the pointer to the resource or the resource descriptor must be provided to create the view.
 			m_CurrentDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, rtvDescHeapHandle);
 
-			m_BackBuffers[bufferIdx] = backBuffer;
+			static_cast<D3D12GEPUtils::D3D12Resource*>(m_BackBuffers[bufferIdx].get())->SetInner(backBuffer); // TODO fix crash continue here
 
 			// Move the CPU descriptor handle to the next element on the heap
 			rtvDescHeapHandle.Offset(m_RTVDescIncrementSize);
 		}
+	}
+
+	LRESULT D3D12Window::GlobalWndProc(HWND InHwnd, UINT InMsg, WPARAM InWParam, LPARAM InLParam)
+	{
+		if(InMsg == WM_NCCREATE)
+			SetWindowLongPtr(InHwnd, GWLP_USERDATA, (LONG_PTR)((CREATESTRUCT*)InLParam)->lpCreateParams);
+				
+		D3D12Window* wndptr = (D3D12Window*) ::GetWindowLongPtr(InHwnd, GWLP_USERDATA);
+
+		if (wndptr)
+		{
+			D3D12Window& currentWindow = *wndptr;
+			switch (InMsg)
+			{
+			case WM_CREATE:
+				currentWindow.OnCreateDelegate.Broadcast();
+				break;
+			case WM_PAINT:
+				currentWindow.OnPaintDelegate.Broadcast();
+				break;
+			case WM_SYSKEYDOWN:
+				currentWindow.OnSysKeyDownDelegate.Broadcast(InWParam);
+				break;
+			case  WM_KEYDOWN:
+				currentWindow.OnKeyDownDelegate.Broadcast(InWParam);
+				break;
+			case WM_MOUSEMOVE:
+				currentWindow.OnMouseMoveDelegate.Broadcast(GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+				break;
+			case WM_SYSCHAR:
+				assert(false); // TODO do we need this at all?
+				break; // Preventing Alt+Enter hotkey to try switching the window to fullscreen since we are manually handling it with Alt+F11
+			case WM_MOUSEWHEEL:
+				currentWindow.OnMouseWheelDelegate.Broadcast(static_cast<float>(GET_WHEEL_DELTA_WPARAM(InWParam)));
+				break;
+			case WM_LBUTTONDOWN:
+			case WM_MBUTTONDOWN:
+			case WM_RBUTTONDOWN:
+			{
+				uint32_t button = (InMsg == WM_LBUTTONUP) ? 0 : (InMsg == WM_MBUTTONUP) ? 1 : (InMsg == WM_RBUTTONUP) ? 2 : 3;
+				currentWindow.OnMouseButtonDownDelegate.Broadcast(button, GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+				break;
+			}
+			case WM_LBUTTONUP:
+			case WM_RBUTTONUP:
+			case WM_MBUTTONUP:
+			{
+				uint32_t button = (InMsg == WM_LBUTTONUP) ? 0 : (InMsg == WM_MBUTTONUP) ? 1 : (InMsg == WM_RBUTTONUP) ? 2 : 3;
+				currentWindow.OnMouseButtonUpDelegate.Broadcast(button, GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+				break;
+			}
+			case WM_SIZE:
+			{
+				RECT clientRect = {};
+				::GetClientRect(InHwnd, &clientRect);
+				const int32_t newWidth = clientRect.right - clientRect.left;
+				const int32_t newHeight = clientRect.bottom - clientRect.top;
+				currentWindow.Resize(newWidth, newHeight);
+				currentWindow.OnResizeDelegate.Broadcast(newWidth, newHeight);
+				break;
+			}
+			case WM_DESTROY:
+				currentWindow.OnDestroyDelegate.Broadcast();
+				break;
+			}
+		}
+
+		return ::DefWindowProcW(InHwnd, InMsg, InWParam, InLParam); //Message will be handled by the Default Window Procedure !
 	}
 
 	void D3D12Window::RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName, WNDPROC InWndProc)
@@ -279,7 +385,7 @@ namespace D3D12GEPUtils
 
 		windowClass.cbSize = sizeof(WNDCLASSEXW);
 		windowClass.style = CS_HREDRAW | CS_VREDRAW; // Redraw window if movement or size adjustments horizontally or vertically
-		windowClass.lpfnWndProc = InWndProc;
+		windowClass.lpfnWndProc = InWndProc? InWndProc : &D3D12Window::GlobalWndProc;
 		windowClass.cbClsExtra = 0; // Extra bytes to allocate after window class
 		windowClass.cbWndExtra = 0; // Extra bytes to allocate after window instance
 		windowClass.hInstance = hInst;

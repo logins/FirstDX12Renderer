@@ -288,5 +288,12 @@ namespace D3D12GEPUtils
 		return rootSignature;
 	}
 
+	void D3D12IndexBufferView::ReferenceResource(GEPUtils::Graphics::Resource& InResource, size_t InDataSize, GEPUtils::Graphics::BUFFER_FORMAT InFormat)
+	{
+		m_IndexBufferView.BufferLocation = static_cast<D3D12Resource&>(InResource).GetInner()->GetGPUVirtualAddress();
+		m_IndexBufferView.SizeInBytes = InDataSize;
+		m_IndexBufferView.Format = D3D12GEPUtils::BufferFormatToD3D12(InFormat);
+	}
+
 }
 

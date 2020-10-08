@@ -1,0 +1,184 @@
+#include "D3D12PipelineState.h"
+#include <d3dx12.h>
+#include <algorithm>
+#include <string>
+#include <csignal>
+#include "D3D12UtilsInternal.h"
+#include "D3D12Device.h"
+
+#define FAILED(hr)      (((HRESULT)(hr)) < 0)
+
+namespace GEPUtils{ namespace Graphics {
+
+	using namespace GEPUtils;
+
+	D3D12_ROOT_SIGNATURE_FLAGS D3D12PipelineState::TransformResourceBinderFlags(RESOURCE_BINDER_FLAGS InResourceBinderFlags)
+	{
+		if (InResourceBinderFlags == RESOURCE_BINDER_FLAGS::NONE)
+			return D3D12_ROOT_SIGNATURE_FLAGS::D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+		D3D12_ROOT_SIGNATURE_FLAGS returnFlags = D3D12_ROOT_SIGNATURE_FLAGS::D3D12_ROOT_SIGNATURE_FLAG_NONE;
+
+		if (InResourceBinderFlags & RESOURCE_BINDER_FLAGS::ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT)
+			returnFlags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
+		if (InResourceBinderFlags & RESOURCE_BINDER_FLAGS::ALLOW_STREAM_OUTPUT)
+			returnFlags |= D3D12_ROOT_SIGNATURE_FLAG_ALLOW_STREAM_OUTPUT;
+		if (InResourceBinderFlags & RESOURCE_BINDER_FLAGS::DENY_DOMAIN_SHADER_ACCESS)
+			returnFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS;
+		if (InResourceBinderFlags & RESOURCE_BINDER_FLAGS::DENY_GEOMETRY_SHADER_ACCESS)
+			returnFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS;
+		if (InResourceBinderFlags & RESOURCE_BINDER_FLAGS::DENY_HULL_SHADER_ACCESS)
+			returnFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS;
+		if (InResourceBinderFlags & RESOURCE_BINDER_FLAGS::DENY_PIXEL_SHADER_ACCESS)
+			returnFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+		if (InResourceBinderFlags & RESOURCE_BINDER_FLAGS::DENY_VERTEX_SHADER_ACCESS)
+			returnFlags |= D3D12_ROOT_SIGNATURE_FLAG_DENY_VERTEX_SHADER_ROOT_ACCESS;
+
+		return returnFlags;
+	}
+
+	D3D12_INPUT_ELEMENT_DESC D3D12PipelineState::TransformInputLayoutElement(INPUT_LAYOUT_DESC::LayoutElement& InLayoutElementDesc)
+	{
+		return { InLayoutElementDesc.m_Name.c_str(), 0, D3D12GEPUtils::BufferFormatToD3D12(InLayoutElementDesc.m_Format), 
+			0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+	}
+
+	CD3DX12_ROOT_PARAMETER1 D3D12PipelineState::TransformResourceBinderParams(RESOURCE_BINDER_PARAM& InResourceBinderParam)
+	{
+		CD3DX12_ROOT_PARAMETER1 returnParam;
+		if (InResourceBinderParam.resourceType == RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CONSTANTS)
+		{
+			returnParam.InitAsConstants(InResourceBinderParam.Num32BitValues, InResourceBinderParam.ShaderRegister, 
+				InResourceBinderParam.RegisterSpace, TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
+		}
+		else
+		{
+			raise(SIGABRT); // Not implemented
+		}
+		return returnParam;
+	}
+
+	D3D12_SHADER_VISIBILITY D3D12PipelineState::TransformShaderVisibility(SHADER_VISIBILITY shaderVisibility)
+	{
+		switch (shaderVisibility)
+		{
+		case GEPUtils::Graphics::SHADER_VISIBILITY::SV_ALL: return D3D12_SHADER_VISIBILITY_ALL;
+		case GEPUtils::Graphics::SHADER_VISIBILITY::SV_VERTEX: return D3D12_SHADER_VISIBILITY_VERTEX;
+		case GEPUtils::Graphics::SHADER_VISIBILITY::SV_HULL: return D3D12_SHADER_VISIBILITY_HULL;
+		case GEPUtils::Graphics::SHADER_VISIBILITY::SV_DOMAIN: return D3D12_SHADER_VISIBILITY_DOMAIN;
+		case GEPUtils::Graphics::SHADER_VISIBILITY::SV_GEOMETRY: return D3D12_SHADER_VISIBILITY_GEOMETRY;
+		case GEPUtils::Graphics::SHADER_VISIBILITY::SV_PIXEL: return D3D12_SHADER_VISIBILITY_PIXEL;
+		}
+		std::exception("Shader Visibility undefined.");
+		return D3D12_SHADER_VISIBILITY_ALL;
+	}
+
+	void D3D12PipelineState::Init(PIPELINE_STATE_DESC& InPipelineStateDesc)
+	{
+		// Generate D3D12 Input Layout
+			//LPCSTR SemanticName; UINT SemanticIndex; DXGI_FORMAT Format; UINT InputSlot;
+	//UINT AlignedByteOffset; D3D12_INPUT_CLASSIFICATION InputSlotClass; UINT InstanceDataStepRate;
+	/*D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
+		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+		D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
+		{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
+		D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
+	};*/
+		//----------------------------------------------------------------
+		/*struct D3D12InputLayout : public GEPUtils::Graphics::InputLayout {
+			virtual D3D12InputLayout(LayoutElement[] InElements) override {
+				int numArrElements = sizeof(InElements) / sizeof(InElements[0]);
+				m_Inner = std::make_unique<D3D12_INPUT_ELEMENT_DESC[]>(D3D12_INPUT_ELEMENT_DESC[numArrElements]);
+				for (int i = 0; i < numArrElements; i++)
+				{
+					m_Inner.get()[i] = { InElements[i].m_Name, 0, D3D12GEPUtils::BufferFormatToD3D12(InElements[i].m_Format), 0, D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
+				}
+			}
+			std::unique_ptr<D3D12_INPUT_ELEMENT_DESC[]> m_Inner;
+		};*/
+		std::vector<INPUT_LAYOUT_DESC::LayoutElement>& agnosticLayoutElements = InPipelineStateDesc.InputLayoutDesc.LayoutElements;
+		std::vector<D3D12_INPUT_ELEMENT_DESC> layoutElements;
+		layoutElements.reserve(agnosticLayoutElements.size());
+		// Convert platform-agnostic parameters into d3d12 specific
+		std::transform(agnosticLayoutElements.begin(), agnosticLayoutElements.end(), std::back_inserter(layoutElements), &D3D12PipelineState::TransformInputLayoutElement);
+
+		Microsoft::WRL::ComPtr<ID3D12Device2> d3d12GraphicsDevice = static_cast<Graphics::D3D12Device&>(m_GraphicsDevice).GetInner();
+
+		// Create Root Signature
+		D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+		if (FAILED(d3d12GraphicsDevice->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(D3D12_FEATURE_DATA_ROOT_SIGNATURE))))
+		{
+			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+		}
+		// Allow Input layout access to shader resources (in out case, the MVP matrix) 
+		// and deny it to other stages (small optimization)
+		//D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
+		//	D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
+		//	D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
+		//	D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
+		//	D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
+		//	D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
+		D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = TransformResourceBinderFlags(InPipelineStateDesc.ResourceBinderDesc.Flags);
+
+		// Using a single 32-bit constant root parameter (MVP matrix) that is used by the vertex shader
+		//CD3DX12_ROOT_PARAMETER1 rootParameters[1];
+		//rootParameters[0].InitAsConstants(sizeof(Eigen::Matrix4f) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
+		std::vector<RESOURCE_BINDER_PARAM>& agnosticRootParameters = InPipelineStateDesc.ResourceBinderDesc.Params;
+		std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters;
+		rootParameters.reserve(agnosticRootParameters.size());
+		std::transform(agnosticRootParameters.begin(), agnosticRootParameters.end(), std::back_inserter(rootParameters), &D3D12PipelineState::TransformResourceBinderParams);
+
+		// Init Root Signature Desc
+		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
+		rootSignatureDesc.Init_1_1(rootParameters.size(), &rootParameters[0], 0U, nullptr, rootSignatureFlags);
+		// Create Root Signature serialized blob and then the object from it
+		m_RootSignature = D3D12GEPUtils::SerializeAndCreateRootSignature(d3d12GraphicsDevice, &rootSignatureDesc, featureData.HighestVersion);
+		
+
+		//RTV Formats
+	D3D12_RT_FORMAT_ARRAY rtvFormats = {};
+	rtvFormats.NumRenderTargets = 1; // Note: we are supporting only 1 render target at the moment
+	//rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM; // Note: texel data of the render target is 4x 8bit channels of range [0,1]
+	rtvFormats.RTFormats[0] = D3D12GEPUtils::BufferFormatToD3D12(InPipelineStateDesc.RTFormat);
+
+	// Pipeline State Stream definition and fill
+	// Note: for now we assume PipelineStateStreamType to be always the same
+	struct PipelineStateStreamType {
+		CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
+		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopology;
+		CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT InputLayout;
+		CD3DX12_PIPELINE_STATE_STREAM_VS VertexShader;
+		CD3DX12_PIPELINE_STATE_STREAM_PS PixelShader;
+		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
+		CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
+	} pipelineStateStream;
+
+	pipelineStateStream.pRootSignature = m_RootSignature.Get();
+	
+	/*
+	pipelineStateStream.PrimitiveTopology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
+	pipelineStateStream.VertexShader = CD3DX12_SHADER_BYTECODE(vertexShaderBlob.Get());
+	pipelineStateStream.PixelShader = CD3DX12_SHADER_BYTECODE(pixelShaderBlob.Get());
+	pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
+	pipelineStateStream.RTVFormats = rtvFormats;*/
+
+	pipelineStateStream.PrimitiveTopology = D3D12GEPUtils::PrimitiveTopologyTypeToD3D12(InPipelineStateDesc.TopologyType);
+	pipelineStateStream.InputLayout = { &layoutElements[0], static_cast<UINT>(layoutElements.size()) };
+	pipelineStateStream.VertexShader = CD3DX12_SHADER_BYTECODE(static_cast<D3D12GEPUtils::D3D12Shader&>(InPipelineStateDesc.VertexShader).m_ShaderBlob.Get());
+	pipelineStateStream.PixelShader = CD3DX12_SHADER_BYTECODE(static_cast<D3D12GEPUtils::D3D12Shader&>(InPipelineStateDesc.PixelShader).m_ShaderBlob.Get());
+	pipelineStateStream.DSVFormat = D3D12GEPUtils::BufferFormatToD3D12(InPipelineStateDesc.DSFormat);
+	pipelineStateStream.RTVFormats = rtvFormats;
+
+	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
+		sizeof(pipelineStateStream), &pipelineStateStream
+	};
+	D3D12GEPUtils::ThrowIfFailed(d3d12GraphicsDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
+
+	m_IsInitialized = true;
+	}
+
+}
+}
