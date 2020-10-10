@@ -116,6 +116,7 @@ protected:
 
 struct ViewPort {
 	ViewPort(float InTopLeftX, float InTopLeftY, float InWidth, float InHeight) {}
+	virtual void SetWidthAndHeight(float InWidth, float InHeight) {}
 protected:
 	ViewPort(){}
 };

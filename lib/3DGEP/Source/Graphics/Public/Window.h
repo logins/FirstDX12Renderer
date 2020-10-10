@@ -35,21 +35,17 @@ namespace GEPUtils { namespace Graphics {
 
 		virtual void Present() = 0;
 
+		virtual void Resize(uint32_t InNewWidth, uint32_t InNewHeight) = 0;
+
 		virtual GEPUtils::Graphics::CpuDescHandle& GetCurrentRTVDescriptorHandle() = 0;
 
 		virtual GEPUtils::Graphics::CpuDescHandle& GetCurrentDSVDescriptorHandle() = 0;
 
+		uint32_t GetFrameWidth() const { return m_FrameWidth; }
+		uint32_t GetFrameHeight() const { return M_FrameHeight; }
+
 		GEPUtils::Graphics::Resource& GetCurrentBackBuffer() { return *m_BackBuffers[m_CurrentBackBufferIndex]; }
 
-	protected:
-
-		// Default number of buffers handled by the swapchain
-		static const uint32_t m_DefaultBufferCount = 3;
-
-		uint32_t m_CurrentBackBufferIndex = 0;
-
-		std::vector<std::unique_ptr<GEPUtils::Graphics::Resource>> m_BackBuffers;
-	public:
 		GEPUtils::MulticastDelegate<> OnPaintDelegate;
 		GEPUtils::MulticastDelegate<> OnCreateDelegate;
 		GEPUtils::MulticastDelegate<> OnDestroyDelegate;
@@ -60,6 +56,23 @@ namespace GEPUtils { namespace Graphics {
 		GEPUtils::MulticastDelegate<uint64_t> OnKeyDownDelegate;
 		GEPUtils::MulticastDelegate<uint64_t> OnSysKeyDownDelegate;
 		GEPUtils::MulticastDelegate<uint32_t, uint32_t> OnResizeDelegate;
+
+		bool IsMouseRightHold() const { return m_IsMouseRightHold; }
+		bool IsMouseLeftHold() const { return m_IsMouseLeftHold; }
+
+	protected:
+
+		uint32_t m_FrameWidth = 1, M_FrameHeight = 1;
+
+		// Default number of buffers handled by the swapchain
+		static const uint32_t m_DefaultBufferCount = 3;
+
+		uint32_t m_CurrentBackBufferIndex = 0;
+
+		std::vector<std::unique_ptr<GEPUtils::Graphics::Resource>> m_BackBuffers;
+
+		bool m_IsMouseLeftHold = false, m_IsMouseRightHold = false;
+
 	};
 
 	std::unique_ptr<Window> CreateGraphicsWindow(const Window::WindowInitInput& InWindowInitInput);

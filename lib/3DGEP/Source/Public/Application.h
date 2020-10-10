@@ -43,6 +43,7 @@ namespace GEPUtils
 
 		void OnMainWindowUpdate();
 		void OnWindowPaint();
+		void OnWindowResize(uint32_t InNewWidth, uint32_t InNewHeight);
 
 		std::unique_ptr<Graphics::Device> m_GraphicsDevice;
 

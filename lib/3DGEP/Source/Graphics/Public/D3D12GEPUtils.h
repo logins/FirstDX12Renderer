@@ -125,6 +125,11 @@ namespace D3D12GEPUtils {
 			: D3d12Viewport(InTopLeftX, InTopLeftY, InWidth, InHeight)
 		{ }
 		CD3DX12_VIEWPORT D3d12Viewport;
+
+		virtual void SetWidthAndHeight(float InWidth, float InHeight) override {
+			D3d12Viewport.Width = InWidth; D3d12Viewport.Height = InHeight;
+		}
+
 	};
 
 	struct D3D12Shader : public GEPUtils::Graphics::Shader {

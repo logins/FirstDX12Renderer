@@ -37,6 +37,14 @@ namespace GEPUtils
 		m_PaintStarted = true;
 	}
 
+	void Application::OnWindowResize(uint32_t InNewWidth, uint32_t InNewHeight)
+	{
+		m_MainWindow->Resize(InNewWidth, InNewHeight);
+		// Update ViewPort here since the application acts as a "frame director" here
+		m_Viewport->SetWidthAndHeight(static_cast<FLOAT>(InNewWidth), static_cast<FLOAT>(InNewHeight));
+		SetAspectRatio(InNewWidth / static_cast<float>(InNewHeight));
+	}
+
 	void Application::SetAspectRatio(float InAspectRatio)
 	{
 		m_AspectRatio = InAspectRatio;
@@ -87,6 +95,8 @@ namespace GEPUtils
 
 		// Wiring Window events
 		m_MainWindow->OnPaintDelegate.Add<Application, &Application::OnWindowPaint>(this);
+
+		m_MainWindow->OnResizeDelegate.Add<Application, &Application::OnWindowResize>(this);
 
 		m_IsInitialized = true;
 

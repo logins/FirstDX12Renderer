@@ -55,9 +55,7 @@ namespace D3D12GEPUtils {
 		bool IsVSyncEnabled() const { return m_VSync; }
 		void SetVSync(bool InNowEnabled) { m_VSync = InNowEnabled; }
 
-		void Resize(uint32_t InNewWidth, uint32_t InNewHeight);
-		UINT GetFrameWidth() const { return m_FrameWidth; }
-		UINT GetFrameHeight() const { return M_FrameHeight; }
+		virtual void Resize(uint32_t InNewWidth, uint32_t InNewHeight) override;
 
 		virtual void Init() override;
 
@@ -84,10 +82,8 @@ namespace D3D12GEPUtils {
 		D3D12GEPUtils::D3D12CommandQueue& m_CmdQueue;
 		HWND m_HWND;
 		RECT m_WindowModeRect;
-		UINT m_FrameWidth = 1, M_FrameHeight = 1;
 		ComPtr<IDXGISwapChain4> m_SwapChain;
 		// Replaced with the platform-agnostic version in Window
-		//ComPtr<ID3D12Resource> m_BackBuffers[m_DefaultBufferCount];
 		uint64_t m_FrameFenceValues[m_DefaultBufferCount] = { 0 }; // Note: important to initialize every member variable, otherwise it could contain garbage!
 		
 		ComPtr<ID3D12DescriptorHeap> m_RTVDescriptorHeap;

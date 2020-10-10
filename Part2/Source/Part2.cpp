@@ -11,8 +11,8 @@
 #include <Windowsx.h> // For mouse macros
 #include <Delegate.h>
 
-
-#include "../../lib/3DGEP/Source/Graphics/Public/Device.h"
+// D3D12Device class would not be normally exposed for application use because of the abstraction layer,
+// but since Part 2 does not use the abstraction layer, we need to directly use the D3D12 Version of the Device.
 #include "../../lib/3DGEP/Source/Graphics/D3D12/D3D12Device.h"
 
 #if defined(min)
@@ -378,7 +378,7 @@ void Part2::OnMousePressed(MouseButtonEventArgs& InEvent)
 	switch (InEvent.Button)
 	{
 	case 0:
-		std::cout << "Pressed Left Mouse Button" << std::endl;
+		std::cout << "Pressed Left Mouse Button" << std::endl; // Note: setting the dragging to true just when a mouse button is pressed is somewhat incorrect but in this example it will do the job
 		if(InEvent.DragDetected)
 			m_MouseLeftDrag = true;
 		break;
@@ -393,7 +393,7 @@ void Part2::OnMouseReleased(MouseButtonEventArgs& InEvent)
 	switch (InEvent.Button)
 	{
 	case 0:
-		std::cout << "Released Left Mouse Button" << std::endl;
+		std::cout << "Released Left Mouse Button" << std::endl; // Note: setting the dragging to true just when a mouse button is pressed is somewhat incorrect but in this example it will do the job
 		m_MouseLeftDrag = false;
 		break;
 	case 2:

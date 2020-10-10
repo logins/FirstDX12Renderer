@@ -13,6 +13,14 @@ public:
 
 	virtual void Initialize() override;
 private:
+
+	// Callbacks for main window mouse events
+	void OnMouseWheel(float InDeltaRot);
+	void OnMouseMove(int32_t InX, int32_t InY);
+	void OnLeftMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
+	void OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
+
+
 	// Vertex buffer for the cube
 	GEPUtils::Graphics::Resource& m_VertexBuffer;
 	GEPUtils::Graphics::VertexBufferView& m_VertexBufferView;

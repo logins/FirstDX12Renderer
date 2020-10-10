@@ -344,19 +344,38 @@ namespace D3D12GEPUtils
 				currentWindow.OnMouseWheelDelegate.Broadcast(static_cast<float>(GET_WHEEL_DELTA_WPARAM(InWParam)));
 				break;
 			case WM_LBUTTONDOWN:
+				{
+					POINT clickedPoint = { GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam) };
+					currentWindow.m_IsMouseLeftHold = static_cast<bool>(::DragDetect(InHwnd, clickedPoint)); // Note: DragDetect will activate only if the mouse is dragged for some pixels, but it only works with the left mouse button!
+					currentWindow.OnMouseButtonDownDelegate.Broadcast(0, clickedPoint.x, clickedPoint.y);
+					::SetCapture(InHwnd); // This will allow to track drag operation when mouse position exits the window boundaries
+					break;
+				}
 			case WM_MBUTTONDOWN:
+				currentWindow.OnMouseButtonDownDelegate.Broadcast(1, GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+				break;
 			case WM_RBUTTONDOWN:
 			{
-				uint32_t button = (InMsg == WM_LBUTTONUP) ? 0 : (InMsg == WM_MBUTTONUP) ? 1 : (InMsg == WM_RBUTTONUP) ? 2 : 3;
-				currentWindow.OnMouseButtonDownDelegate.Broadcast(button, GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+				currentWindow.m_IsMouseRightHold = true; // Note: We cannot use DragDetect with something different than the left mouse button, so we just set right mouse hold every time we click with the right button, which is not perfect, but for this usage, it will do.
+				currentWindow.OnMouseButtonDownDelegate.Broadcast(2, GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+				::SetCapture(InHwnd); // This will allow to track drag operation when mouse position exits the window boundaries
 				break;
 			}
 			case WM_LBUTTONUP:
-			case WM_RBUTTONUP:
-			case WM_MBUTTONUP:
 			{
-				uint32_t button = (InMsg == WM_LBUTTONUP) ? 0 : (InMsg == WM_MBUTTONUP) ? 1 : (InMsg == WM_RBUTTONUP) ? 2 : 3;
-				currentWindow.OnMouseButtonUpDelegate.Broadcast(button, GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+				currentWindow.m_IsMouseLeftHold = false;
+				currentWindow.OnMouseButtonUpDelegate.Broadcast(0, GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+				::ReleaseCapture(); // Correspondent of SetCapture
+				break;
+			}
+			case WM_MBUTTONUP:
+				currentWindow.OnMouseButtonUpDelegate.Broadcast(1, GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+				break;
+			case WM_RBUTTONUP:
+			{
+				currentWindow.m_IsMouseRightHold = false;
+				currentWindow.OnMouseButtonUpDelegate.Broadcast(2, GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
+				::ReleaseCapture(); // Correspondent of SetCapture
 				break;
 			}
 			case WM_SIZE:

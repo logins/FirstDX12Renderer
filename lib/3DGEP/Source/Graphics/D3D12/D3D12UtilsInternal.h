@@ -6,8 +6,6 @@
 
 namespace D3D12GEPUtils {
 
-	//using namespace Microsoft::WRL;
-
 	void ThisIsMyInternalFunction();
 
 	bool CheckTearingSupport();

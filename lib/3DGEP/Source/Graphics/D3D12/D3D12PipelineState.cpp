@@ -76,27 +76,6 @@ namespace GEPUtils{ namespace Graphics {
 	void D3D12PipelineState::Init(PIPELINE_STATE_DESC& InPipelineStateDesc)
 	{
 		// Generate D3D12 Input Layout
-			//LPCSTR SemanticName; UINT SemanticIndex; DXGI_FORMAT Format; UINT InputSlot;
-	//UINT AlignedByteOffset; D3D12_INPUT_CLASSIFICATION InputSlotClass; UINT InstanceDataStepRate;
-	/*D3D12_INPUT_ELEMENT_DESC inputLayout[] = {
-		{ "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
-		D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0},
-		{ "COLOR", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D12_APPEND_ALIGNED_ELEMENT,
-		D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0}
-	};*/
-		//----------------------------------------------------------------
-		/*struct D3D12InputLayout : public GEPUtils::Graphics::InputLayout {
-			virtual D3D12InputLayout(LayoutElement[] InElements) override {
-				int numArrElements = sizeof(InElements) / sizeof(InElements[0]);
-				m_Inner = std::make_unique<D3D12_INPUT_ELEMENT_DESC[]>(D3D12_INPUT_ELEMENT_DESC[numArrElements]);
-				for (int i = 0; i < numArrElements; i++)
-				{
-					m_Inner.get()[i] = { InElements[i].m_Name, 0, D3D12GEPUtils::BufferFormatToD3D12(InElements[i].m_Format), 0, D3D12_APPEND_ALIGNED_ELEMENT,
-			D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
-				}
-			}
-			std::unique_ptr<D3D12_INPUT_ELEMENT_DESC[]> m_Inner;
-		};*/
 		std::vector<INPUT_LAYOUT_DESC::LayoutElement>& agnosticLayoutElements = InPipelineStateDesc.InputLayoutDesc.LayoutElements;
 		std::vector<D3D12_INPUT_ELEMENT_DESC> layoutElements;
 		layoutElements.reserve(agnosticLayoutElements.size());
@@ -114,17 +93,9 @@ namespace GEPUtils{ namespace Graphics {
 		}
 		// Allow Input layout access to shader resources (in out case, the MVP matrix) 
 		// and deny it to other stages (small optimization)
-		//D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags =
-		//	D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
-		//	D3D12_ROOT_SIGNATURE_FLAG_DENY_HULL_SHADER_ROOT_ACCESS |
-		//	D3D12_ROOT_SIGNATURE_FLAG_DENY_DOMAIN_SHADER_ROOT_ACCESS |
-		//	D3D12_ROOT_SIGNATURE_FLAG_DENY_GEOMETRY_SHADER_ROOT_ACCESS |
-		//	D3D12_ROOT_SIGNATURE_FLAG_DENY_PIXEL_SHADER_ROOT_ACCESS;
 		D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = TransformResourceBinderFlags(InPipelineStateDesc.ResourceBinderDesc.Flags);
 
 		// Using a single 32-bit constant root parameter (MVP matrix) that is used by the vertex shader
-		//CD3DX12_ROOT_PARAMETER1 rootParameters[1];
-		//rootParameters[0].InitAsConstants(sizeof(Eigen::Matrix4f) / 4, 0, 0, D3D12_SHADER_VISIBILITY_VERTEX);
 		std::vector<RESOURCE_BINDER_PARAM>& agnosticRootParameters = InPipelineStateDesc.ResourceBinderDesc.Params;
 		std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters;
 		rootParameters.reserve(agnosticRootParameters.size());
@@ -140,8 +111,7 @@ namespace GEPUtils{ namespace Graphics {
 		//RTV Formats
 	D3D12_RT_FORMAT_ARRAY rtvFormats = {};
 	rtvFormats.NumRenderTargets = 1; // Note: we are supporting only 1 render target at the moment
-	//rtvFormats.RTFormats[0] = DXGI_FORMAT_R8G8B8A8_UNORM; // Note: texel data of the render target is 4x 8bit channels of range [0,1]
-	rtvFormats.RTFormats[0] = D3D12GEPUtils::BufferFormatToD3D12(InPipelineStateDesc.RTFormat);
+	rtvFormats.RTFormats[0] = D3D12GEPUtils::BufferFormatToD3D12(InPipelineStateDesc.RTFormat);// Note: texel data of the render target is 4x 8bit channels of range [0,1]
 
 	// Pipeline State Stream definition and fill
 	// Note: for now we assume PipelineStateStreamType to be always the same
@@ -157,14 +127,6 @@ namespace GEPUtils{ namespace Graphics {
 
 	pipelineStateStream.pRootSignature = m_RootSignature.Get();
 	
-	/*
-	pipelineStateStream.PrimitiveTopology = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
-	pipelineStateStream.InputLayout = { inputLayout, _countof(inputLayout) };
-	pipelineStateStream.VertexShader = CD3DX12_SHADER_BYTECODE(vertexShaderBlob.Get());
-	pipelineStateStream.PixelShader = CD3DX12_SHADER_BYTECODE(pixelShaderBlob.Get());
-	pipelineStateStream.DSVFormat = DXGI_FORMAT_D32_FLOAT;
-	pipelineStateStream.RTVFormats = rtvFormats;*/
-
 	pipelineStateStream.PrimitiveTopology = D3D12GEPUtils::PrimitiveTopologyTypeToD3D12(InPipelineStateDesc.TopologyType);
 	pipelineStateStream.InputLayout = { &layoutElements[0], static_cast<UINT>(layoutElements.size()) };
 	pipelineStateStream.VertexShader = CD3DX12_SHADER_BYTECODE(static_cast<D3D12GEPUtils::D3D12Shader&>(InPipelineStateDesc.VertexShader).m_ShaderBlob.Get());
