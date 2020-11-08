@@ -30,6 +30,8 @@ namespace GEPUtils
 		void Run();
 		void QuitApplication();
 
+		inline uint64_t GetCurrentFrameNumber() const { return m_FrameNumber; };
+
 	protected:
 		// Singleton : Default constructor, copy constructor and assingment operators to be private
 		Application();
@@ -45,7 +47,7 @@ namespace GEPUtils
 		void OnWindowPaint();
 		void OnWindowResize(uint32_t InNewWidth, uint32_t InNewHeight);
 
-		std::unique_ptr<Graphics::Device> m_GraphicsDevice;
+		Graphics::Device& m_GraphicsDevice;
 
 		std::unique_ptr<Graphics::CommandQueue> m_CmdQueue;
 
@@ -70,6 +72,8 @@ namespace GEPUtils
 		Eigen::Matrix4f m_ProjMatrix;
 
 		bool m_PaintStarted = false;
+
+		uint64_t m_FrameNumber = 0;
 
 	private:
 		Application(const Application&) = delete; // We do not want Application to be copiable

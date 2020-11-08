@@ -60,19 +60,16 @@ namespace GEPUtils
 	}
 
 	Application::Application()
+		: m_GraphicsDevice(Graphics::GetDevice())
 	{
-		// Note: Debug Layer needs to be created before creating the Device
-		Graphics::EnableDebugLayer();
 
-		// Create Device
-		m_GraphicsDevice = Graphics::CreateDevice();
 	}
 
 	void Application::Initialize()
 	{
 
 		// Create Command Queue
-		m_CmdQueue = Graphics::CreateCommandQueue(*m_GraphicsDevice, Graphics::COMMAND_LIST_TYPE::COMMAND_LIST_TYPE_DIRECT);
+		m_CmdQueue = Graphics::CreateCommandQueue(m_GraphicsDevice, Graphics::COMMAND_LIST_TYPE::COMMAND_LIST_TYPE_DIRECT);
 
 
 		uint32_t mainWindowWidth = 1024, mainWindowHeight = 768;
@@ -130,14 +127,13 @@ namespace GEPUtils
 
 	void Application::Update()
 	{
-		static uint64_t frameCounter = 0;
 		static double elapsedSeconds = 0;
 		static std::chrono::high_resolution_clock clock;
 		auto t0 = clock.now();
 
 		Render();
 
-		frameCounter++;
+		m_FrameNumber++;
 		auto t1 = clock.now();
 		auto deltaTime = t1 - t0;
 		t0 = t1;
@@ -145,11 +141,11 @@ namespace GEPUtils
 
 		if (elapsedSeconds > 1.0)
 		{
-			char buffer[500]; auto fps = frameCounter / elapsedSeconds;
+			char buffer[500]; auto fps = m_FrameNumber / elapsedSeconds;
 			sprintf_s(buffer, 500, "Average FPS: %f\n", fps);
 			OutputDebugStringA(buffer);
 
-			frameCounter = 0;
+			m_FrameNumber = 0;
 			elapsedSeconds = .0f;
 		}
 	}

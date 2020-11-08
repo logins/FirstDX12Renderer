@@ -5,6 +5,7 @@
 #include <csignal>
 #include "D3D12UtilsInternal.h"
 #include "D3D12Device.h"
+#include "../../Public/GEPUtils.h"
 
 #define FAILED(hr)      (((HRESULT)(hr)) < 0)
 
@@ -91,21 +92,20 @@ namespace GEPUtils{ namespace Graphics {
 		{
 			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
 		}
-		// Allow Input layout access to shader resources (in out case, the MVP matrix) 
+		// Allow Input layout access to shader resources
 		// and deny it to other stages (small optimization)
 		D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = TransformResourceBinderFlags(InPipelineStateDesc.ResourceBinderDesc.Flags);
 
 		// Using a single 32-bit constant root parameter (MVP matrix) that is used by the vertex shader
 		std::vector<RESOURCE_BINDER_PARAM>& agnosticRootParameters = InPipelineStateDesc.ResourceBinderDesc.Params;
-		std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters;
+		std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters = m_RootSignatureInfo.rootParameters;
 		rootParameters.reserve(agnosticRootParameters.size());
 		std::transform(agnosticRootParameters.begin(), agnosticRootParameters.end(), std::back_inserter(rootParameters), &D3D12PipelineState::TransformResourceBinderParams);
 
 		// Init Root Signature Desc
-		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
-		rootSignatureDesc.Init_1_1(rootParameters.size(), &rootParameters[0], 0U, nullptr, rootSignatureFlags);
+		m_RootSignatureInfo.rootSignatureDesc.Init_1_1(rootParameters.size(), &rootParameters[0], 0U, nullptr, rootSignatureFlags);
 		// Create Root Signature serialized blob and then the object from it
-		m_RootSignature = D3D12GEPUtils::SerializeAndCreateRootSignature(d3d12GraphicsDevice, &rootSignatureDesc, featureData.HighestVersion);
+		m_RootSignature = D3D12GEPUtils::SerializeAndCreateRootSignature(d3d12GraphicsDevice, &m_RootSignatureInfo.rootSignatureDesc, featureData.HighestVersion);
 		
 
 		//RTV Formats
@@ -140,6 +140,25 @@ namespace GEPUtils{ namespace Graphics {
 	D3D12GEPUtils::ThrowIfFailed(d3d12GraphicsDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
 
 	m_IsInitialized = true;
+	}
+
+	uint32_t D3D12PipelineState::GenerateRootTableBitMask()
+	{
+		uint32_t outRootTableMask = 0;
+		for (size_t i = 0; i < m_RootSignatureInfo.rootParameters.size(); i++)
+		{
+			if (m_RootSignatureInfo.rootParameters[i].ParameterType == D3D12_ROOT_PARAMETER_TYPE::D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE)
+				outRootTableMask |= (1 << i); // If root table, setting the corresponding bit at position i to 1
+		}
+		return outRootTableMask;
+	}
+
+	uint32_t D3D12PipelineState::GetRootDescriptorsNumAtIndex(uint32_t InRootIndex)
+	{
+		Check(m_RootSignatureInfo.rootParameters[InRootIndex].ParameterType == D3D12_ROOT_PARAMETER_TYPE::D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE);
+
+		// Note: we are assuming that we store a single descriptor range for each desc table
+		return m_RootSignatureInfo.rootParameters[InRootIndex].DescriptorTable.pDescriptorRanges->NumDescriptors;
 	}
 
 }

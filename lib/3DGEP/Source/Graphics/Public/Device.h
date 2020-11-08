@@ -21,8 +21,9 @@ private:
 	bool m_IsMainDevice=false;
 };
 
-// Creates a device from the main adapter found
-std::unique_ptr<Device> CreateDevice();
+// Gets and eventually reates a device from the main adapter found.
+// We are assuming to have only one device in our code.
+Device& GetDevice();
 
 } }
 #endif // Device_h__

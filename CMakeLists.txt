@@ -9,6 +9,7 @@ if(NOT DEFINED MSVC)
 	message(FATAL_ERROR "At the moment this program supports MSVC compilers only.")
 endif()
 	
+set( ENV{SOLUTION_NAME} "First DX12 Renderer" )
 
 add_subdirectory(lib)
 

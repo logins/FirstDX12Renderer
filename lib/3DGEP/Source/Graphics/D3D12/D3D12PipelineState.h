@@ -18,7 +18,11 @@ public:
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> GetInnerPSO() { return m_PipelineState; }
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> GetInnerRootSignature() { return m_RootSignature; }
+	CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC& GetInnerRootSignatureDesc() { return m_RootSignatureInfo.rootSignatureDesc; }
 
+	uint32_t GenerateRootTableBitMask();
+
+	uint32_t GetRootDescriptorsNumAtIndex(uint32_t InRootIndex);
 private:
 	bool m_IsInitialized = false;
 
@@ -32,6 +36,12 @@ private:
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> m_RootSignature = nullptr;
 	// Pipeline State Object
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> m_PipelineState = nullptr;
+
+
+	struct RootSignatureInfo {
+		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
+		std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters;
+	} m_RootSignatureInfo;
 
 };
 

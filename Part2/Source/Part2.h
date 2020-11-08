@@ -52,7 +52,6 @@ private:
 	POINT m_PrevMouseCoords = {};
 	static const uint8_t m_NumCmdAllocators = 3;
 
-	std::unique_ptr<GEPUtils::Graphics::Device> m_PlatformAgnosticDevice;
 	ComPtr<ID3D12Device2> m_GraphicsDevice;
 
 	std::unique_ptr<D3D12GEPUtils::D3D12CommandQueue> m_CmdQueue;

@@ -26,7 +26,7 @@ Part3Application::Part3Application()
 	: m_VertexBuffer(Graphics::AllocateEmptyResource()), m_IndexBuffer(Graphics::AllocateEmptyResource()),
 		m_VertexBufferView(Graphics::AllocateVertexBufferView()), 
 		m_IndexBufferView(Graphics::AllocateIndexBufferView()),
-		m_PipelineState(Graphics::AllocatePipelineState(*m_GraphicsDevice))
+		m_PipelineState(Graphics::AllocatePipelineState(m_GraphicsDevice))
 {
 }
 

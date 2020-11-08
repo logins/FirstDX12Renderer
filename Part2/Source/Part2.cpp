@@ -14,6 +14,7 @@
 // D3D12Device class would not be normally exposed for application use because of the abstraction layer,
 // but since Part 2 does not use the abstraction layer, we need to directly use the D3D12 Version of the Device.
 #include "../../lib/3DGEP/Source/Graphics/D3D12/D3D12Device.h"
+#include "../../lib/3DGEP/Source/Graphics/Public/Device.h"
 
 #if defined(min)
 #undef min
@@ -72,11 +73,10 @@ void Part2::Initialize()
 	// Note: Debug Layer needs to be created before creating the Device
 	D3D12GEPUtils::EnableDebugLayer();
 
-	m_PlatformAgnosticDevice = GEPUtils::Graphics::CreateDevice();
 
-	m_GraphicsDevice = static_cast<GEPUtils::Graphics::D3D12Device*>(m_PlatformAgnosticDevice.get())->GetInner();//D3D12GEPUtils::CreateDevice(adapter);
+	m_GraphicsDevice = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice()).GetInner();//D3D12GEPUtils::CreateDevice(adapter);
 
-	m_CmdQueue = std::make_unique<D3D12GEPUtils::D3D12CommandQueue>(*m_PlatformAgnosticDevice, GEPUtils::Graphics::COMMAND_LIST_TYPE::COMMAND_LIST_TYPE_DIRECT);// D3D12_COMMAND_LIST_TYPE_DIRECT);
+	m_CmdQueue = std::make_unique<D3D12GEPUtils::D3D12CommandQueue>(GEPUtils::Graphics::GetDevice(), GEPUtils::Graphics::COMMAND_LIST_TYPE::COMMAND_LIST_TYPE_DIRECT);// D3D12_COMMAND_LIST_TYPE_DIRECT);
 
 	m_ScissorRect = CD3DX12_RECT(0l, 0l, LONG_MAX, LONG_MAX);
 
