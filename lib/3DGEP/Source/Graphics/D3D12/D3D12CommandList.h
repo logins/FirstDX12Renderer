@@ -26,10 +26,6 @@ namespace GEPUtils { namespace Graphics {
 
 		virtual void Close() override;
 
-
-		virtual void UpdateBufferResource(GEPUtils::Graphics::Resource& InDestResource, GEPUtils::Graphics::Resource& InIntermediateResource, size_t InNunElements, size_t InElementSize, const void* InBufferData, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = GEPUtils::Graphics::RESOURCE_FLAGS::NONE) override;
-
-
 		virtual void SetPipelineStateAndResourceBinder(Graphics::PipelineState& InPipelineState) override;
 
 
@@ -46,6 +42,10 @@ namespace GEPUtils { namespace Graphics {
 
 
 		virtual void DrawIndexed(uint64_t InIndexCountPerInstance) override;
+
+
+		virtual void SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ResourceView& InView) override;
+
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> m_D3D12CmdList;

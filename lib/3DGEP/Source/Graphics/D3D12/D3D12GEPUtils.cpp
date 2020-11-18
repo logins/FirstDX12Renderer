@@ -4,6 +4,9 @@
 #include <algorithm>
 #include <d3dx12.h>
 #include <d3dcompiler.h>
+#include "../../Public/GEPUtils.h"
+#include "D3D12Device.h"
+#include "D3D12DescAllocator.h"
 
 #ifdef max
 #undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
@@ -281,6 +284,9 @@ namespace D3D12GEPUtils
 		ComPtr<ID3DBlob> errorBlob;
 		ThrowIfFailed(::D3DX12SerializeVersionedRootSignature(InRootSigDesc, InVersion, 
 			rootSignatureBlob.GetAddressOf(), errorBlob.GetAddressOf()));
+
+		//PrintD3dErrorBlob(errorBlob)
+		
 		// Create the Root Signature object from the blob
 		ComPtr<ID3D12RootSignature> rootSignature;
 		ThrowIfFailed(InDevice->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
@@ -288,11 +294,70 @@ namespace D3D12GEPUtils
 		return rootSignature;
 	}
 
+	void D3D12VertexBufferView::ReferenceResource(GEPUtils::Graphics::Resource& InResource, size_t DataSize, size_t StrideSize)
+	{
+		// Note: A Vertex Buffer View does not use any descriptor from a desc heap
+		m_VertexBufferView.BufferLocation = static_cast<D3D12Resource&>(InResource).GetInner()->GetGPUVirtualAddress();
+		m_VertexBufferView.SizeInBytes = DataSize;
+		m_VertexBufferView.StrideInBytes = StrideSize;
+	}
+
 	void D3D12IndexBufferView::ReferenceResource(GEPUtils::Graphics::Resource& InResource, size_t InDataSize, GEPUtils::Graphics::BUFFER_FORMAT InFormat)
 	{
+		// Note: An Index Buffer View does not use any descriptor from a desc heap
 		m_IndexBufferView.BufferLocation = static_cast<D3D12Resource&>(InResource).GetInner()->GetGPUVirtualAddress();
 		m_IndexBufferView.SizeInBytes = InDataSize;
 		m_IndexBufferView.Format = D3D12GEPUtils::BufferFormatToD3D12(InFormat);
+	}
+
+	D3D12ConstantBufferView::D3D12ConstantBufferView(GEPUtils::Graphics::Resource& InResource)
+	{
+		m_Type = GEPUtils::Graphics::RESOURCE_VIEW_TYPE::CONSTANT_BUFFER;
+
+		//ReferenceResource(InResource);
+	}
+
+	void D3D12ConstantBufferView::ReferenceDynamicBuffer(GEPUtils::Graphics::DynamicBuffer& InReferencedResource)
+	{
+		if (!m_AllocatedDescRange)
+		{
+			// Allocate descriptor in descriptor heap
+			m_AllocatedDescRange = std::make_unique<GEPUtils::Graphics::AllocatedDescRange>();
+			GEPUtils::Graphics::D3D12DescAllocator::Get(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).Allocate(*m_AllocatedDescRange, 1);
+			
+		}
+
+		D3D12GEPUtils::D3D12DynamicBuffer& d3d12DynamicBuffer = static_cast<D3D12GEPUtils::D3D12DynamicBuffer&>(InReferencedResource);
+
+		// Generate View Desc
+		D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {};
+		viewDesc.BufferLocation = d3d12DynamicBuffer.m_BufferAllocation.GPU;
+		viewDesc.SizeInBytes = d3d12DynamicBuffer.GetSize();
+
+		// Instantiate View
+		GEPUtils::Graphics::D3D12Device& d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice());
+
+		d3d12Device.GetInner()->CreateConstantBufferView(&viewDesc, m_AllocatedDescRange->GetDescHandleAt(0));
+	}
+
+	void D3D12DynamicBuffer::Init(size_t InSize, size_t InAlignmentSize)
+	{
+		//Check(m_BufferAllocation.CPU == 0); // Case of dynamic buffer already initialized is not handled at the moment
+
+		// Note: The D3D12BufferAllocator is responsible to allocate resources and here we are sub-allocating from one of them
+		GEPUtils::Graphics::D3D12BufferAllocator::Allocation bufferAllocation = GEPUtils::Graphics::D3D12BufferAllocator::Get().Allocate(InSize, InAlignmentSize);
+
+		m_BufferAllocation = bufferAllocation;
+
+		m_SizeinBytes = InSize;
+
+		m_AlignmentSize = InAlignmentSize;
+	}
+
+	void D3D12DynamicBuffer::SetData(void* InData, size_t InDataSize)
+	{
+		// Note: this memory copy will also update the resource in GPU since the memory was mapped beforehand in the buffer allocator
+		memcpy(m_BufferAllocation.CPU, InData, InDataSize);
 	}
 
 }

@@ -7,6 +7,7 @@
  */
  
  #include "D3D12DescAllocator.h"
+#include "../../Public/GEPUtils.h"
 
 #ifdef max
 #undef max
@@ -15,25 +16,24 @@
 
 namespace GEPUtils{ namespace Graphics {
 
+
+	GEPUtils::Graphics::D3D12DescAllocator D3D12DescAllocator::m_CbvSrvUavAllocator = D3D12DescAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	GEPUtils::Graphics::D3D12DescAllocator D3D12DescAllocator::m_SamplerAllocator = D3D12DescAllocator(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+
 	D3D12DescAllocator::D3D12DescAllocator(D3D12_DESCRIPTOR_HEAP_TYPE InType, uint32_t InNumDescriptors /*= 256*/)
 		: m_HeapType(InType), m_NumDescriptorsPerHeap(InNumDescriptors)
 	{
 	}
 
-	bool D3D12DescAllocator::AllocateIfPossible(D3D12DescAllocatorPage::AllocatedDescRange& OutDescRange, uint32_t InNumDescriptors /*= 1*/)
+	bool D3D12DescAllocator::Allocate(AllocatedDescRange& OutAllocatedRange, uint32_t InNumDescriptors /*= 1*/)
 	{
-		std::lock_guard<std::mutex> mutexLock(m_AllocationMutex);
-
-		bool allocationMade = false;
 
 		for (auto iter = m_AvailableHeapIds.begin(); iter != m_AvailableHeapIds.end(); ++iter)
 		{
 			D3D12DescAllocatorPage& allocatorPage = *m_PagePool[*iter];
 
-			if (allocatorPage.AllocateRangeIfPossible(InNumDescriptors, OutDescRange))
+			if (allocatorPage.AllocateRangeIfPossible(InNumDescriptors, OutAllocatedRange))
 			{
-				allocationMade = true;
-
 				if (allocatorPage.GetNumFreeHandles() == 0) // If no more free handles after the allocation, remove the current page from the free pages indices
 					m_AvailableHeapIds.erase(iter);
 
@@ -41,7 +41,7 @@ namespace GEPUtils{ namespace Graphics {
 			}
 		}
 
-		if (!allocationMade) // If not enough space was available for the allocation, create a new page and make the allocation there
+		if (!OutAllocatedRange.IsValid()) // If not enough space was available for the allocation, create a new page and make the allocation there
 		{
 			// Enlarge the max number of descriptors per page to the requested size 
 			// so we are sure that the created page will be able to contain the requested range
@@ -49,8 +49,7 @@ namespace GEPUtils{ namespace Graphics {
 
 			D3D12DescAllocatorPage& newPage = CreateAllocatorPage();
 
-			if (!newPage.AllocateRangeIfPossible(InNumDescriptors, OutDescRange))
-				return false;
+			newPage.AllocateRangeIfPossible(InNumDescriptors, OutAllocatedRange);
 		}
 
 		return true;
@@ -69,6 +68,23 @@ namespace GEPUtils{ namespace Graphics {
 				m_AvailableHeapIds.insert(i);
 			}
 		}
+	}
+
+	D3D12DescAllocator& D3D12DescAllocator::Get(D3D12_DESCRIPTOR_HEAP_TYPE InType)
+	{
+		switch (InType)
+		{
+		case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
+			return m_CbvSrvUavAllocator;
+			break;
+		case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
+			return m_SamplerAllocator;
+			break;
+		default:
+			StopForFail("Desc Allocator Type retrieved is invalid.")
+			break;
+		}
+		return m_CbvSrvUavAllocator;
 	}
 
 	D3D12DescAllocatorPage& D3D12DescAllocator::CreateAllocatorPage()

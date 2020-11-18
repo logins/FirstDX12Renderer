@@ -21,11 +21,6 @@ namespace GEPUtils { namespace Graphics {
 		
 		virtual void ClearDepth(GEPUtils::Graphics::CpuDescHandle& InDescHandle) { }
 
-
-		virtual void UpdateBufferResource(GEPUtils::Graphics::Resource& InDestResource, GEPUtils::Graphics::Resource& InIntermediateResource,
-			size_t InNunElements, size_t InElementSize, const void* InBufferData, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = GEPUtils::Graphics::RESOURCE_FLAGS::NONE
-		) { }
-
 		virtual void SetPipelineStateAndResourceBinder(GEPUtils::Graphics::PipelineState& InPipelineState) { }
 
 		virtual void SetInputAssemblerData(GEPUtils::Graphics::PRIMITIVE_TOPOLOGY InPrimTopology, GEPUtils::Graphics::VertexBufferView& InVertexBufView, GEPUtils::Graphics::IndexBufferView& InIndexBufView) { }
@@ -35,6 +30,8 @@ namespace GEPUtils { namespace Graphics {
 		virtual void SetRenderTargetFromWindow(GEPUtils::Graphics::Window& InWindow) { }
 
 		virtual void SetGraphicsRootConstants(uint64_t InRootParameterIndex, uint64_t InNum32BitValuesToSet, const void* InSrcData, uint64_t InDestOffsetIn32BitValues) { }
+
+		virtual void SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ResourceView& InView) { }
 
 		virtual void DrawIndexed(uint64_t InIndexCountPerInstance) { }
 

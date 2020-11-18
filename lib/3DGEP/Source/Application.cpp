@@ -131,11 +131,16 @@ namespace GEPUtils
 		static std::chrono::high_resolution_clock clock;
 		auto t0 = clock.now();
 
+		UpdateContent(m_DeltaTime);
+
 		Render();
 
 		m_FrameNumber++;
 		auto t1 = clock.now();
 		auto deltaTime = t1 - t0;
+
+		m_DeltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(deltaTime).count() / 1000.f;
+
 		t0 = t1;
 		elapsedSeconds += deltaTime.count() * 1e-9; // Conversion from nanoseconds into seconds
 

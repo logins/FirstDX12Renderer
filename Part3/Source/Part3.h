@@ -27,8 +27,13 @@ private:
 	// Index buffer for the cube
 	GEPUtils::Graphics::Resource& m_IndexBuffer;
 	GEPUtils::Graphics::IndexBufferView& m_IndexBufferView;
+	// Standalone Constant Buffer for the color modifier
+	GEPUtils::Graphics::DynamicBuffer& m_ColorModBuffer;
+	GEPUtils::Graphics::ResourceView& m_ColorModBufferView;
 
 	GEPUtils::Graphics::PipelineState& m_PipelineState;
+
+	Eigen::Matrix4f m_MvpMatrix;
 
 	// Vertex data for colored cube
 	struct VertexPosColor
@@ -58,7 +63,12 @@ private:
 	};
 
 protected:
+
+	virtual void UpdateContent(float InDeltaTime) override;
+
 	virtual void RenderContent(GEPUtils::Graphics::CommandList& InCmdList) override;
+
+
 
 };
 #endif // Part3_h__

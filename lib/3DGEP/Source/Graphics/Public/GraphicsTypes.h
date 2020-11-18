@@ -66,6 +66,10 @@ struct CpuDescHandle {
 	bool IsBound = false;
 };
 
+struct GPU_DESC_HANDLE {
+	bool IsBound = false;
+};
+
 struct GPUVirtualAddress {
 	bool IsValid = false;
 };
@@ -83,8 +87,17 @@ enum class RESOURCE_STATE : int {
 };
 
 struct Resource {
+	size_t GetSize() const { return m_SizeinBytes; }
 protected:
 	Resource() = default;
+
+	size_t m_SizeinBytes;
+	size_t m_AlignmentSize;
+};
+
+struct DynamicBuffer : public Resource {
+	virtual void Init(size_t InSize, size_t InAlignmentSize) = 0;
+	virtual void SetData(void* InData, size_t InDataSize) = 0;
 };
 
 enum class RESOURCE_VIEW_TYPE : int {
@@ -94,6 +107,9 @@ enum class RESOURCE_VIEW_TYPE : int {
 };
 
 struct ResourceView {
+
+	virtual void ReferenceDynamicBuffer(GEPUtils::Graphics::DynamicBuffer& InReferencedResource) = 0;
+
 protected:
 	ResourceView() = default;
 	ResourceView(RESOURCE_VIEW_TYPE InType) : m_Type(InType) {}

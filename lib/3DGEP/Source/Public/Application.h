@@ -38,6 +38,8 @@ namespace GEPUtils
 
 		static Application* m_Instance; //Note: This is just a declaration, not a definition! m_Instance must be explicitly defined
 
+		virtual void UpdateContent(float InDeltaTime) {};
+
 		virtual void RenderContent(Graphics::CommandList& InCmdList) {}
 
 		void SetAspectRatio(float InAspectRatio);
@@ -83,6 +85,7 @@ namespace GEPUtils
 
 		void Render();
 
+		float m_DeltaTime = 0.f;
 	};
 
 }

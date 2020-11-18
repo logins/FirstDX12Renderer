@@ -8,6 +8,8 @@
 #include <dxgi1_6.h>
 #include <d3dx12.h>
 #include "GraphicsTypes.h"
+#include "../D3D12/D3D12DescAllocator.h"
+#include "../D3D12/D3D12BufferAllocator.h"
 
 #ifdef max
 #undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
@@ -87,23 +89,60 @@ namespace D3D12GEPUtils {
 		CD3DX12_CPU_DESCRIPTOR_HANDLE m_DescHandle;
 	};
 
+	struct D3D12_GPU_DESC_HANDLE: public GEPUtils::Graphics::GPU_DESC_HANDLE {
+		D3D12_GPU_DESC_HANDLE() {}
+		D3D12_GPU_DESC_HANDLE(CD3DX12_GPU_DESCRIPTOR_HANDLE InDescHandle)
+			: m_DescHandle(InDescHandle)
+		{
+			IsBound = true;
+		}
+		CD3DX12_GPU_DESCRIPTOR_HANDLE& GetInner() { return m_DescHandle; }
+	private:
+		CD3DX12_GPU_DESCRIPTOR_HANDLE m_DescHandle;
+	};
+
 	struct D3D12Resource : public GEPUtils::Graphics::Resource {
 		D3D12Resource(Microsoft::WRL::ComPtr<ID3D12Resource> InResource)
 			: m_D3D12Resource(InResource)
 		{ }
 		Microsoft::WRL::ComPtr<ID3D12Resource>& GetInner() { return m_D3D12Resource; }
 		void SetInner(Microsoft::WRL::ComPtr<ID3D12Resource> InResource) { m_D3D12Resource = InResource; }
+		inline uint64_t GetSizeInBytes() const { return m_SizeinBytes; }
 	private:
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_D3D12Resource;
+
+	};
+
+	struct D3D12DynamicBuffer : public GEPUtils::Graphics::DynamicBuffer {
+
+		// Allocates space in mapped GPU memory
+		virtual void Init(size_t InSize, size_t InAlignmentSize) override;
+
+		virtual void SetData(void* InData, size_t InDataSize) override;
+
+		GEPUtils::Graphics::D3D12BufferAllocator::Allocation m_BufferAllocation;
+	};
+
+	struct D3D12ResourceView : public GEPUtils::Graphics::ResourceView
+	{
+		// Descriptor range referenced by this View object.
+		// Note: The Allocated Desc Range destructor will declared the relative descriptors to be stale and they will be cleared at the end of the frame
+		std::unique_ptr<GEPUtils::Graphics::AllocatedDescRange> m_AllocatedDescRange;
+	};
+
+	struct D3D12ConstantBufferView : public D3D12ResourceView
+	{
+		D3D12ConstantBufferView(GEPUtils::Graphics::Resource& InResource);
+		
+		D3D12_CPU_DESCRIPTOR_HANDLE& GetCPUDescHandle() { return m_AllocatedDescRange->GetDescHandleAt(0); }
+
+		virtual void ReferenceDynamicBuffer(GEPUtils::Graphics::DynamicBuffer& InReferencedResource) override;
+
+		
 	};
 
 	struct D3D12VertexBufferView : public GEPUtils::Graphics::VertexBufferView {
-		virtual void ReferenceResource(GEPUtils::Graphics::Resource& InResource, size_t DataSize, size_t StrideSize)
-		{
-			m_VertexBufferView.BufferLocation = static_cast<D3D12Resource&>(InResource).GetInner()->GetGPUVirtualAddress();
-			m_VertexBufferView.SizeInBytes = DataSize;
-			m_VertexBufferView.StrideInBytes = StrideSize;
-		}
+		virtual void ReferenceResource(GEPUtils::Graphics::Resource& InResource, size_t DataSize, size_t StrideSize);
 		D3D12_VERTEX_BUFFER_VIEW m_VertexBufferView;
 	};
 

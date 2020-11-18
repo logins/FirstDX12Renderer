@@ -10,7 +10,7 @@ namespace GEPUtils{ namespace Graphics {
 /*!
  * \class D3D12DescriptorAllocator
  *
- * \brief Used to allocate descriptors when loading new resources (such as textures).
+ * \brief Used to allocate descriptors on CPU when loading new resources (such as textures).
  * 
  * - DescriptorAllocatorPage corresponds to a descriptor heap (ID3D12DescriptorHeap).
  *
@@ -26,13 +26,14 @@ namespace GEPUtils{ namespace Graphics {
 	public:
 		D3D12DescAllocator(D3D12_DESCRIPTOR_HEAP_TYPE InType, uint32_t InNumDescriptors = 256);
 
-		virtual ~D3D12DescAllocator();
-
-		// Allocates a number of contiguous descriptors from a CPU-visible descriptor heap
-		bool AllocateIfPossible(D3D12DescAllocatorPage::AllocatedDescRange& OutDescRange, uint32_t InNumDescriptors = 1);
-
 		// When a frame has completed, the stale descriptors can be released
 		void ReleaseStaleDescriptors(uint64_t InFrameNumber);
+
+		static D3D12DescAllocator& Get(D3D12_DESCRIPTOR_HEAP_TYPE InType);
+
+		
+		// Allocates a number of contiguous descriptors from a CPU-visible descriptor heap
+		bool Allocate(AllocatedDescRange& OutAllocatedRange, uint32_t InNumDescriptors = 1);
 
 	private:
 		using PagePool = std::vector<std::unique_ptr<Graphics::D3D12DescAllocatorPage>>;
@@ -47,7 +48,9 @@ namespace GEPUtils{ namespace Graphics {
 		// Indices of available heaps in the heap pool
 		std::set<size_t> m_AvailableHeapIds;
 
-		std::mutex m_AllocationMutex;
+		// Static instances of desc heap allocator to use as singletons. Retrieved with D3D12DescAllocator::Get(D3D12_DESCRIPTOR_HEAP_TYPE) function
+		static D3D12DescAllocator m_CbvSrvUavAllocator;
+		static D3D12DescAllocator m_SamplerAllocator;
 	};
 
 } }

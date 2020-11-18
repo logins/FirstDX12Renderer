@@ -16,6 +16,8 @@
 
 namespace GEPUtils { namespace Graphics {
 
+	D3D12DynamicDescHeap D3D12DynamicDescHeap::m_CbvSrvUavDescHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	D3D12DynamicDescHeap D3D12DynamicDescHeap::m_SamplerDescHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 
 	D3D12DynamicDescHeap::D3D12DynamicDescHeap(D3D12_DESCRIPTOR_HEAP_TYPE InDescHeapType, uint32_t InDescPerHeapNum /*= 1024*/)
 		: m_DescHeapType(InDescHeapType), m_DescPerHeapNum(InDescPerHeapNum)
@@ -121,7 +123,7 @@ namespace GEPUtils { namespace Graphics {
 		CommitStagedDescriptors_Internal(InCmdList, &ID3D12GraphicsCommandList::SetComputeRootDescriptorTable);
 	}
 
-	D3D12_GPU_DESCRIPTOR_HANDLE D3D12DynamicDescHeap::UploadSingleDescriptor(GEPUtils::Graphics::D3D12CommandList& InCmdList, D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle)
+	D3D12_GPU_DESCRIPTOR_HANDLE D3D12DynamicDescHeap::UploadSingleDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle)
 	{
 		Check(m_NumFreeHandles > 0)
 		// Note: we are assuming a single desc heap will be used for the whole instance, and so assuming it will be big enough to contain all the descriptors we need
@@ -186,7 +188,23 @@ namespace GEPUtils { namespace Graphics {
 			m_RootTableCache[i].Reset();
 	}
 
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> D3D12DynamicDescHeap::GetD3D12DescriptorHeap()
+	GEPUtils::Graphics::D3D12DynamicDescHeap& D3D12DynamicDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE InType)
+	{
+		switch (InType)
+		{
+		case D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV:
+			return m_CbvSrvUavDescHeap;
+		case D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER:
+			return m_SamplerDescHeap;
+		default:
+			StopForFail("Getting D3D12DynamicDescHeap of unsupported type.")
+			break;
+		}
+
+		return m_CbvSrvUavDescHeap;
+	}
+
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> D3D12DynamicDescHeap::GetInner()
 	{
 		return m_D3d12DescHeap;
 	}

@@ -17,9 +17,14 @@ namespace GEPUtils { namespace Graphics {
 		return D3D12GEPUtils::EnableDebugLayer();
 	}
 
-	Resource& AllocateEmptyResource() // TODO this needs to allocate a resource in a resource array on the heap and return a reference to the just instantiated resource, possibly with a check for the number of resources already allocated
+	Resource& AllocateEmptyResource()
 	{
-		return GraphicsAllocator::AllocateResource();
+		return GraphicsAllocator::AllocateEmptyResource();
+	}
+
+	GEPUtils::Graphics::DynamicBuffer& AllocateDynamicBuffer()
+	{
+		return GraphicsAllocator::AllocateDynamicBuffer();
 	}
 
 	GEPUtils::Graphics::VertexBufferView& AllocateVertexBufferView()
@@ -32,9 +37,9 @@ namespace GEPUtils { namespace Graphics {
 		return GraphicsAllocator::AllocateIndexBufferView();
 	}
 
-	GEPUtils::Graphics::ResourceView& AllocateEmptyBufferView(GEPUtils::Graphics::RESOURCE_VIEW_TYPE InType)
+	GEPUtils::Graphics::ResourceView& AllocateResourceView(GEPUtils::Graphics::Resource& InResource, GEPUtils::Graphics::RESOURCE_VIEW_TYPE InType)
 {
-		return GraphicsAllocator::AllocateResourceView(InType);
+		return GraphicsAllocator::AllocateResourceView(InResource, InType);
 	}
 
 	GEPUtils::Graphics::Shader& AllocateShader(wchar_t const* InShaderPath)

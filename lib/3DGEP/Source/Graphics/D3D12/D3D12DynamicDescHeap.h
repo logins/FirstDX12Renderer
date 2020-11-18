@@ -42,7 +42,7 @@ public:
 
 	// Upload Single Descriptor: Immediately order the copy of a descriptor from CPU to a shader visible descriptor heap
 	// (useful for cases of clearing views)
-	D3D12_GPU_DESCRIPTOR_HANDLE UploadSingleDescriptor(GEPUtils::Graphics::D3D12CommandList& InCmdList, D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle);
+	D3D12_GPU_DESCRIPTOR_HANDLE UploadSingleDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle);
 
 	// Scans the root signature to find the bound descriptor tables and the number of descriptors referenced by each one of them
 	void ParseRootSignature(GEPUtils::Graphics::D3D12PipelineState& InPipelineState);
@@ -50,11 +50,13 @@ public:
 	// Releases resources and resets parameters
 	void Reset();
 
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> GetInner();
+
+	static D3D12DynamicDescHeap& Get(D3D12_DESCRIPTOR_HEAP_TYPE InType);
+
 private:
 
 	void CommitStagedDescriptors_Internal(GEPUtils::Graphics::D3D12CommandList& InCmdList, std::function<void(ID3D12GraphicsCommandList*, UINT, D3D12_GPU_DESCRIPTOR_HANDLE)> InSetFn);
-
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> GetD3D12DescriptorHeap();
 
 	uint32_t ComputeStaleDescriptorCount() const;
 
@@ -92,6 +94,9 @@ private:
 	CD3DX12_GPU_DESCRIPTOR_HANDLE m_CurrentGPUDescHandle = D3D12_DEFAULT;
 
 	uint32_t m_NumFreeHandles = 0;
+
+	static D3D12DynamicDescHeap m_CbvSrvUavDescHeap;
+	static D3D12DynamicDescHeap m_SamplerDescHeap;
 };
 
 } }

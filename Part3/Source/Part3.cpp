@@ -5,6 +5,7 @@
 #include "GraphicsUtils.h"
 #include "../../lib/3DGEP/Source/Graphics/Public/PipelineState.h"
 #include "../../lib/3DGEP/Source/Public/GEPUtilsGeometry.h"
+#include "../../lib/3DGEP/Source/Graphics/GraphicsAllocator.h"
 
 #define Q(x) L#x
 #define LQUOTE(x) Q(x) // TODO these are re-defined .. find a way to link the original defines
@@ -23,9 +24,10 @@ int main()
 }
 
 Part3Application::Part3Application()
-	: m_VertexBuffer(Graphics::AllocateEmptyResource()), m_IndexBuffer(Graphics::AllocateEmptyResource()),
+	: m_VertexBuffer(Graphics::AllocateEmptyResource()), m_IndexBuffer(Graphics::AllocateEmptyResource()), m_ColorModBuffer(Graphics::AllocateDynamicBuffer()),
 		m_VertexBufferView(Graphics::AllocateVertexBufferView()), 
 		m_IndexBufferView(Graphics::AllocateIndexBufferView()),
+		m_ColorModBufferView(Graphics::AllocateResourceView(m_ColorModBuffer, GEPUtils::Graphics::RESOURCE_VIEW_TYPE::CONSTANT_BUFFER)), // TODO possibly better changing this to Allocate ConstantBufferView and create the relative platform agnostic type...
 		m_PipelineState(Graphics::AllocatePipelineState(m_GraphicsDevice))
 {
 }
@@ -43,19 +45,19 @@ void Part3Application::Initialize()
 
 	// Load Content
 
-	auto& loadContentCmdList = m_CmdQueue->GetAvailableCommandList();
+	Graphics::CommandList& loadContentCmdList = m_CmdQueue->GetAvailableCommandList();
 
 	// Upload vertex buffer data
-	Graphics::Resource& intermediateVertexBuffer = Graphics::AllocateEmptyResource();
-	loadContentCmdList.UpdateBufferResource(m_VertexBuffer, intermediateVertexBuffer, _countof(m_VertexData), sizeof(VertexPosColor), m_VertexData);
+	Graphics::Resource& intermediateVertexBuffer = Graphics::AllocateEmptyResource(); // Note: we are allocating intermediate buffer that will not be used anymore later on but will stay in memory (leak)
+	Graphics::GraphicsAllocator::AllocateBufferCommittedResource(loadContentCmdList, m_VertexBuffer, intermediateVertexBuffer, _countof(m_VertexData), sizeof(VertexPosColor), m_VertexData);
 
 	// Create the Vertex Buffer View associated to m_VertexBuffer
 	m_VertexBufferView.ReferenceResource(m_VertexBuffer, sizeof(m_VertexData), sizeof(VertexPosColor));
 
 	// Upload index buffer data
-	Graphics::Resource& intermediateIndexBuffer = Graphics::AllocateEmptyResource();
+	Graphics::Resource& intermediateIndexBuffer = Graphics::AllocateEmptyResource(); // Note: we are allocating intermediate buffer that will not be used anymore later on but will stay in memory (leak)
 
-	loadContentCmdList.UpdateBufferResource(m_IndexBuffer, intermediateIndexBuffer, _countof(m_IndexData), sizeof(unsigned short), m_IndexData);
+	Graphics::GraphicsAllocator::AllocateBufferCommittedResource(loadContentCmdList, m_IndexBuffer, intermediateIndexBuffer, _countof(m_IndexData), sizeof(unsigned short), m_IndexData);
 
 	// Create the Index Buffer View associated to m_IndexBuffer
 	m_IndexBufferView.ReferenceResource(m_IndexBuffer, sizeof(m_IndexData), Graphics::BUFFER_FORMAT::R16_UINT); // Single channel 16 bits, because WORD = unsigned short = 2 bytes = 16 bits
@@ -86,14 +88,19 @@ void Part3Application::Initialize()
 		Graphics::PipelineState::RESOURCE_BINDER_FLAGS::ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT |
 		Graphics::PipelineState::RESOURCE_BINDER_FLAGS::DENY_HULL_SHADER_ACCESS |
 		Graphics::PipelineState::RESOURCE_BINDER_FLAGS::DENY_DOMAIN_SHADER_ACCESS |
-		Graphics::PipelineState::RESOURCE_BINDER_FLAGS::DENY_GEOMETRY_SHADER_ACCESS |
-		Graphics::PipelineState::RESOURCE_BINDER_FLAGS::DENY_PIXEL_SHADER_ACCESS;
+		Graphics::PipelineState::RESOURCE_BINDER_FLAGS::DENY_GEOMETRY_SHADER_ACCESS;
 
 	// Using a single 32-bit constant root parameter (MVP matrix) that is used by the vertex shader	
 	Graphics::PipelineState::RESOURCE_BINDER_PARAM mvpMatrix;
 	mvpMatrix.InitAsConstants(sizeof(Eigen::Matrix4f) / 4, 0, 0, Graphics::SHADER_VISIBILITY::SV_VERTEX);
 
 	resourceBinderDesc.Params.emplace(resourceBinderDesc.Params.end(),std::move(mvpMatrix));
+
+	// Constant buffer ColorModifierCB
+	Graphics::PipelineState::RESOURCE_BINDER_PARAM colorModifierParam;
+	colorModifierParam.InitAsTableCBVRange(1, 0, 1, Graphics::SHADER_VISIBILITY::SV_PIXEL);
+
+	resourceBinderDesc.Params.emplace(resourceBinderDesc.Params.end(), std::move(colorModifierParam));
 
 	// Init Root Signature Desc
 	// Create Root Signature serialized blob and then the object from it
@@ -126,6 +133,19 @@ void Part3Application::Initialize()
 	m_ViewMatrix = GEPUtils::Geometry::LookAt(eyePosition, focusPoint, upDirection);
 	// Initialize the Projection Matrix
 	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_Fov);
+
+	// Allocate colorModBuffer buffer on GPU
+	m_ColorModBuffer.Init(sizeof(float), sizeof(float));
+
+	float colorModTemp = 1.5f;
+	m_ColorModBuffer.SetData(&colorModTemp, sizeof(float));
+
+	// Since the resource changed, we also need to change the referencing view object
+	// Note: the view object D3D12 version inside stores a CPU descriptor
+	m_ColorModBufferView.ReferenceDynamicBuffer(m_ColorModBuffer);
+
+	// Note: The GPU desciptor heap we target must be the same that is later getting bound to the main command list..!
+	Graphics::GraphicsAllocator::UploadViewToGPU(m_ColorModBufferView); // TODO move this to the command list !!
 
 	// Window events delegates
 	m_MainWindow->OnMouseMoveDelegate.Add<Part3Application, &Part3Application::OnMouseMove>(this);
@@ -168,6 +188,13 @@ void Part3Application::OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
 }
 
+void Part3Application::UpdateContent(float InDeltaTime)
+{
+	// Updating MVP matrix
+	m_MvpMatrix = m_ProjMatrix * m_ViewMatrix * m_ModelMatrix;
+
+}
+
 void Part3Application::RenderContent(Graphics::CommandList& InCmdList)
 {
 	// Fill Command List Pipeline-related Data
@@ -183,10 +210,15 @@ void Part3Application::RenderContent(Graphics::CommandList& InCmdList)
 
 	// Fill Command List Buffer Data and Draw Command
 	{
-		Eigen::Matrix4f mvpMatrix = m_ProjMatrix * m_ViewMatrix * m_ModelMatrix;
+		InCmdList.SetGraphicsRootConstants(0, sizeof(Eigen::Matrix4f) / 4, m_MvpMatrix.data(), 0);
 
-		InCmdList.SetGraphicsRootConstants(0, sizeof(Eigen::Matrix4f) / 4, mvpMatrix.data(), 0);
+		InCmdList.SetGraphicsRootTable(1, m_ColorModBufferView); // TODO move this in the initialization once we have the main commandlist passing from that as well
+
+		/*static float ColorModTempVar = 1.5f;
+		m_ColorModBuffer.SetData(&ColorModTempVar, sizeof(float));*/
 
 		InCmdList.DrawIndexed(_countof(m_IndexData));
 	}
+
+	// TODO at the end of the frame have a callback or something that systems can use to Reset Dynamic memory allocators (buffers and descriptors)
 }

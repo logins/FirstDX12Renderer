@@ -36,10 +36,20 @@ public:
 			shaderVisibility = InShaderVisibility;
 		}
 
-		uint32_t Num32BitValues = 0; uint32_t ShaderRegister = 0; uint32_t RegisterSpace = 0;
+		void InitAsTableCBVRange(uint32_t InNumDescriptors, uint32_t InShaderRegister, uint32_t InRegisterSpace = 0, GEPUtils::Graphics::SHADER_VISIBILITY InShaderVisibility = SHADER_VISIBILITY::SV_ALL)
+		{
+			NumDescriptors = InNumDescriptors;
+			ShaderRegister = InShaderRegister;
+			RegisterSpace = InRegisterSpace;
+			resourceType = RESOURCE_TYPE::CBV_RANGE;
+			shaderVisibility = InShaderVisibility;
+		}
+
+		uint32_t Num32BitValues = 0; uint32_t ShaderRegister = 0; uint32_t RegisterSpace = 0; uint32_t NumDescriptors = 0;
 
 		enum class RESOURCE_TYPE {
-			CONSTANTS
+			CONSTANTS,
+			CBV_RANGE
 		} resourceType = RESOURCE_TYPE::CONSTANTS;
 		
 		SHADER_VISIBILITY shaderVisibility;

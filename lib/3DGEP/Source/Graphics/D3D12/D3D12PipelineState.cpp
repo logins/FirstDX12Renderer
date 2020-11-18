@@ -44,13 +44,29 @@ namespace GEPUtils{ namespace Graphics {
 			0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
 	}
 
-	CD3DX12_ROOT_PARAMETER1 D3D12PipelineState::TransformResourceBinderParams(RESOURCE_BINDER_PARAM& InResourceBinderParam)
+	CD3DX12_ROOT_PARAMETER1 D3D12PipelineState::TransformResourceBinderParams(RESOURCE_BINDER_PARAM& InResourceBinderParam, std::vector<D3D12_DESCRIPTOR_RANGE1>& OutDescRanges)
 	{
 		CD3DX12_ROOT_PARAMETER1 returnParam;
 		if (InResourceBinderParam.resourceType == RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CONSTANTS)
 		{
 			returnParam.InitAsConstants(InResourceBinderParam.Num32BitValues, InResourceBinderParam.ShaderRegister, 
 				InResourceBinderParam.RegisterSpace, TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
+		}
+		else if (InResourceBinderParam.resourceType == RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CBV_RANGE)
+		{
+			// Note: we are assuming only 1 descriptor range per descriptor table
+			D3D12_DESCRIPTOR_RANGE1 descRange;
+			descRange.BaseShaderRegister = InResourceBinderParam.ShaderRegister;
+			descRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
+			descRange.NumDescriptors = InResourceBinderParam.NumDescriptors;
+			descRange.OffsetInDescriptorsFromTableStart = 0;
+			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+			descRange.RegisterSpace = InResourceBinderParam.RegisterSpace;
+
+			OutDescRanges.push_back(std::move(descRange));
+
+			returnParam.InitAsDescriptorTable(1, &OutDescRanges.back(), TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
+
 		}
 		else
 		{
@@ -100,7 +116,13 @@ namespace GEPUtils{ namespace Graphics {
 		std::vector<RESOURCE_BINDER_PARAM>& agnosticRootParameters = InPipelineStateDesc.ResourceBinderDesc.Params;
 		std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters = m_RootSignatureInfo.rootParameters;
 		rootParameters.reserve(agnosticRootParameters.size());
-		std::transform(agnosticRootParameters.begin(), agnosticRootParameters.end(), std::back_inserter(rootParameters), &D3D12PipelineState::TransformResourceBinderParams);
+		//std::transform(agnosticRootParameters.begin(), agnosticRootParameters.end(), std::back_inserter(rootParameters), &D3D12PipelineState::TransformResourceBinderParams);
+		// We cannot use std::transform here because in the case of descriptor tables for example, we also need to preserve the generated D3D12_DESCRIPTOR_RANGE1 objects other than the root parameters
+		std::vector<D3D12_DESCRIPTOR_RANGE1> descRanges(10);
+		for (uint32_t i = 0; i < agnosticRootParameters.size(); i++)
+		{
+			rootParameters.push_back(TransformResourceBinderParams(agnosticRootParameters[i], descRanges));
+		}
 
 		// Init Root Signature Desc
 		m_RootSignatureInfo.rootSignatureDesc.Init_1_1(rootParameters.size(), &rootParameters[0], 0U, nullptr, rootSignatureFlags);

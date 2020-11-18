@@ -28,7 +28,7 @@ private:
 
 	static D3D12_ROOT_SIGNATURE_FLAGS TransformResourceBinderFlags(RESOURCE_BINDER_FLAGS InResourceBinderFlags);
 	static D3D12_INPUT_ELEMENT_DESC TransformInputLayoutElement(INPUT_LAYOUT_DESC::LayoutElement& InLayoutElementDesc);
-	static CD3DX12_ROOT_PARAMETER1 TransformResourceBinderParams(RESOURCE_BINDER_PARAM& InResourceBinderParam);
+	static CD3DX12_ROOT_PARAMETER1 TransformResourceBinderParams(RESOURCE_BINDER_PARAM& InResourceBinderParam, std::vector<D3D12_DESCRIPTOR_RANGE1>& OutDescRanges);
 
 	static D3D12_SHADER_VISIBILITY TransformShaderVisibility(SHADER_VISIBILITY shaderVisibility);
 	

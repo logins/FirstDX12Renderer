@@ -8,14 +8,32 @@ namespace GEPUtils { namespace Graphics {
 
 	class PipelineState;
 	class Device;
+	class CommandList;
 
 class GraphicsAllocator
 {
 public:
-	static GEPUtils::Graphics::Resource& AllocateResource();
+	static GEPUtils::Graphics::Resource& AllocateEmptyResource();
+
+	static GEPUtils::Graphics::DynamicBuffer& AllocateDynamicBuffer();
+
+	// Preferable for Static Buffers such as Vertex and Index Buffers.
+	// First creates an intermediary buffer in shared memory (upload heap), then the same buffer in reserved memory (default heap)
+	// and then calls UpdateSubresources that will copy the content of the first buffer in the second one.
+	// The type of allocation is Committed Resource, meaning that a resource heap will be created specifically to contain the allocated resource each time.
+	static void AllocateBufferCommittedResource(GEPUtils::Graphics::CommandList& InCmdList, GEPUtils::Graphics::Resource& InDestResource, GEPUtils::Graphics::Resource& InIntermediateResource,
+		size_t InNunElements, size_t InElementSize, const void* InBufferData, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = GEPUtils::Graphics::RESOURCE_FLAGS::NONE);
+
+	// Allocates a memory-mapped dynamic buffer in shared memory (upload heap). Useful for buffers that change content very frequently, such as one per frame.
+	//static void AllocateDynamicBuffer(GEPUtils::Graphics::Resource& InResource, size_t InSize, size_t InAlignmentSize);
+
+	static void StageViewForGPU(uint32_t InRootIdx, GEPUtils::Graphics::ResourceView& InView);
+
+	static void UploadViewToGPU(GEPUtils::Graphics::ResourceView& InView);
+
 	static GEPUtils::Graphics::VertexBufferView& AllocateVertexBufferView();
 	static GEPUtils::Graphics::IndexBufferView& AllocateIndexBufferView();
-	static GEPUtils::Graphics::ResourceView& AllocateResourceView(GEPUtils::Graphics::RESOURCE_VIEW_TYPE InType);
+	static GEPUtils::Graphics::ResourceView& AllocateResourceView(GEPUtils::Graphics::Resource& InResource, GEPUtils::Graphics::RESOURCE_VIEW_TYPE InType);
 	static GEPUtils::Graphics::Shader& AllocateShader(wchar_t const* InShaderPath);
 	static GEPUtils::Graphics::PipelineState& AllocatePipelineState(GEPUtils::Graphics::Device& InGraphicsDevice);
 

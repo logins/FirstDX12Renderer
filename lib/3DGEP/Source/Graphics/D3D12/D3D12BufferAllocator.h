@@ -22,8 +22,11 @@ namespace GEPUtils{ namespace Graphics {
  * - Allocates a resource in GPU shared memory (upload heap) per each memory page.
  * 
  * - The advantage of using this class is that the buffers will be allocated once, and then re-used with different data upon the next frame, instead of re-creating the entire buffers all over again.
- * - In out case vertex and index data do not change from frame to frame, but this type of container can come particularly useful when uploading uniform data to a constant buffer used in shader (e.g. MVP matrix)
- * - or when handling particles data simulated in CPU: instead of creating upload buffers on every frame, we can re-use the same buffers of the previous frame and upload different data. 
+ * - We can call Allocate(..) that will store a chunk of memory in GPU shared memory mapped to CPU permanently, so after we allocate a buffer, we can call "memcpy" or similar methods to update the resource on CPU
+ *   and the corresponding memory on GPU will be updated the first time the buffer will be used (due to the underlying mapping activity).
+ * - In our case vertex and index data do not change from frame to frame, but this type of container can come particularly useful when uploading uniform data to a constant buffer used in shader.
+ *   It might not be valid for the MVP matrix since it is stored in the root signature, so we don't need to have a standalone buffer for it... but for other, maybe material specific, parameters, it can turn useful...
+ *   or when handling particles data simulated in CPU: instead of creating upload buffers on every frame, we can re-use the same buffers of the previous frame and upload different data. 
  * 
  * \author Riccardo Loggini
  * \date October 2020
@@ -43,10 +46,14 @@ namespace GEPUtils{ namespace Graphics {
 		// Note: the maximum allocation size will be equal to the page size
 		size_t GetPageSize() const { return m_PageSize; }
 
-		bool AllocateIfPossible(size_t InSizeBytes, size_t InAlignmentBytes, D3D12BufferAllocator::Allocation& OutAllocation);
+		// It will first align the alignment with the hardware constraints, then align the buffer size and then allocate a buffer inside a resource
+		// At the moment the way to check if the allocation was successful is to check if the CPU pointer field is non-zero
+		D3D12BufferAllocator::Allocation Allocate(size_t& InOutSizeBytes, size_t& InOutAlignmentBytes);
 
 		// Releases all the allocated pages. It should be done when the command list finishes executing on the command queue
 		void Reset();
+
+		static D3D12BufferAllocator& Get() { return m_StaticInstance; }
 
 	private:
 
@@ -54,7 +61,10 @@ namespace GEPUtils{ namespace Graphics {
 			Page(size_t InSizeBytes);
 			~Page();
 			bool HasSpace(size_t InSizeBytes, size_t InAlignmentBytes);
+
+			// Note: Both Size and Alignment are supposed to be already aligned with D3D buffer constraints
 			bool AllocateIfPossible(size_t InSizeBytes, size_t InAlignmentBytes, D3D12BufferAllocator::Allocation& OutAllocation);
+
 			// Reset page for reuse
 			void Reset();
 
@@ -83,6 +93,8 @@ namespace GEPUtils{ namespace Graphics {
 		Page& m_CurrentPage;
 
 		static const size_t m_DefaultPageSize = 2000;
+
+		static D3D12BufferAllocator m_StaticInstance;
 	};
 
 

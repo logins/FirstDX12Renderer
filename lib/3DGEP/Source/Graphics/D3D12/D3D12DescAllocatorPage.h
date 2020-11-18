@@ -16,6 +16,43 @@
 
 namespace GEPUtils { namespace Graphics {
 
+	class D3D12DescAllocatorPage;
+
+	struct AllocatedDescRange
+	{
+		friend D3D12DescAllocatorPage; // D3D12DescAllocatorPage has full control over DescRangeAllocation
+
+		AllocatedDescRange() = default;
+
+		// Creates an empty
+		AllocatedDescRange(D3D12DescAllocatorPage& InDescAllocPage);
+
+		// Destructor will automatically free the allocation
+		~AllocatedDescRange();
+
+		void SetGpuDescHandle(D3D12_GPU_DESCRIPTOR_HANDLE InHandle) { m_StartingGPUDescHandle = InHandle; }
+
+		D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescHandle() const { return m_StartingGPUDescHandle; }
+
+		// Gets a specific descriptor of the range at the given offset
+		D3D12_CPU_DESCRIPTOR_HANDLE GetDescHandleAt(uint32_t InDescRangeOffset = 0);
+
+		uint32_t GetNumHandles() const { return m_NumDescriptors; }
+
+		D3D12DescAllocatorPage& GetRelativeAllocatorPage() const { return *m_DescAllocatorPage; }
+
+		bool IsValid() const { return m_StartingCPUDescHandle.ptr != 0; }
+
+	private:
+		void Init(D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle, uint32_t InNumHandles, uint32_t InDescSize, D3D12DescAllocatorPage& InDescAllocPage);
+
+		D3D12DescAllocatorPage* m_DescAllocatorPage = nullptr; // Note: this needs to be a pointer because copy assignment is deleted for this class and with a reference we could not assign it
+		D3D12_CPU_DESCRIPTOR_HANDLE m_StartingCPUDescHandle = { 0 };
+		uint32_t m_NumDescriptors = 0;
+		uint32_t m_DescSize = 0;
+
+		D3D12_GPU_DESCRIPTOR_HANDLE m_StartingGPUDescHandle = { 0 };
+	};
 
 /*!
  * \class D3D12DescAllocatorPage
@@ -29,7 +66,6 @@ namespace GEPUtils { namespace Graphics {
  */
 	class D3D12DescAllocatorPage
 	{
-		struct AllocatedDescRange;
 
 	public:
 		D3D12DescAllocatorPage(D3D12_DESCRIPTOR_HEAP_TYPE InHeapType, uint32_t InNumDescriptors);
@@ -41,42 +77,12 @@ namespace GEPUtils { namespace Graphics {
 		inline uint32_t GetNumFreeHandles() const { return m_NumFreeHandles; }
 
 		// Returns true if the allocation succeeded
-		bool AllocateRangeIfPossible(uint32_t InNumDescriptors, D3D12DescAllocatorPage::AllocatedDescRange& OutDescRange);
+		bool AllocateRangeIfPossible(uint32_t InNumDescriptors, AllocatedDescRange& OutDescRange);
 
 		void DeclareStale(AllocatedDescRange& InDescHandle);
 
 		// Should be called at the end of the frame
 		void ReleaseStaleDescriptors(uint64_t InFrameNumber);
-
-		struct AllocatedDescRange
-		{
-			friend D3D12DescAllocatorPage; // D3D12DescAllocatorPage has full control over DescRangeAllocation
-
-			// Creates an empty
-			AllocatedDescRange(D3D12DescAllocatorPage& InDescAllocPage);
-
-			// Destructor will automatically free the allocation
-			~AllocatedDescRange();
-
-			// Copies are not allowed
-			AllocatedDescRange(const AllocatedDescRange& InDescRangeAllocation) = delete;
-			AllocatedDescRange& operator=(const AllocatedDescRange& InDescRangeAllocation) = delete;
-
-			// Gets a specific descriptor of the range at the given offset
-			D3D12_CPU_DESCRIPTOR_HANDLE GetDescHandleAt(uint32_t InDescRangeOffset = 0);
-
-			uint32_t GetNumHandles() const { return m_NumDescriptors; }
-			D3D12DescAllocatorPage& GetRelativeAllocatorPage() const { return *m_DescAllocatorPage; }
-			bool IsValid() const { m_StartingCPUDescHandle.ptr != 0; }
-
-		private:
-			void Init(D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle, uint32_t InNumHandles, uint32_t InDescSize, D3D12DescAllocatorPage& InDescAllocPage);
-
-			D3D12DescAllocatorPage* m_DescAllocatorPage = nullptr; // Note: this needs to be a pointer because copy assignment is deleted for this class and with a reference we could not assign it
-			D3D12_CPU_DESCRIPTOR_HANDLE m_StartingCPUDescHandle;
-			uint32_t m_NumDescriptors;
-			uint32_t m_DescSize;
-		};
 
 	protected:
 		// Computes the number of descriptors offset from the start of the heap to the input

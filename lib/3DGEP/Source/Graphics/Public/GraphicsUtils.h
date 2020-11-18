@@ -23,9 +23,11 @@ namespace GEPUtils { namespace Graphics {
 
 	Resource& AllocateEmptyResource(); 
 
+	DynamicBuffer& AllocateDynamicBuffer();
+
 	VertexBufferView& AllocateVertexBufferView();
 	IndexBufferView& AllocateIndexBufferView();
-	ResourceView& AllocateEmptyBufferView(GEPUtils::Graphics::RESOURCE_VIEW_TYPE InType);
+	ResourceView& AllocateResourceView(GEPUtils::Graphics::Resource& InResource, GEPUtils::Graphics::RESOURCE_VIEW_TYPE InType);
 
 	Shader& AllocateShader(wchar_t const* InShaderPath);
 

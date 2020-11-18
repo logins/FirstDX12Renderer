@@ -6,6 +6,7 @@
 #include "D3D12Device.h"
 #include "D3D12PipelineState.h"
 #include "../Public/D3D12Window.h"
+#include "D3D12DynamicDescHeap.h"
 
 namespace GEPUtils { namespace Graphics {
 
@@ -41,29 +42,6 @@ namespace GEPUtils { namespace Graphics {
 		m_D3D12CmdList->Close();
 	}
 
-	void D3D12CommandList::UpdateBufferResource(GEPUtils::Graphics::Resource& InDestResource, GEPUtils::Graphics::Resource& InIntermediateResource, size_t InNunElements, size_t InElementSize, const void* InBufferData, GEPUtils::Graphics::RESOURCE_FLAGS InFlags /*= GEPUtils::Graphics::RESOURCE_FLAGS::NONE*/)
-	{
-		// Note: ID3D12Resource** InDestResource, ID3D12Resource** InIntermediateResource are CPU Buffer Data !!!
-		// We create them on CPU, then we use them to update the corresponding SubResouce on the GPU!
-		size_t bufferSize = InNunElements * InElementSize;
-		// Create a committed resource for the GPU resource in a default heap
-		// Note: CreateCommittedResource will allocate a resource heap and a resource in it in GPU memory, then it will return the corresponding GPUVirtualAddress that will be stored inside the ID3D12Resource object,
-		// so that we can reference that GPU memory address from CPU side.
-		D3D12GEPUtils::CreateCommittedResource(static_cast<GEPUtils::Graphics::D3D12Device&>(m_Device).GetInner(), 
-			&static_cast<D3D12GEPUtils::D3D12Resource&>(InDestResource).GetInner(), D3D12_HEAP_TYPE_DEFAULT, bufferSize, D3D12_RESOURCE_FLAG_NONE, D3D12_RESOURCE_STATE_COPY_DEST);
-		if (InBufferData)
-		{ // Create a committed resource in an upload heap to upload content to the first resource
-			D3D12GEPUtils::CreateCommittedResource(static_cast<GEPUtils::Graphics::D3D12Device&>(m_Device).GetInner(), &static_cast<D3D12GEPUtils::D3D12Resource&>(InIntermediateResource).GetInner(), D3D12_HEAP_TYPE_UPLOAD, bufferSize, D3D12GEPUtils::ResFlagsToD3D12(InFlags), D3D12_RESOURCE_STATE_GENERIC_READ);
-
-			// Now that both copy and dest resource are created on CPU, we can use them to update the corresponding GPU SubResource
-			D3D12_SUBRESOURCE_DATA subresourceData = {};
-			subresourceData.pData = InBufferData; // Pointer to the memory block that contains the subresource data on CPU
-			subresourceData.RowPitch = bufferSize; // Physical size in Bytes of the subresource data
-			subresourceData.SlicePitch = subresourceData.RowPitch; // Size of each slice for the resource, since we assume only 1 slice, this corresponds to the size of the entire resource
-			::UpdateSubresources(m_D3D12CmdList.Get(), static_cast<D3D12GEPUtils::D3D12Resource&>(InDestResource).GetInner().Get(), static_cast<D3D12GEPUtils::D3D12Resource&>(InIntermediateResource).GetInner().Get(), 0, 0, 1, &subresourceData);
-		}
-	}
-
 	void D3D12CommandList::SetPipelineStateAndResourceBinder(Graphics::PipelineState& InPipelineState)
 	{
 		Graphics::D3D12PipelineState& d3d12PSO = static_cast<Graphics::D3D12PipelineState&>(InPipelineState);
@@ -73,6 +51,9 @@ namespace GEPUtils { namespace Graphics {
 
 		// Set root signature
 		m_D3D12CmdList->SetGraphicsRootSignature(d3d12PSO.GetInnerRootSignature().Get());
+
+		// Bind descriptor heap(s)
+		m_D3D12CmdList->SetDescriptorHeaps(1, GEPUtils::Graphics::D3D12DynamicDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).GetInner().GetAddressOf());
 	}
 
 	void D3D12CommandList::SetInputAssemblerData(GEPUtils::Graphics::PRIMITIVE_TOPOLOGY InPrimTopology, GEPUtils::Graphics::VertexBufferView& InVertexBufView, GEPUtils::Graphics::IndexBufferView& InIndexBufView)
@@ -103,6 +84,11 @@ namespace GEPUtils { namespace Graphics {
 	void D3D12CommandList::DrawIndexed(uint64_t InIndexCountPerInstance)
 	{
 		m_D3D12CmdList->DrawIndexedInstanced(InIndexCountPerInstance, 1, 0, 0, 0);
+	}
+
+	void D3D12CommandList::SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ResourceView& InView)
+	{
+		m_D3D12CmdList->SetGraphicsRootDescriptorTable(InRootIndex, static_cast<D3D12GEPUtils::D3D12ResourceView&>(InView).m_AllocatedDescRange->GetGPUDescHandle());
 	}
 
 }

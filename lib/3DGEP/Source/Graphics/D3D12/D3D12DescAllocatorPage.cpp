@@ -14,6 +14,28 @@
 
 namespace GEPUtils { namespace Graphics {
 
+
+	void AllocatedDescRange::Init(D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle, uint32_t InNumHandles, uint32_t InDescSize, D3D12DescAllocatorPage& InDescAllocPage)
+	{
+		m_StartingCPUDescHandle = InCPUDescHandle; m_DescAllocatorPage = &InDescAllocPage; m_NumDescriptors = InNumHandles; m_DescSize = InDescSize;
+	}
+
+	AllocatedDescRange::AllocatedDescRange(D3D12DescAllocatorPage& InDescAllocPage)
+		: m_StartingCPUDescHandle({ 0 }), m_DescAllocatorPage(&InDescAllocPage), m_NumDescriptors(0), m_DescSize(0)
+	{
+	}
+
+	D3D12_CPU_DESCRIPTOR_HANDLE AllocatedDescRange::GetDescHandleAt(uint32_t InDescRangeOffset /*= 0*/)
+	{
+		Check(InDescRangeOffset < m_NumDescriptors)
+		return D3D12_CPU_DESCRIPTOR_HANDLE{ m_StartingCPUDescHandle.ptr + (InDescRangeOffset * m_DescSize) };
+	}
+
+	AllocatedDescRange::~AllocatedDescRange()
+	{
+		m_DescAllocatorPage->DeclareStale(*this);
+	}
+
 	D3D12DescAllocatorPage::D3D12DescAllocatorPage(D3D12_DESCRIPTOR_HEAP_TYPE InHeapType, uint32_t InNumDescriptors)
 		: m_D3D12DescHeapType(InHeapType), m_NumTotalDescriptors(InNumDescriptors)
 	{
@@ -41,10 +63,8 @@ namespace GEPUtils { namespace Graphics {
 		return m_FreeListBySize.lower_bound(InNumDescriptors) != m_FreeListBySize.end();
 	}
 
-	bool D3D12DescAllocatorPage::AllocateRangeIfPossible(uint32_t InNumDescriptors, D3D12DescAllocatorPage::AllocatedDescRange& OutDescRange)
+	bool D3D12DescAllocatorPage::AllocateRangeIfPossible(uint32_t InNumDescriptors, AllocatedDescRange& OutDescRange)
 	{
-		std::lock_guard<std::mutex> lock(m_AllocationMutex); // Locks access to this allocator page data for the current thread
-
 		if (InNumDescriptors > m_NumFreeHandles)
 		{
 			StopForFail("Trying to allocate descriptor range without enough space on page.")
@@ -82,7 +102,7 @@ namespace GEPUtils { namespace Graphics {
 
 		m_NumFreeHandles -= InNumDescriptors;
 
-		OutDescRange.Init(CD3DX12_CPU_DESCRIPTOR_HANDLE(m_BaseCPUDescriptor, descOffset, m_DescHandleIncrementSize), rangeSize, m_DescHandleIncrementSize,*this);
+		OutDescRange.Init(CD3DX12_CPU_DESCRIPTOR_HANDLE(m_BaseCPUDescriptor, descOffset, m_DescHandleIncrementSize), InNumDescriptors, m_DescHandleIncrementSize,*this);
 
 		return true;
 	}
@@ -98,8 +118,6 @@ namespace GEPUtils { namespace Graphics {
 			std::invalid_argument("Trying to declare stale a range from another page");
 
 		uint32_t numDescOffset = ComputeNumDescriptorsOffset(InDescAllocation.GetDescHandleAt());
-
-		std::lock_guard<std::mutex> lock(m_AllocationMutex);
 
 		m_StaleDescriptors.emplace(numDescOffset, InDescAllocation.GetNumHandles(), Application::Get()->GetCurrentFrameNumber());
 
@@ -186,25 +204,5 @@ namespace GEPUtils { namespace Graphics {
 		AddNewRange(InStartingOffset, InNumDescriptors);
 	}
 
-	void D3D12DescAllocatorPage::AllocatedDescRange::Init(D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle, uint32_t InNumHandles, uint32_t InDescSize, D3D12DescAllocatorPage& InDescAllocPage)
-	{
-		m_StartingCPUDescHandle = InCPUDescHandle; m_DescAllocatorPage = &InDescAllocPage; m_NumDescriptors = InNumHandles; m_DescSize = InDescSize;
-	}
-
-	D3D12DescAllocatorPage::AllocatedDescRange::AllocatedDescRange(D3D12DescAllocatorPage& InDescAllocPage)
-		: m_StartingCPUDescHandle({ 0 }), m_DescAllocatorPage(&InDescAllocPage), m_NumDescriptors(0), m_DescSize(0)
-	{
-	}
-
-	D3D12_CPU_DESCRIPTOR_HANDLE D3D12DescAllocatorPage::AllocatedDescRange::GetDescHandleAt(uint32_t InDescRangeOffset /*= 0*/)
-	{
-		assert(InDescRangeOffset < m_NumDescriptors);
-		return D3D12_CPU_DESCRIPTOR_HANDLE{ m_StartingCPUDescHandle.ptr + (InDescRangeOffset * m_DescSize) };
-	}
-
-	D3D12DescAllocatorPage::AllocatedDescRange::~AllocatedDescRange()
-	{
-		m_DescAllocatorPage->DeclareStale(*this);
-	}
 
 } }
