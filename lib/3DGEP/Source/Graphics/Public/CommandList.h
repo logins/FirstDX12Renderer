@@ -35,6 +35,8 @@ namespace GEPUtils { namespace Graphics {
 
 		virtual void DrawIndexed(uint64_t InIndexCountPerInstance) { }
 
+		virtual void StoreAndReferenceDynamicBuffer(uint32_t InRootIdx, GEPUtils::Graphics::DynamicBuffer& InDynBuffer, GEPUtils::Graphics::ResourceView& InResourceView) { }
+
 	protected:
 		CommandList(GEPUtils::Graphics::Device& InDevice);
 

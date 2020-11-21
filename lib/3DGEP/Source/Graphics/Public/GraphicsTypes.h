@@ -2,6 +2,7 @@
 #define GraphicsTypes_h__
 #include <type_traits>
 #include <string>
+#include <vector>
 namespace GEPUtils { namespace Graphics {
 
 	enum class PRIMITIVE_TOPOLOGY_TYPE : int32_t 
@@ -87,17 +88,24 @@ enum class RESOURCE_STATE : int {
 };
 
 struct Resource {
-	size_t GetSize() const { return m_SizeinBytes; }
+	size_t GetDataSize() const { return m_DataSize; }
+	size_t GetAlignSize() const { return m_AlignmentSize; }
 protected:
 	Resource() = default;
 
-	size_t m_SizeinBytes;
+	size_t m_DataSize;
 	size_t m_AlignmentSize;
 };
 
 struct DynamicBuffer : public Resource {
-	virtual void Init(size_t InSize, size_t InAlignmentSize) = 0;
-	virtual void SetData(void* InData, size_t InDataSize) = 0;
+	virtual void SetData(void* InData, size_t InSize, size_t InAlignmentSize) = 0;
+
+	void* GetData() { return m_Data.data(); }
+	// Note: BufferSize indicates the whole container while DataSize only the effective data stored in the buffer 
+	size_t GetBufferSize() const { return m_BufferSize; }
+protected:
+	size_t m_BufferSize;
+	std::vector<unsigned char> m_Data;
 };
 
 enum class RESOURCE_VIEW_TYPE : int {
@@ -108,8 +116,7 @@ enum class RESOURCE_VIEW_TYPE : int {
 
 struct ResourceView {
 
-	virtual void ReferenceDynamicBuffer(GEPUtils::Graphics::DynamicBuffer& InReferencedResource) = 0;
-
+	GEPUtils::Graphics::RESOURCE_VIEW_TYPE GetType() const { return m_Type; }
 protected:
 	ResourceView() = default;
 	ResourceView(RESOURCE_VIEW_TYPE InType) : m_Type(InType) {}

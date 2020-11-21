@@ -3,9 +3,9 @@
 #include <iostream>
 #include <algorithm>
 #include "GraphicsUtils.h"
-#include "../../lib/3DGEP/Source/Graphics/Public/PipelineState.h"
-#include "../../lib/3DGEP/Source/Public/GEPUtilsGeometry.h"
-#include "../../lib/3DGEP/Source/Graphics/GraphicsAllocator.h"
+#include "PipelineState.h"
+#include "GEPUtilsGeometry.h"
+#include "GraphicsAllocator.h"
 
 #define Q(x) L#x
 #define LQUOTE(x) Q(x) // TODO these are re-defined .. find a way to link the original defines
@@ -44,7 +44,6 @@ void Part3Application::Initialize()
 	Application::Initialize();
 
 	// Load Content
-
 	Graphics::CommandList& loadContentCmdList = m_CmdQueue->GetAvailableCommandList();
 
 	// Upload vertex buffer data
@@ -126,26 +125,15 @@ void Part3Application::Initialize()
 
 	// Initialize the Model Matrix
 	m_ModelMatrix = Eigen::Matrix4f::Identity();
+
 	// Initialize the View Matrix
 	const Eigen::Vector3f eyePosition = Eigen::Vector3f(0, 0, -10);
 	const Eigen::Vector3f focusPoint = Eigen::Vector3f(0, 0, 0);
 	const Eigen::Vector3f upDirection = Eigen::Vector3f(0, 1, 0);
 	m_ViewMatrix = GEPUtils::Geometry::LookAt(eyePosition, focusPoint, upDirection);
+
 	// Initialize the Projection Matrix
 	m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_Fov);
-
-	// Allocate colorModBuffer buffer on GPU
-	m_ColorModBuffer.Init(sizeof(float), sizeof(float));
-
-	float colorModTemp = 1.5f;
-	m_ColorModBuffer.SetData(&colorModTemp, sizeof(float));
-
-	// Since the resource changed, we also need to change the referencing view object
-	// Note: the view object D3D12 version inside stores a CPU descriptor
-	m_ColorModBufferView.ReferenceDynamicBuffer(m_ColorModBuffer);
-
-	// Note: The GPU desciptor heap we target must be the same that is later getting bound to the main command list..!
-	Graphics::GraphicsAllocator::UploadViewToGPU(m_ColorModBufferView); // TODO move this to the command list !!
 
 	// Window events delegates
 	m_MainWindow->OnMouseMoveDelegate.Add<Part3Application, &Part3Application::OnMouseMove>(this);
@@ -193,6 +181,13 @@ void Part3Application::UpdateContent(float InDeltaTime)
 	// Updating MVP matrix
 	m_MvpMatrix = m_ProjMatrix * m_ViewMatrix * m_ModelMatrix;
 
+	// Updating color modifier
+	float counter = 1.f;
+	static float progress = 0.f;
+	counter = 0.5f + std::sin(progress)/2.f;
+	progress += 0.002f * InDeltaTime;
+
+	m_ColorModBuffer.SetData(&counter, sizeof(counter), sizeof(float));
 }
 
 void Part3Application::RenderContent(Graphics::CommandList& InCmdList)
@@ -212,13 +207,9 @@ void Part3Application::RenderContent(Graphics::CommandList& InCmdList)
 	{
 		InCmdList.SetGraphicsRootConstants(0, sizeof(Eigen::Matrix4f) / 4, m_MvpMatrix.data(), 0);
 
-		InCmdList.SetGraphicsRootTable(1, m_ColorModBufferView); // TODO move this in the initialization once we have the main commandlist passing from that as well
-
-		/*static float ColorModTempVar = 1.5f;
-		m_ColorModBuffer.SetData(&ColorModTempVar, sizeof(float));*/
+		InCmdList.StoreAndReferenceDynamicBuffer(1, m_ColorModBuffer, m_ColorModBufferView);
 
 		InCmdList.DrawIndexed(_countof(m_IndexData));
 	}
 
-	// TODO at the end of the frame have a callback or something that systems can use to Reset Dynamic memory allocators (buffers and descriptors)
 }

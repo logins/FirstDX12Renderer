@@ -7,11 +7,12 @@
 #include "D3D12PipelineState.h"
 #include "../Public/D3D12Window.h"
 #include "D3D12DynamicDescHeap.h"
+#include "../../Public/GEPUtils.h"
 
 namespace GEPUtils { namespace Graphics {
 
 	D3D12CommandList::D3D12CommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> InCmdList, GEPUtils::Graphics::Device& InOwningDevice) 
-		: CommandList(InOwningDevice), m_D3D12CmdList(InCmdList)
+		: CommandList(InOwningDevice), m_D3D12CmdList(InCmdList), m_DynamicBufferPageIdx(GEPUtils::Graphics::D3D12BufferAllocator::Get().ReservePage())
 	{
 	}
 
@@ -54,6 +55,9 @@ namespace GEPUtils { namespace Graphics {
 
 		// Bind descriptor heap(s)
 		m_D3D12CmdList->SetDescriptorHeaps(1, GEPUtils::Graphics::D3D12DynamicDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).GetInner().GetAddressOf());
+
+		// GPU desc heap parse root signature
+		Graphics::D3D12DynamicDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).ParseRootSignature(d3d12PSO);
 	}
 
 	void D3D12CommandList::SetInputAssemblerData(GEPUtils::Graphics::PRIMITIVE_TOPOLOGY InPrimTopology, GEPUtils::Graphics::VertexBufferView& InVertexBufView, GEPUtils::Graphics::IndexBufferView& InIndexBufView)
@@ -83,12 +87,43 @@ namespace GEPUtils { namespace Graphics {
 
 	void D3D12CommandList::DrawIndexed(uint64_t InIndexCountPerInstance)
 	{
+		// Note: this will upload descriptors relative to descriptor tables on GPU and then reference them in the pipeline!
+		Graphics::D3D12DynamicDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).CommitStagedDescriptorsForDraw(*this);
+
+		// Now that the descriptors are in GPU we can reference the relative views in the pipeline
 		m_D3D12CmdList->DrawIndexedInstanced(InIndexCountPerInstance, 1, 0, 0, 0);
 	}
 
 	void D3D12CommandList::SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ResourceView& InView)
 	{
+		// Now descriptor is staged for upload but not uploaded yet..!
+
 		m_D3D12CmdList->SetGraphicsRootDescriptorTable(InRootIndex, static_cast<D3D12GEPUtils::D3D12ResourceView&>(InView).m_AllocatedDescRange->GetGPUDescHandle());
+	}
+
+
+	void D3D12CommandList::StoreAndReferenceDynamicBuffer(uint32_t InRootIndex, GEPUtils::Graphics::DynamicBuffer& InDynBuffer, GEPUtils::Graphics::ResourceView& InResourceView)
+	{
+		// Store Dynamic Buffer
+		D3D12BufferAllocator::Allocation dynamicAllocation = D3D12BufferAllocator::Get().Allocate(m_DynamicBufferPageIdx, InDynBuffer.GetBufferSize(), InDynBuffer.GetAlignSize()); // TODO here Allocation object will be lost.. we could probably need it in the future..
+
+		// Copy buffer content in the allocation
+		memcpy(dynamicAllocation.CPU, InDynBuffer.GetData(), InDynBuffer.GetDataSize());
+
+		// Reference it in the view object
+		static_cast<D3D12GEPUtils::D3D12ConstantBufferView&>(InResourceView).ReferenceBuffer(dynamicAllocation.GPU, InDynBuffer.GetBufferSize());
+
+		// Stage View's descriptor for GPU heap insertion
+		if (InResourceView.GetType() == RESOURCE_VIEW_TYPE::CONSTANT_BUFFER)
+		{
+			D3D12GEPUtils::D3D12ConstantBufferView& bufferView = static_cast<D3D12GEPUtils::D3D12ConstantBufferView&>(InResourceView);
+			
+			GEPUtils::Graphics::D3D12DynamicDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).StageDescriptors(InRootIndex, 0, 1, bufferView.GetCPUDescHandle());
+		}
+		else
+		{
+			StopForFail("Other types of resource views not implemented")
+		}
 	}
 
 }

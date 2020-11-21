@@ -21,7 +21,6 @@ namespace GEPUtils { namespace Graphics {
 // The purpose of D3D12DynamicDescHeap is to allocate descriptors on GPU (shader visible)
 // that will store CBV, SRV, UAV and Samplers to the rendering pipeline.
 // This is needed since D3D12DescAllocator class generate descriptors on CPU side only.
-// TODO Can we make D3D12DescAllocator handling the GPU upload of descriptors as well?... This class probably needs to be merged with D3D12DescAllocator
 // TODO This class is designed without considering views' dynamic indexing functionality that started from shader model 5.1
 // so it would be better to consider it as well.. more info at https://docs.microsoft.com/en-us/windows/desktop/direct3d12/dynamic-indexing-using-hlsl-5-1
 class D3D12DynamicDescHeap
@@ -37,6 +36,7 @@ public:
 	void StageDescriptors(uint32_t InRootParamIndex, uint32_t InOffset, uint32_t InNumDescriptors, const D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle);
 
 	// Commit Staged Descriptors: Commit the staged descriptors to a descriptor heap in GPU (shader visible)
+	// It will then also set such descriptors in the pipeline!
 	void CommitStagedDescriptorsForDraw(GEPUtils::Graphics::D3D12CommandList& InCmdList);
 	void CommitStagedDescriptorsForDispatch(GEPUtils::Graphics::D3D12CommandList& InCmdList);
 

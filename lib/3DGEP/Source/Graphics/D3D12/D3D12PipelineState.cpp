@@ -116,12 +116,12 @@ namespace GEPUtils{ namespace Graphics {
 		std::vector<RESOURCE_BINDER_PARAM>& agnosticRootParameters = InPipelineStateDesc.ResourceBinderDesc.Params;
 		std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters = m_RootSignatureInfo.rootParameters;
 		rootParameters.reserve(agnosticRootParameters.size());
-		//std::transform(agnosticRootParameters.begin(), agnosticRootParameters.end(), std::back_inserter(rootParameters), &D3D12PipelineState::TransformResourceBinderParams);
+
 		// We cannot use std::transform here because in the case of descriptor tables for example, we also need to preserve the generated D3D12_DESCRIPTOR_RANGE1 objects other than the root parameters
-		std::vector<D3D12_DESCRIPTOR_RANGE1> descRanges(10);
+		m_RootSignatureInfo.m_DescRanges.reserve(10);
 		for (uint32_t i = 0; i < agnosticRootParameters.size(); i++)
 		{
-			rootParameters.push_back(TransformResourceBinderParams(agnosticRootParameters[i], descRanges));
+			rootParameters.push_back(TransformResourceBinderParams(agnosticRootParameters[i], m_RootSignatureInfo.m_DescRanges));
 		}
 
 		// Init Root Signature Desc
@@ -180,7 +180,7 @@ namespace GEPUtils{ namespace Graphics {
 		Check(m_RootSignatureInfo.rootParameters[InRootIndex].ParameterType == D3D12_ROOT_PARAMETER_TYPE::D3D12_ROOT_PARAMETER_TYPE_DESCRIPTOR_TABLE);
 
 		// Note: we are assuming that we store a single descriptor range for each desc table
-		return m_RootSignatureInfo.rootParameters[InRootIndex].DescriptorTable.pDescriptorRanges->NumDescriptors;
+		return m_RootSignatureInfo.rootParameters[InRootIndex].DescriptorTable.pDescriptorRanges->NumDescriptors; // TODO continue here, the reported NumDescriptors is wrong!
 	}
 
 }

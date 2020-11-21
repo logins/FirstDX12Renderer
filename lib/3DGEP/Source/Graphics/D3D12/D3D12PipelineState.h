@@ -41,6 +41,7 @@ private:
 	struct RootSignatureInfo {
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
 		std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters;
+		std::vector<D3D12_DESCRIPTOR_RANGE1> m_DescRanges;
 	} m_RootSignatureInfo;
 
 };

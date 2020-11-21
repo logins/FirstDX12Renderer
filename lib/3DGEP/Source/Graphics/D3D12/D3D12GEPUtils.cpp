@@ -7,6 +7,7 @@
 #include "../../Public/GEPUtils.h"
 #include "D3D12Device.h"
 #include "D3D12DescAllocator.h"
+#include "../../Public/GEPUtilsMath.h"
 
 #ifdef max
 #undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
@@ -285,8 +286,6 @@ namespace D3D12GEPUtils
 		ThrowIfFailed(::D3DX12SerializeVersionedRootSignature(InRootSigDesc, InVersion, 
 			rootSignatureBlob.GetAddressOf(), errorBlob.GetAddressOf()));
 
-		//PrintD3dErrorBlob(errorBlob)
-		
 		// Create the Root Signature object from the blob
 		ComPtr<ID3D12RootSignature> rootSignature;
 		ThrowIfFailed(InDevice->CreateRootSignature(0, rootSignatureBlob->GetBufferPointer(), rootSignatureBlob->GetBufferSize(), IID_PPV_ARGS(&rootSignature)));
@@ -313,26 +312,22 @@ namespace D3D12GEPUtils
 	D3D12ConstantBufferView::D3D12ConstantBufferView(GEPUtils::Graphics::Resource& InResource)
 	{
 		m_Type = GEPUtils::Graphics::RESOURCE_VIEW_TYPE::CONSTANT_BUFFER;
-
-		//ReferenceResource(InResource);
 	}
 
-	void D3D12ConstantBufferView::ReferenceDynamicBuffer(GEPUtils::Graphics::DynamicBuffer& InReferencedResource)
+	void D3D12ConstantBufferView::ReferenceBuffer(D3D12_GPU_VIRTUAL_ADDRESS InBufferGPUAddress, size_t InBufferSize)
 	{
 		if (!m_AllocatedDescRange)
 		{
-			// Allocate descriptor in descriptor heap
+			// Allocate descriptor in CPU descriptor heap
 			m_AllocatedDescRange = std::make_unique<GEPUtils::Graphics::AllocatedDescRange>();
-			GEPUtils::Graphics::D3D12DescAllocator::Get(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).Allocate(*m_AllocatedDescRange, 1);
-			
-		}
 
-		D3D12GEPUtils::D3D12DynamicBuffer& d3d12DynamicBuffer = static_cast<D3D12GEPUtils::D3D12DynamicBuffer&>(InReferencedResource);
+			GEPUtils::Graphics::D3D12DescAllocator::Get(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).Allocate(*m_AllocatedDescRange, 1);
+		}
 
 		// Generate View Desc
 		D3D12_CONSTANT_BUFFER_VIEW_DESC viewDesc = {};
-		viewDesc.BufferLocation = d3d12DynamicBuffer.m_BufferAllocation.GPU;
-		viewDesc.SizeInBytes = d3d12DynamicBuffer.GetSize();
+		viewDesc.BufferLocation = InBufferGPUAddress;
+		viewDesc.SizeInBytes = InBufferSize;
 
 		// Instantiate View
 		GEPUtils::Graphics::D3D12Device& d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice());
@@ -340,24 +335,20 @@ namespace D3D12GEPUtils
 		d3d12Device.GetInner()->CreateConstantBufferView(&viewDesc, m_AllocatedDescRange->GetDescHandleAt(0));
 	}
 
-	void D3D12DynamicBuffer::Init(size_t InSize, size_t InAlignmentSize)
+	void D3D12DynamicBuffer::SetData(void* InData, size_t InSize, size_t InAlignmentSize)
 	{
-		//Check(m_BufferAllocation.CPU == 0); // Case of dynamic buffer already initialized is not handled at the moment
+		// Note: A buffer needs to have an alignment multiple of D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT which is now 256
+		// Assuming D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT is a power of 2, we can align the input value with this formula
+		m_AlignmentSize = GEPUtils::Math::Align(InAlignmentSize, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
 
-		// Note: The D3D12BufferAllocator is responsible to allocate resources and here we are sub-allocating from one of them
-		GEPUtils::Graphics::D3D12BufferAllocator::Allocation bufferAllocation = GEPUtils::Graphics::D3D12BufferAllocator::Get().Allocate(InSize, InAlignmentSize);
+		m_DataSize = InSize;
+		
+		m_BufferSize = GEPUtils::Math::Align(InSize, m_AlignmentSize);
 
-		m_BufferAllocation = bufferAllocation;
-
-		m_SizeinBytes = InSize;
-
-		m_AlignmentSize = InAlignmentSize;
-	}
-
-	void D3D12DynamicBuffer::SetData(void* InData, size_t InDataSize)
-	{
-		// Note: this memory copy will also update the resource in GPU since the memory was mapped beforehand in the buffer allocator
-		memcpy(m_BufferAllocation.CPU, InData, InDataSize);
+		if (m_Data.size() < InSize)
+			m_Data.resize(InSize);
+		
+		memcpy(m_Data.data(), InData, InSize);
 	}
 
 }

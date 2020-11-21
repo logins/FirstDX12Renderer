@@ -1,70 +1,79 @@
 #include "D3D12BufferAllocator.h"
-#include "../../Public/GEPUtilsMath.h"
-#include "../Public/D3D12GEPUtils.h"
+#include "GEPUtilsMath.h"
+#include "D3D12GEPUtils.h"
 #include "D3D12Device.h"
-#include "../../Public/GEPUtils.h"
+#include "GEPUtils.h"
 
 namespace GEPUtils{ namespace Graphics {
 
-
-	GEPUtils::Graphics::D3D12BufferAllocator D3D12BufferAllocator::m_StaticInstance;
+	std::unique_ptr<GEPUtils::Graphics::D3D12BufferAllocator> D3D12BufferAllocator::m_Instance;
 
 	D3D12BufferAllocator::D3D12BufferAllocator(size_t InPageSizeBytes /*= m_DefaultPageSize*/)
-			: m_PageSize(InPageSizeBytes), m_CurrentPage(RequestPage())
+			: m_PageSize(InPageSizeBytes)/*, m_CurrentPage(RequestPage())*/
 	{
 
 	}
 
-	GEPUtils::Graphics::D3D12BufferAllocator::Allocation D3D12BufferAllocator::Allocate(size_t& InOutSizeBytes, size_t& InOutAlignmentBytes)
+	GEPUtils::Graphics::D3D12BufferAllocator::D3D12BufferAllocator::Allocation D3D12BufferAllocator::Allocate(uint32_t InPageIdx, size_t InSizeBytes, size_t InAlignmentBytes)
 	{
-		// Note: A buffer needs to have an alignment multiple of D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT which is now 256
-		// Assuming D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT is a power of 2, we can align the input value with this formula
-		InOutAlignmentBytes = GEPUtils::Math::Align(InOutAlignmentBytes, D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);//(InOutAlignmentBytes + D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT) & ~(D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT - 1);
-
-		InOutSizeBytes = GEPUtils::Math::Align(InOutSizeBytes, InOutAlignmentBytes);
+		// Note: We are assuming size and alignment already aligned with the platform requirements
 		
 		Allocation outAllocation = {};
 		
-		if (InOutSizeBytes > m_PageSize)
-		{
-			StopForFail("We cannot allocate a size greater than the page size")
-			return outAllocation;
-		}
-			
-		if (!m_CurrentPage.HasSpace(InOutSizeBytes, InOutAlignmentBytes))
-		{
-			m_CurrentPage = RequestPage();
-		}
+		Check(InPageIdx < m_PagesPool.size())
 
-		m_CurrentPage.AllocateIfPossible(InOutSizeBytes, InOutAlignmentBytes, outAllocation);
-		
+		m_PagesPool[InPageIdx]->AllocateIfPossible(InSizeBytes, InAlignmentBytes, outAllocation);
+
+		Check(outAllocation.CPU != nullptr)
 
 		return outAllocation;
 	}
 
-	GEPUtils::Graphics::D3D12BufferAllocator::Page& D3D12BufferAllocator::RequestPage()
+	uint32_t D3D12BufferAllocator::ReservePage()
 	{
-		if (!m_FreePagesNum)
+		if (!m_FreePagesIdxPool.size())
 		{
 			m_PagesPool.push_back(std::make_unique<Page>(m_PageSize));
-			return *m_PagesPool.back();
-		}
-		else
-		{
-			return *m_PagesPool[m_PagesPool.size() - m_FreePagesNum--]; // m_FreePagesNum will be decreased after resolving the index
+			return m_PagesPool.size()-1;
 		}
 
-		return *m_PagesPool.back();
+		uint32_t freePageIdx = m_FreePagesIdxPool.back();
+		m_FreePagesIdxPool.pop_back();
+		return freePageIdx;
+	}
+
+	void D3D12BufferAllocator::ReleasePage(uint32_t InPageIdx)
+	{
+		// Index has to be valid and page not found in the available ones
+		Check(InPageIdx < m_PagesPool.size() && std::find(m_FreePagesIdxPool.begin(), m_FreePagesIdxPool.end(), InPageIdx) == m_FreePagesIdxPool.end())
+
+		m_PagesPool[InPageIdx]->Reset();
+
+		m_FreePagesIdxPool.push_back(InPageIdx);
+	}
+
+	GEPUtils::Graphics::D3D12BufferAllocator& D3D12BufferAllocator::Get()
+	{
+		if (!m_Instance)
+			m_Instance = std::make_unique<D3D12BufferAllocator>();
+
+
+		return *m_Instance;
 	}
 
 	void D3D12BufferAllocator::Reset()
 	{
+		uint32_t tempIdx = 0;
+		m_FreePagesIdxPool.clear(); // removes all the elements from a vector container, thus making its size 0
+
 		for (auto& page : m_PagesPool)
 		{
-			page->Reset();
-		}
+			m_FreePagesIdxPool.push_back(tempIdx);
 
-		m_FreePagesNum = m_PagesPool.size();
+			page->Reset();
+
+			tempIdx++;
+		}
 	}
 
 	D3D12BufferAllocator::Page::Page(size_t InSizeBytes)
@@ -104,7 +113,6 @@ namespace GEPUtils{ namespace Graphics {
 		return alignedInSize + alignedTakenSpaceSize <= m_PageSize;
 	}
 
-	// Note: This is NOT thread-safe !
 	bool D3D12BufferAllocator::Page::AllocateIfPossible(size_t InAlignedSizeBytes, size_t InAlignmentBytes, D3D12BufferAllocator::Allocation& OutAllocation)
 	{
 		m_TakenSpaceOffset = GEPUtils::Math::Align(m_TakenSpaceOffset, InAlignmentBytes); // taken space offset is now aligned with this allocation alignment

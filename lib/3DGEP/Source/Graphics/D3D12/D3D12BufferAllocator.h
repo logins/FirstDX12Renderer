@@ -35,8 +35,6 @@ namespace GEPUtils{ namespace Graphics {
 
 	public:
 
-		explicit D3D12BufferAllocator(size_t InPageSizeBytes = m_DefaultPageSize);
-
 		// Allocation object to upload data to the GPU
 		struct Allocation {
 			void* CPU;
@@ -48,12 +46,21 @@ namespace GEPUtils{ namespace Graphics {
 
 		// It will first align the alignment with the hardware constraints, then align the buffer size and then allocate a buffer inside a resource
 		// At the moment the way to check if the allocation was successful is to check if the CPU pointer field is non-zero
-		D3D12BufferAllocator::Allocation Allocate(size_t& InOutSizeBytes, size_t& InOutAlignmentBytes);
+		D3D12BufferAllocator::Allocation Allocate(uint32_t InPageIdx, size_t InSizeBytes, size_t InAlignmentBytes);
 
 		// Releases all the allocated pages. It should be done when the command list finishes executing on the command queue
 		void Reset();
 
-		static D3D12BufferAllocator& Get() { return m_StaticInstance; }
+		// Returns the index of the reserved page
+		uint32_t ReservePage();
+
+		void ReleasePage(uint32_t InPageIdx);
+
+		static D3D12BufferAllocator& Get();
+
+		D3D12BufferAllocator(size_t InPageSizeBytes = m_DefaultPageSize); // TODO need to move this in private
+		D3D12BufferAllocator& operator=(const D3D12BufferAllocator&) = delete;
+		D3D12BufferAllocator(const D3D12BufferAllocator&) = delete;
 
 	private:
 
@@ -70,7 +77,7 @@ namespace GEPUtils{ namespace Graphics {
 
 		private:
 			Microsoft::WRL::ComPtr<ID3D12Resource> m_D3d12Resource;
-			
+
 			void* m_CpuBasePtr = nullptr;
 			D3D12_GPU_VIRTUAL_ADDRESS m_GpuBasePtr = D3D12_GPU_VIRTUAL_ADDRESS(0);
 
@@ -81,22 +88,17 @@ namespace GEPUtils{ namespace Graphics {
 
 		size_t m_PageSize; // Size used to create a page
 
-		// Retrieves a free page or creates a new one if all the current ones are in use
-		Page& RequestPage();
+		std::deque<uint32_t> m_FreePagesIdxPool;
 
 		// A pool of memory pages.
 		using PagePool = std::deque<std::unique_ptr<Page>>;
 
 		PagePool m_PagesPool;
-		size_t m_FreePagesNum = 0;
-
-		Page& m_CurrentPage;
 
 		static const size_t m_DefaultPageSize = 2000;
 
-		static D3D12BufferAllocator m_StaticInstance;
+		static std::unique_ptr<D3D12BufferAllocator> m_Instance;
 	};
-
 
 } }
 

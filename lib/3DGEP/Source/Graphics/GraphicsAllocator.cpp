@@ -60,14 +60,6 @@ namespace GEPUtils { namespace Graphics {
 		}
 	}
 
-	//void GraphicsAllocator::AllocateDynamicBuffer(GEPUtils::Graphics::Resource& InResource, size_t InSize, size_t InAlignmentSize)
-	//{
-	//	// Note: The D3D12BufferAllocator is responsible to allocate resources and here we are sub-allocating from one of them
-	//	GEPUtils::Graphics::D3D12BufferAllocator::Allocation bufferAllocation = GEPUtils::Graphics::D3D12BufferAllocator::Get().Allocate(InSize, InAlignmentSize);
-
-	//	static_cast<D3D12GEPUtils::D3D12Resource&>(InResource).InitAsDynamicBuffer(bufferAllocation, InSize, InAlignmentSize);
-	//}
-
 	GEPUtils::Graphics::DynamicBuffer& GraphicsAllocator::AllocateDynamicBuffer()
 	{
 		m_ResourceArray.push(std::make_unique<D3D12GEPUtils::D3D12DynamicBuffer>());
@@ -87,6 +79,11 @@ namespace GEPUtils { namespace Graphics {
 		GEPUtils::Graphics::AllocatedDescRange& allocDescRange = *static_cast<D3D12GEPUtils::D3D12ResourceView&>(InView).m_AllocatedDescRange.get();
 
 		allocDescRange.SetGpuDescHandle(GEPUtils::Graphics::D3D12DynamicDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).UploadSingleDescriptor(allocDescRange.GetDescHandleAt(0)));
+	}
+
+	void GraphicsAllocator::ResetGPUResourceDescriptorHeap()
+	{
+		GEPUtils::Graphics::D3D12DynamicDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).Reset();
 	}
 
 	GEPUtils::Graphics::VertexBufferView& GraphicsAllocator::AllocateVertexBufferView()
@@ -111,7 +108,6 @@ namespace GEPUtils { namespace Graphics {
 			// Note: the constructor will allocate a corresponding descriptor in a CPU desc heap
 			m_ResourceViewArray.push(std::make_unique<D3D12GEPUtils::D3D12ConstantBufferView>(InResource));
 			
-			// TODO continue here.. how to De-allocate the allocatedDescRange later on ??
 			break;
 		}
 			

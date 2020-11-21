@@ -62,13 +62,13 @@ namespace GEPUtils { namespace Graphics {
 		RootTableEntry& tableEntry = m_RootTableCache[InRootParamIndex];
 
 		// Check to not exceed the number of descriptors referenced by the descriptor table
-		Check(InOffset + InDescriptorsNum < tableEntry.m_DescriptorsNum)
+		Check(InOffset + InDescriptorsNum <= tableEntry.m_DescriptorsNum)
 
 		// Filling staged descriptor for the selected table entry
 		D3D12_CPU_DESCRIPTOR_HANDLE* dstDescriptor = tableEntry.m_BaseCPUDescHandle + InOffset;
 		for (uint32_t i = 0; i < InDescriptorsNum; i++)
 		{
-			dstDescriptor[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(*dstDescriptor, i, m_DescHandleIncrementSize);
+			dstDescriptor[i] = CD3DX12_CPU_DESCRIPTOR_HANDLE(InCPUDescHandle, i, m_DescHandleIncrementSize);
 		}
 
 		// Notify stale descriptors bitmask that the index of the selected table needs to be considered
@@ -78,6 +78,16 @@ namespace GEPUtils { namespace Graphics {
 	void D3D12DynamicDescHeap::CommitStagedDescriptors_Internal(GEPUtils::Graphics::D3D12CommandList& InCmdList, std::function<void(ID3D12GraphicsCommandList*, UINT, D3D12_GPU_DESCRIPTOR_HANDLE)> InSetFn)
 	{
 		uint32_t numDescriptorsToUpload = ComputeStaleDescriptorCount();
+
+		// If we don't have enough free descriptors, we reset the pointers and free handles and start from the beginning of the descriptor heap (used as a ring buffer)
+		// We cannot override the same descriptors because they might be currently used by a command allocator in flight !!
+		// TODO Need to have a separate portion of the heap (e.g. half) for descriptors that are static (e.g textures of a model)
+		if (numDescriptorsToUpload > m_NumFreeHandles)
+		{
+			m_CurrentCPUDescHandle = m_D3d12DescHeap->GetCPUDescriptorHandleForHeapStart();
+			m_CurrentGPUDescHandle = m_D3d12DescHeap->GetGPUDescriptorHandleForHeapStart();
+			m_NumFreeHandles = m_DescPerHeapNum;
+		}
 
 		if (numDescriptorsToUpload)
 		{
@@ -93,7 +103,7 @@ namespace GEPUtils { namespace Graphics {
 				UINT descRangeSize = m_RootTableCache[currentRootIndex].m_DescriptorsNum;
 				D3D12_CPU_DESCRIPTOR_HANDLE* baseCPUDescHandle = m_RootTableCache[currentRootIndex].m_BaseCPUDescHandle;
 
-				device->CopyDescriptorsSimple(descRangeSize, m_CurrentCPUDescHandle, *baseCPUDescHandle, m_DescHeapType); // TODO continue here: is this function copying just the current desc range and just on the CPU...? Or also on the GPU? .. probably there is a memory mapping going on so that the corresponding space in GPU will be updated as well!!
+				device->CopyDescriptorsSimple(descRangeSize, m_CurrentCPUDescHandle, *baseCPUDescHandle, m_DescHeapType);
 
 				// Set descriptors on the command list using the passed-in function
 				// Note: this function will set the root table in the command list, 
@@ -101,8 +111,8 @@ namespace GEPUtils { namespace Graphics {
 				InSetFn(d3d12GraphicsCmdList, currentRootIndex, m_CurrentGPUDescHandle);
 
 				// Offset current GPU and CPU desc heap handles
-				m_CurrentCPUDescHandle.Offset(descRangeSize);
-				m_CurrentGPUDescHandle.Offset(descRangeSize);
+				m_CurrentCPUDescHandle.Offset(m_DescHandleIncrementSize * descRangeSize);
+				m_CurrentGPUDescHandle.Offset(m_DescHandleIncrementSize * descRangeSize);
 				m_NumFreeHandles -= descRangeSize;
 
 				// Flip current root index in the stale root tables mask so we do not iterate over it again
@@ -134,8 +144,8 @@ namespace GEPUtils { namespace Graphics {
 		device->CopyDescriptorsSimple(1, m_CurrentCPUDescHandle, InCPUDescHandle, m_DescHeapType);
 
 		// Offset current CPU and GPU desc handles by 1
-		m_CurrentCPUDescHandle.Offset(1);
-		m_CurrentGPUDescHandle.Offset(1);
+		m_CurrentCPUDescHandle.Offset(m_DescHandleIncrementSize);
+		m_CurrentGPUDescHandle.Offset(m_DescHandleIncrementSize);
 
 		m_NumFreeHandles -= 1;
 

@@ -28,9 +28,6 @@ namespace GEPUtils { namespace Graphics {
 			uint32_t BufWidth; uint32_t BufHeight;
 		};
 
-
-		virtual void Init() = 0; // TODO change required virtual method to destructor
-
 		virtual void ShowWindow() = 0;
 
 		virtual void Present() = 0;

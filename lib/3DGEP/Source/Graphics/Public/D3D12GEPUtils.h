@@ -107,7 +107,7 @@ namespace D3D12GEPUtils {
 		{ }
 		Microsoft::WRL::ComPtr<ID3D12Resource>& GetInner() { return m_D3D12Resource; }
 		void SetInner(Microsoft::WRL::ComPtr<ID3D12Resource> InResource) { m_D3D12Resource = InResource; }
-		inline uint64_t GetSizeInBytes() const { return m_SizeinBytes; }
+		inline uint64_t GetSizeInBytes() const { return m_DataSize; }
 	private:
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_D3D12Resource;
 
@@ -115,12 +115,8 @@ namespace D3D12GEPUtils {
 
 	struct D3D12DynamicBuffer : public GEPUtils::Graphics::DynamicBuffer {
 
-		// Allocates space in mapped GPU memory
-		virtual void Init(size_t InSize, size_t InAlignmentSize) override;
+		virtual void SetData(void* InData, size_t InSize, size_t InAlignmentSize) override;
 
-		virtual void SetData(void* InData, size_t InDataSize) override;
-
-		GEPUtils::Graphics::D3D12BufferAllocator::Allocation m_BufferAllocation;
 	};
 
 	struct D3D12ResourceView : public GEPUtils::Graphics::ResourceView
@@ -128,17 +124,17 @@ namespace D3D12GEPUtils {
 		// Descriptor range referenced by this View object.
 		// Note: The Allocated Desc Range destructor will declared the relative descriptors to be stale and they will be cleared at the end of the frame
 		std::unique_ptr<GEPUtils::Graphics::AllocatedDescRange> m_AllocatedDescRange;
+		//std::deque<std::unique_ptr<GEPUtils::Graphics::AllocatedDescRange>> m_allocatedDescRangeQueue;
 	};
 
 	struct D3D12ConstantBufferView : public D3D12ResourceView
 	{
 		D3D12ConstantBufferView(GEPUtils::Graphics::Resource& InResource);
 		
-		D3D12_CPU_DESCRIPTOR_HANDLE& GetCPUDescHandle() { return m_AllocatedDescRange->GetDescHandleAt(0); }
+		D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescHandle() { return m_AllocatedDescRange->GetDescHandleAt(0); }
 
-		virtual void ReferenceDynamicBuffer(GEPUtils::Graphics::DynamicBuffer& InReferencedResource) override;
+		void ReferenceBuffer(D3D12_GPU_VIRTUAL_ADDRESS InBufferGPUAddress, size_t InBufferSize);
 
-		
 	};
 
 	struct D3D12VertexBufferView : public GEPUtils::Graphics::VertexBufferView {

@@ -80,12 +80,14 @@ namespace D3D12GEPUtils {
 	{
 		// Get an available command allocator first
 		ComPtr<ID3D12CommandAllocator> cmdAllocator;
+		GEPUtils::Graphics::D3D12BufferAllocator* selectedBuffAllocator = nullptr;
 		// Check first if we have an available allocator in the queue (each allocator uniquely corresponds to a different list)
 		// Note: an allocator is available if the relative commands have been fully executed, 
 		// so if the relative fence value has been reached by the command queue
 		if (!m_CmdAllocators.empty() && IsFenceComplete(m_CmdAllocators.front().FenceValue))
 		{
 			cmdAllocator = m_CmdAllocators.front().CmdAllocator;
+			GEPUtils::Graphics::D3D12BufferAllocator::Get().ReleasePage(m_CmdAllocators.front().DynamicBufAllocatorPageIdx); // When the command allocator finishes executing, we can release memory of the relative dynamic buffer allocator
 			m_CmdAllocators.pop();
 
 			D3D12GEPUtils::ThrowIfFailed(cmdAllocator->Reset());
@@ -99,7 +101,8 @@ namespace D3D12GEPUtils {
 		if (!m_CmdListsAvailable.empty())
 		{
 			GEPUtils::Graphics::D3D12CommandList* outObj = static_cast<GEPUtils::Graphics::D3D12CommandList*>(m_CmdListsAvailable.front());
-			
+			outObj->SetDynamicBufAllocatorPage(GEPUtils::Graphics::D3D12BufferAllocator::Get().ReservePage()); // We need to assign an available dynamic buffer allocator because the previous one can be in flight
+
 			auto cmdList = outObj->GetInner();
 			m_CmdListsAvailable.pop();
 			// Resetting the command list with the previously selected command allocator (so binding the two together)
@@ -132,7 +135,7 @@ namespace D3D12GEPUtils {
 		m_CmdQueue->ExecuteCommandLists(1, ppCmdLists);
 		uint64_t fenceValue = Signal();
 
-		m_CmdAllocators.emplace( CmdAllocatorEntry{fenceValue, cmdAllocator} ); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
+		m_CmdAllocators.emplace( CmdAllocatorEntry{fenceValue, cmdAllocator, 0 } ); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
 		m_CmdLists.push(InCmdList);
 
 		// We do not need the local command allocator Pointer anymore, we can release it because the allocator reference is stored in the queue
@@ -158,7 +161,7 @@ namespace D3D12GEPUtils {
 		m_CmdQueue->ExecuteCommandLists(1, ppCmdLists);
 		uint64_t fenceValue = Signal();
 
-		m_CmdAllocators.emplace(CmdAllocatorEntry{ fenceValue, cmdAllocator }); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
+		m_CmdAllocators.emplace(CmdAllocatorEntry{ fenceValue, cmdAllocator, static_cast<GEPUtils::Graphics::D3D12CommandList&>(InCmdList).GetDynamicBufAllocatorPage() }); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
 		
 		m_CmdListsAvailable.push(&InCmdList);
 

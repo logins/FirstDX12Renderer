@@ -26,7 +26,7 @@ public:
 	};
 	// Abstraction of root signature parameter desc
 	struct RESOURCE_BINDER_PARAM {
-		// TODO create support for root descriptors and root tables
+		// TODO create support for root descriptors
 		void InitAsConstants(uint32_t InNum32BitValues, uint32_t InShaderRegister, uint32_t InRegisterSpace = 0, GEPUtils::Graphics::SHADER_VISIBILITY InShaderVisibility = SHADER_VISIBILITY::SV_ALL)
 		{
 			Num32BitValues = InNum32BitValues;
@@ -79,9 +79,9 @@ public:
 		RESOURCE_BINDER_DESC& ResourceBinderDesc;
 		GEPUtils::Graphics::PRIMITIVE_TOPOLOGY_TYPE TopologyType;
 		Graphics::Shader& VertexShader;
-		Graphics::Shader& PixelShader; //TODO later support for more shaders
+		Graphics::Shader& PixelShader;
 		Graphics::BUFFER_FORMAT DSFormat;
-		Graphics::BUFFER_FORMAT RTFormat; //TODO later on support for different RT formats (there is a maximum of 8 render targets in D3D12)
+		Graphics::BUFFER_FORMAT RTFormat; //Note: considering a single render target even though platforms support many (there is a maximum of 8 render targets in D3D12)
 	};
 
 	virtual void Init(PIPELINE_STATE_DESC& InPipelineStateDesc) = 0;

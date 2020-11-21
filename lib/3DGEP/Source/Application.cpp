@@ -1,11 +1,12 @@
 
 #include "Application.h"
+#include <chrono>
 #include <Windows.h>
 #include "GraphicsUtils.h"
 #include "GraphicsTypes.h"
-#include "Public/GEPUtilsGeometry.h"
-#include "Graphics/Public/CommandList.h"
-#include <chrono>
+#include "GEPUtilsGeometry.h"
+#include "CommandList.h"
+#include "GraphicsAllocator.h"
 
 using namespace GEPUtils::Graphics;
 
@@ -128,6 +129,7 @@ namespace GEPUtils
 	void Application::Update()
 	{
 		static double elapsedSeconds = 0;
+		static uint64_t frameNumberPerSecond = 0;
 		static std::chrono::high_resolution_clock clock;
 		auto t0 = clock.now();
 
@@ -136,21 +138,23 @@ namespace GEPUtils
 		Render();
 
 		m_FrameNumber++;
+		frameNumberPerSecond++;
+
 		auto t1 = clock.now();
 		auto deltaTime = t1 - t0;
 
-		m_DeltaTime = std::chrono::duration_cast<std::chrono::milliseconds>(deltaTime).count() / 1000.f;
+		m_DeltaTime = std::chrono::duration_cast<std::chrono::microseconds>(deltaTime).count() / 1000.f; // Delta Time expressed in Milliseconds: 10^-3 seconds
 
 		t0 = t1;
 		elapsedSeconds += deltaTime.count() * 1e-9; // Conversion from nanoseconds into seconds
 
 		if (elapsedSeconds > 1.0)
 		{
-			char buffer[500]; auto fps = m_FrameNumber / elapsedSeconds;
+			char buffer[500]; auto fps = frameNumberPerSecond / elapsedSeconds;
 			sprintf_s(buffer, 500, "Average FPS: %f\n", fps);
 			OutputDebugStringA(buffer);
 
-			m_FrameNumber = 0;
+			frameNumberPerSecond = 0;
 			elapsedSeconds = .0f;
 		}
 	}
@@ -188,6 +192,7 @@ namespace GEPUtils
 			m_MainWindow->Present();
 
 		}
+
 	}
 
 }

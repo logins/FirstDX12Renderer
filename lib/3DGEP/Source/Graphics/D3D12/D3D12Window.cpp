@@ -1,3 +1,11 @@
+/*!
+ * Project: First D3D12 Renderer - https://github.com/logins/FirstDX12Renderer
+ *
+ * File: D3D12Window.cpp
+ *
+ * Author: Riccardo Loggini
+ */
+
 #include "D3D12Window.h"
 #include <algorithm>
 #include <assert.h>
@@ -178,11 +186,6 @@ namespace D3D12GEPUtils
 		// Note: Viewport will be updated by the Application, that in this case acts as a "frame director"
 	}
 
-	void D3D12Window::Init()
-	{
-		// TODO remove this
-	}
-
 	GEPUtils::Graphics::CpuDescHandle& D3D12Window::GetCurrentRTVDescriptorHandle()
 	{
 		// Every time these objects are constructed, maybe we can store them somewhere later on
@@ -303,7 +306,7 @@ namespace D3D12GEPUtils
 			// Either the pointer to the resource or the resource descriptor must be provided to create the view.
 			m_CurrentDevice->CreateRenderTargetView(backBuffer.Get(), nullptr, rtvDescHeapHandle);
 
-			static_cast<D3D12GEPUtils::D3D12Resource*>(m_BackBuffers[bufferIdx].get())->SetInner(backBuffer); // TODO fix crash continue here
+			static_cast<D3D12GEPUtils::D3D12Resource*>(m_BackBuffers[bufferIdx].get())->SetInner(backBuffer);
 
 			// Move the CPU descriptor handle to the next element on the heap
 			rtvDescHeapHandle.Offset(m_RTVDescIncrementSize);

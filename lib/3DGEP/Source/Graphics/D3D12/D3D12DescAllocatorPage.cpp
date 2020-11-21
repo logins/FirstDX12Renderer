@@ -150,7 +150,7 @@ namespace GEPUtils { namespace Graphics {
 		// Adding correspondent to the size list
 		auto sizeIt = m_FreeListBySize.emplace(InNumDescriptors, offsetIt.first);
 
-		// Adding reference of the size list into the allocation object from the offset list // TODO do we really need to keep this reference?
+		// Adding reference of the size list into the allocation object from the offset list
 		offsetIt.first->second.m_FreeListBySizeIt = sizeIt;
 	}
 

@@ -2,7 +2,7 @@
 #define GraphicsAllocator_h__
 #include <queue>
 #include <memory> // for std::unique_ptr
-#include "Public/GraphicsTypes.h"
+#include "GraphicsTypes.h"
 
 namespace GEPUtils { namespace Graphics {
 
@@ -24,12 +24,11 @@ public:
 	static void AllocateBufferCommittedResource(GEPUtils::Graphics::CommandList& InCmdList, GEPUtils::Graphics::Resource& InDestResource, GEPUtils::Graphics::Resource& InIntermediateResource,
 		size_t InNunElements, size_t InElementSize, const void* InBufferData, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = GEPUtils::Graphics::RESOURCE_FLAGS::NONE);
 
-	// Allocates a memory-mapped dynamic buffer in shared memory (upload heap). Useful for buffers that change content very frequently, such as one per frame.
-	//static void AllocateDynamicBuffer(GEPUtils::Graphics::Resource& InResource, size_t InSize, size_t InAlignmentSize);
-
 	static void StageViewForGPU(uint32_t InRootIdx, GEPUtils::Graphics::ResourceView& InView);
 
 	static void UploadViewToGPU(GEPUtils::Graphics::ResourceView& InView);
+
+	static void ResetGPUResourceDescriptorHeap();
 
 	static GEPUtils::Graphics::VertexBufferView& AllocateVertexBufferView();
 	static GEPUtils::Graphics::IndexBufferView& AllocateIndexBufferView();

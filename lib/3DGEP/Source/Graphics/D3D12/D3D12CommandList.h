@@ -7,12 +7,13 @@
 namespace GEPUtils { namespace Graphics {
 
 	class D3D12Device;
+	class D3D12BufferAllocator;
 
 	class D3D12CommandList : public GEPUtils::Graphics::CommandList
 	{
 	public:
 		D3D12CommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> InCmdList, GEPUtils::Graphics::Device& InOwningDevice);
-	
+		
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2>& GetInner() { return m_D3D12CmdList; }
 
 		virtual void ResourceBarrier(GEPUtils::Graphics::Resource& InResource, GEPUtils::Graphics::RESOURCE_STATE InPrevState, GEPUtils::Graphics::RESOURCE_STATE InAfterState) override;
@@ -46,10 +47,16 @@ namespace GEPUtils { namespace Graphics {
 
 		virtual void SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ResourceView& InView) override;
 
+		uint32_t GetDynamicBufAllocatorPage() const { return m_DynamicBufferPageIdx; }
+
+		void SetDynamicBufAllocatorPage(uint32_t InPageIdx) { m_DynamicBufferPageIdx = InPageIdx; }
+
+		virtual void StoreAndReferenceDynamicBuffer(uint32_t InRootIdx, GEPUtils::Graphics::DynamicBuffer& InDynBuffer, GEPUtils::Graphics::ResourceView& InResourceView) override;
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> m_D3D12CmdList;
 
+		uint32_t m_DynamicBufferPageIdx;
 	};
 
 	} }

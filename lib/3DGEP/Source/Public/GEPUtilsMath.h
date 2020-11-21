@@ -13,7 +13,7 @@ namespace GEPUtils {
 		inline size_t Align(size_t InSize, size_t InAlignUnit) { return (InSize + InAlignUnit - 1) & ~(InAlignUnit - 1); }
 
 		// Gotten from http://graphics.stanford.edu/~seander/bithacks.html#RoundUpPowerOf2
-		uint64_t NextPowerOfTwo(uint64_t InNumber) {
+		/*uint64_t NextPowerOfTwo(uint64_t InNumber) {
 			InNumber--;
 			InNumber |= InNumber >> 1;
 			InNumber |= InNumber >> 2;
@@ -28,8 +28,7 @@ namespace GEPUtils {
 			InNumber++;
 
 			return InNumber;
-		}
-
+		}*/
 	}
 }
 #endif // GEPUtilsMath_h__

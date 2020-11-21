@@ -57,8 +57,6 @@ namespace D3D12GEPUtils {
 
 		virtual void Resize(uint32_t InNewWidth, uint32_t InNewHeight) override;
 
-		virtual void Init() override;
-
 
 		virtual GEPUtils::Graphics::CpuDescHandle& GetCurrentRTVDescriptorHandle() override;
 
