@@ -1,9 +1,7 @@
 # FirstDX12Renderer
-This project wants to mainly showcase two topics:
-## **D3D12-powered Render Window**
-A series of examples on how to use Direct3D 12 for real-time graphics applications (e.g. videogames).
+A series of examples on how to use Direct3D 12 for real-time graphics applications (e.g. videogames).\\
 The examples will start from an empty window, and increase in complexity up to handle most of the base concepts when using this graphics API.
-## **Base CMake Project Configuration**
+## Base CMake Project Configuration
   - Part1, Part2 and Part3 are target executables. These targets have dependencies on defined target libraries (both internal and external).
   - GEPUtils (Game Engine Programming Utilities) is the library that contains most of the graphics functions.
   - You can read my [CMake Configuration Article](https://logins.github.io/programming/2020/05/17/CMakeInVisualStudio.html).
@@ -20,7 +18,7 @@ Part2 executable target will showcase:
 - **Root signature** with a root constant.
 - **Vertex and pixel shader** assigning color from per-vertex data.
 
-![alt text](Part2/Content/part2.gif)
+![](Part2/Content/part2.gif)
 
 # Part 3
 Part3 executable target will have most of Part2 features, plus:
@@ -29,7 +27,7 @@ Part3 executable target will have most of Part2 features, plus:
 - **Descriptor heap** staging descriptors on CPU and upload them to GPU when needed.
 - **Constant buffer view** referenced by a root table in the root signature.
 
-![alt text](Part3/Content/part3.gif){ width: 500px; align:center }
+![](Part3/Content/part3.gif)
 
 # Notes
 >Note: This repo was tested in VisualStudio 2019 using FolderView Mode and CMake (Ninja generator + msvc compiler).
