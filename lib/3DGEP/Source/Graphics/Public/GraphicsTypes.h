@@ -79,22 +79,61 @@ enum class BUFFER_FORMAT : int {
 	R16_UINT, // Single channel 16 bits
 	R32G32B32_FLOAT,
 	R8G8B8A8_UNORM,
-	D32_FLOAT
+	D32_FLOAT,
+	BC1_UNORM
+};
+
+enum class TEXTURE_FILE_FORMAT : int {
+	DDS,
+	PNG,
+	JPG
+};
+
+enum class RESOURCE_HEAP_TYPE : int {
+	DEFAULT = 0,
+	UPLOAD = 1
 };
 
 enum class RESOURCE_STATE : int {
 	PRESENT = 0,
-	RENDER_TARGET = 4
+	RENDER_TARGET,
+	COPY_SOURCE,
+	COPY_DEST,
+	GEN_READ
+};
+
+enum class TEXTURE_TYPE : int {
+	TEX_1D,
+	TEX_2D,
+	TEX_CUBE,
+	TEX_3D
 };
 
 struct Resource {
 	size_t GetDataSize() const { return m_DataSize; }
 	size_t GetAlignSize() const { return m_AlignmentSize; }
 protected:
-	Resource() = default;
-
+	Resource() : m_DataSize(0), m_AlignmentSize(0) {};
+	virtual void ResetData() { m_DataSize = 0; m_AlignmentSize = 0; }
 	size_t m_DataSize;
 	size_t m_AlignmentSize;
+};
+
+struct Buffer : public Resource {
+};
+
+struct Texture : public Resource {
+	BUFFER_FORMAT GetFormat() { return m_TexelFormat; }
+	TEXTURE_TYPE GetType() { return m_Type; }
+	size_t GetMipLevelsNum() { return m_MipLevelsNum; }
+protected:
+	Texture() = default;
+	size_t          m_Width;
+	size_t          m_Height;     // Should be 1 for 1D textures
+	size_t          m_ArraySize;  // For cubemap, this is a multiple of 6
+	size_t          m_MipLevelsNum;
+	BUFFER_FORMAT   m_TexelFormat;
+	TEXTURE_TYPE    m_Type;
 };
 
 struct DynamicBuffer : public Resource {
@@ -116,19 +155,55 @@ enum class RESOURCE_VIEW_TYPE : int {
 
 struct ResourceView {
 
-	GEPUtils::Graphics::RESOURCE_VIEW_TYPE GetType() const { return m_Type; }
+};
+
+struct ConstantBufferView : public ResourceView {
+	virtual void ReferenceBuffer(Buffer& InResource, size_t InDataSize, size_t InStrideSize) = 0;
 protected:
-	ResourceView() = default;
-	ResourceView(RESOURCE_VIEW_TYPE InType) : m_Type(InType) {}
-	RESOURCE_VIEW_TYPE m_Type;
+	ConstantBufferView() = default;
+};
+
+struct ShaderResourceView : public ResourceView {
+	virtual void ReferenceTexture(GEPUtils::Graphics::Texture& InTexture) = 0;
+protected:
+	ShaderResourceView() = default;
 };
 
 struct VertexBufferView { // size is in bytes
-	virtual void ReferenceResource(Resource& InResource, size_t InDataSize, size_t InStrideSize) = 0;
+	virtual void ReferenceResource(GEPUtils::Graphics::Resource& InResource, size_t DataSize, size_t StrideSize) = 0;
+protected:
+	VertexBufferView() = default;
 };
 
 struct IndexBufferView {
-	virtual void ReferenceResource(Resource& InResource, size_t InDataSize, BUFFER_FORMAT InFormat) = 0;
+	virtual void ReferenceResource(GEPUtils::Graphics::Resource& InResource, size_t InDataSize, BUFFER_FORMAT InFormat) = 0;
+protected:
+	IndexBufferView() = default;
+};
+
+enum class SAMPLE_FILTER_TYPE : int {
+	POINT,
+	LINEAR,
+	ANISOTROPIC
+};
+
+enum class TEXTURE_ADDRESS_MODE : int {
+	WRAP,
+	MIRROR,
+	CLAMP,
+	BORDER
+};
+
+struct StaticSampler {
+	StaticSampler(uint32_t InShaderRegister, SAMPLE_FILTER_TYPE InFilterType)
+		: m_ShaderRegister(InShaderRegister), m_Filter(InFilterType), 
+		m_AddressU(TEXTURE_ADDRESS_MODE::WRAP),	m_AddressV(TEXTURE_ADDRESS_MODE::WRAP),	m_AddressW(TEXTURE_ADDRESS_MODE::WRAP)
+	{ }
+	uint32_t m_ShaderRegister;
+	SAMPLE_FILTER_TYPE m_Filter;
+	TEXTURE_ADDRESS_MODE m_AddressU;
+	TEXTURE_ADDRESS_MODE m_AddressV;
+	TEXTURE_ADDRESS_MODE m_AddressW;
 };
 
 struct Rect {

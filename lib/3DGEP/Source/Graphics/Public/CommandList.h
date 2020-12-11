@@ -31,11 +31,18 @@ namespace GEPUtils { namespace Graphics {
 
 		virtual void SetGraphicsRootConstants(uint64_t InRootParameterIndex, uint64_t InNum32BitValuesToSet, const void* InSrcData, uint64_t InDestOffsetIn32BitValues) { }
 
-		virtual void SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ResourceView& InView) { }
+		virtual void SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ConstantBufferView& InView) { }
 
 		virtual void DrawIndexed(uint64_t InIndexCountPerInstance) { }
 
-		virtual void StoreAndReferenceDynamicBuffer(uint32_t InRootIdx, GEPUtils::Graphics::DynamicBuffer& InDynBuffer, GEPUtils::Graphics::ResourceView& InResourceView) { }
+		virtual void UploadViewToGPU(GEPUtils::Graphics::ShaderResourceView& InSRV) { }
+
+		virtual void StoreAndReferenceDynamicBuffer(uint32_t InRootIdx, GEPUtils::Graphics::DynamicBuffer& InDynBuffer, GEPUtils::Graphics::ConstantBufferView& InResourceView) { }
+
+		virtual void ReferenceSRV(uint32_t InRootIdx, GEPUtils::Graphics::ShaderResourceView& InSRV) { }
+
+		// Internally calls ::UpdateSubresources(..) where IntermediateBuffer is expected to be allocated in upload heap
+		virtual void UploadBufferData(GEPUtils::Graphics::Buffer& DestinationBuffer, GEPUtils::Graphics::Buffer& IntermediateBuffer, const void* InBufferData, size_t InDataSize) { }
 
 	protected:
 		CommandList(GEPUtils::Graphics::Device& InDevice);

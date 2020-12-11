@@ -309,9 +309,49 @@ namespace D3D12GEPUtils
 		m_IndexBufferView.Format = D3D12GEPUtils::BufferFormatToD3D12(InFormat);
 	}
 
-	D3D12ConstantBufferView::D3D12ConstantBufferView(GEPUtils::Graphics::Resource& InResource)
+	D3D12ShaderResourceView::D3D12ShaderResourceView(GEPUtils::Graphics::Texture& InTextureToReference)
 	{
-		m_Type = GEPUtils::Graphics::RESOURCE_VIEW_TYPE::CONSTANT_BUFFER;
+		ReferenceTexture(InTextureToReference);
+	}
+
+	void D3D12ShaderResourceView::ReferenceTexture(GEPUtils::Graphics::Texture& InTexture)
+{
+		if (!m_AllocatedDescRange)
+		{
+			// Allocate descriptor in CPU descriptor heap
+			m_AllocatedDescRange = std::make_unique<GEPUtils::Graphics::AllocatedDescRange>();
+
+			GEPUtils::Graphics::D3D12DescAllocator::Get(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).Allocate(*m_AllocatedDescRange, 1);
+		}
+		// TODO Note: we are currently assuming we only handle a single descriptor and never a range... also in D3D12ConstantBufferView::ReferenceBuffer
+
+		// Generate View Desc
+		D3D12_SHADER_RESOURCE_VIEW_DESC viewDesc = {};
+		viewDesc.Format = D3D12GEPUtils::BufferFormatToD3D12(InTexture.GetFormat());
+		viewDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+
+		if (InTexture.GetType() == GEPUtils::Graphics::TEXTURE_TYPE::TEX_CUBE)
+		{
+			viewDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURECUBE;
+			viewDesc.TextureCube.MipLevels = InTexture.GetMipLevelsNum();
+		}
+		else
+		{
+			StopForFail("SRV referenced texture type not handled yet!")
+		}
+
+		// Instantiate View
+		GEPUtils::Graphics::D3D12Device& d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice());
+
+		d3d12Device.GetInner()->CreateShaderResourceView(static_cast<D3D12Texture&>(InTexture).GetInner().Get(), &viewDesc, m_AllocatedDescRange->GetDescHandleAt(0));
+
+	}
+
+	D3D12ConstantBufferView::D3D12ConstantBufferView(GEPUtils::Graphics::Buffer& InResource)
+	{
+		D3D12GEPUtils::D3D12Resource& buffer = static_cast<D3D12GEPUtils::D3D12Resource&>(InResource);
+
+		ReferenceBuffer(buffer.GetInner()->GetGPUVirtualAddress(), buffer.GetSizeInBytes());
 	}
 
 	void D3D12ConstantBufferView::ReferenceBuffer(D3D12_GPU_VIRTUAL_ADDRESS InBufferGPUAddress, size_t InBufferSize)
@@ -335,6 +375,11 @@ namespace D3D12GEPUtils
 		d3d12Device.GetInner()->CreateConstantBufferView(&viewDesc, m_AllocatedDescRange->GetDescHandleAt(0));
 	}
 
+	void D3D12ConstantBufferView::ReferenceBuffer(GEPUtils::Graphics::Buffer& InResource, size_t InDataSize, size_t InStrideSize)
+	{
+		throw std::logic_error("The method or operation is not implemented.");
+	}
+
 	void D3D12DynamicBuffer::SetData(void* InData, size_t InSize, size_t InAlignmentSize)
 	{
 		// Note: A buffer needs to have an alignment multiple of D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT which is now 256
@@ -350,6 +395,7 @@ namespace D3D12GEPUtils
 		
 		memcpy(m_Data.data(), InData, InSize);
 	}
+
 
 }
 

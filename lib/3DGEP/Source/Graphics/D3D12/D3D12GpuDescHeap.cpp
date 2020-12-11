@@ -1,12 +1,12 @@
 /*!
  * Project: First D3D12 Renderer - https://github.com/logins/FirstDX12Renderer
  *
- * File: D3D12DynamicDescHeap.cpp
+ * File: D3D12GpuDescHeap.cpp
  *
  * Author: Riccardo Loggini
  */
  
- #include "D3D12DynamicDescHeap.h"
+ #include "D3D12GpuDescHeap.h"
 #include "d3dx12.h"
 #include "D3D12Device.h"
 #include "D3D12GEPUtils.h"
@@ -16,10 +16,10 @@
 
 namespace GEPUtils { namespace Graphics {
 
-	D3D12DynamicDescHeap D3D12DynamicDescHeap::m_CbvSrvUavDescHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
-	D3D12DynamicDescHeap D3D12DynamicDescHeap::m_SamplerDescHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
+	D3D12GpuDescHeap D3D12GpuDescHeap::m_CbvSrvUavDescHeap(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV);
+	D3D12GpuDescHeap D3D12GpuDescHeap::m_SamplerDescHeap(D3D12_DESCRIPTOR_HEAP_TYPE_SAMPLER);
 
-	D3D12DynamicDescHeap::D3D12DynamicDescHeap(D3D12_DESCRIPTOR_HEAP_TYPE InDescHeapType, uint32_t InDescPerHeapNum /*= 1024*/)
+	D3D12GpuDescHeap::D3D12GpuDescHeap(D3D12_DESCRIPTOR_HEAP_TYPE InDescHeapType, uint32_t InDescPerHeapNum /*= 1024*/)
 		: m_DescHeapType(InDescHeapType), m_DescPerHeapNum(InDescPerHeapNum)
 	{
 		auto d3d12Device = static_cast<Graphics::D3D12Device&>(Graphics::GetDevice()).GetInner().Get();
@@ -33,7 +33,7 @@ namespace GEPUtils { namespace Graphics {
 
 	}
 
-	void D3D12DynamicDescHeap::CreateD3d12DescHeap()
+	void D3D12GpuDescHeap::CreateD3d12DescHeap()
 	{
 		auto d3d12Device = static_cast<Graphics::D3D12Device&>(Graphics::GetDevice()).GetInner().Get();
 
@@ -44,17 +44,29 @@ namespace GEPUtils { namespace Graphics {
 
 		D3D12GEPUtils::ThrowIfFailed(d3d12Device->CreateDescriptorHeap(&descHeapDesc, IID_PPV_ARGS(&m_D3d12DescHeap)));
 
-		m_CurrentCPUDescHandle = m_D3d12DescHeap->GetCPUDescriptorHandleForHeapStart();
-		m_CurrentGPUDescHandle = m_D3d12DescHeap->GetGPUDescriptorHandleForHeapStart();
-		m_NumFreeHandles = m_DescPerHeapNum;
+		// Static Descriptors will take the first half of the GPU desc heap
+		m_CurrentStaticCPUDescHandle = m_D3d12DescHeap->GetCPUDescriptorHandleForHeapStart();
+		m_CurrentStaticGPUDescHandle = m_D3d12DescHeap->GetGPUDescriptorHandleForHeapStart();
+		m_NumFreeStaticHandles = m_DescPerHeapNum / 2;
+		// Dynamic Descriptors will take the second half
+		ResetDynamicDescPointers();
+
 	}
 
-	D3D12DynamicDescHeap::~D3D12DynamicDescHeap()
+	void D3D12GpuDescHeap::ResetDynamicDescPointers()
+	{
+		// Dynamic descriptors start from the second half of the descriptor heap
+		m_CurrentDynamicCPUDescHandle.InitOffsetted(m_D3d12DescHeap->GetCPUDescriptorHandleForHeapStart(), m_DescPerHeapNum / 2, m_DescHandleIncrementSize);
+		m_CurrentDynamicGPUDescHandle.InitOffsetted(m_D3d12DescHeap->GetGPUDescriptorHandleForHeapStart(), m_DescPerHeapNum / 2, m_DescHandleIncrementSize);
+		m_NumFreeDynamicHandles = m_DescPerHeapNum/2;
+	}
+
+	D3D12GpuDescHeap::~D3D12GpuDescHeap()
 	{
 		Reset();
 	}
 
-	void D3D12DynamicDescHeap::StageDescriptors(uint32_t InRootParamIndex, uint32_t InOffset, uint32_t InDescriptorsNum, const D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle)
+	void D3D12GpuDescHeap::StageDynamicDescriptors(uint32_t InRootParamIndex, uint32_t InOffset, uint32_t InDescriptorsNum, const D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle)
 	{
 		// Cannot stage descriptors more than maximum per heap or at greater index than maximum
 		Check(InDescriptorsNum <= m_DescPerHeapNum && InRootParamIndex < m_MaxDescTablesNum)
@@ -75,18 +87,15 @@ namespace GEPUtils { namespace Graphics {
 		m_StaleDescTableBitMask |= (1 << InRootParamIndex);
 	}
 
-	void D3D12DynamicDescHeap::CommitStagedDescriptors_Internal(GEPUtils::Graphics::D3D12CommandList& InCmdList, std::function<void(ID3D12GraphicsCommandList*, UINT, D3D12_GPU_DESCRIPTOR_HANDLE)> InSetFn)
+	void D3D12GpuDescHeap::CommitStagedDescriptors_Internal(GEPUtils::Graphics::D3D12CommandList& InCmdList, std::function<void(ID3D12GraphicsCommandList*, UINT, D3D12_GPU_DESCRIPTOR_HANDLE)> InSetFn)
 	{
 		uint32_t numDescriptorsToUpload = ComputeStaleDescriptorCount();
 
 		// If we don't have enough free descriptors, we reset the pointers and free handles and start from the beginning of the descriptor heap (used as a ring buffer)
 		// We cannot override the same descriptors because they might be currently used by a command allocator in flight !!
-		// TODO Need to have a separate portion of the heap (e.g. half) for descriptors that are static (e.g textures of a model)
-		if (numDescriptorsToUpload > m_NumFreeHandles)
+		if (numDescriptorsToUpload > m_NumFreeDynamicHandles)
 		{
-			m_CurrentCPUDescHandle = m_D3d12DescHeap->GetCPUDescriptorHandleForHeapStart();
-			m_CurrentGPUDescHandle = m_D3d12DescHeap->GetGPUDescriptorHandleForHeapStart();
-			m_NumFreeHandles = m_DescPerHeapNum;
+			ResetDynamicDescPointers();
 		}
 
 		if (numDescriptorsToUpload)
@@ -103,17 +112,17 @@ namespace GEPUtils { namespace Graphics {
 				UINT descRangeSize = m_RootTableCache[currentRootIndex].m_DescriptorsNum;
 				D3D12_CPU_DESCRIPTOR_HANDLE* baseCPUDescHandle = m_RootTableCache[currentRootIndex].m_BaseCPUDescHandle;
 
-				device->CopyDescriptorsSimple(descRangeSize, m_CurrentCPUDescHandle, *baseCPUDescHandle, m_DescHeapType);
+				device->CopyDescriptorsSimple(descRangeSize, m_CurrentDynamicCPUDescHandle, *baseCPUDescHandle, m_DescHeapType);
 
 				// Set descriptors on the command list using the passed-in function
 				// Note: this function will set the root table in the command list, 
 				// so it is gonna be either ID3D12GraphicsCommandList::SetGraphicsRootDescriptorTable or ID3D12GraphicsCommandList::SetComputeRootDescriptorTable
-				InSetFn(d3d12GraphicsCmdList, currentRootIndex, m_CurrentGPUDescHandle);
+				InSetFn(d3d12GraphicsCmdList, currentRootIndex, m_CurrentDynamicGPUDescHandle);
 
 				// Offset current GPU and CPU desc heap handles
-				m_CurrentCPUDescHandle.Offset(m_DescHandleIncrementSize * descRangeSize);
-				m_CurrentGPUDescHandle.Offset(m_DescHandleIncrementSize * descRangeSize);
-				m_NumFreeHandles -= descRangeSize;
+				m_CurrentDynamicCPUDescHandle.Offset(descRangeSize, m_DescHandleIncrementSize);
+				m_CurrentDynamicGPUDescHandle.Offset(descRangeSize, m_DescHandleIncrementSize);
+				m_NumFreeDynamicHandles -= descRangeSize;
 
 				// Flip current root index in the stale root tables mask so we do not iterate over it again
 				staleDescTablesMask ^= (1 << currentRootIndex);
@@ -123,36 +132,36 @@ namespace GEPUtils { namespace Graphics {
 		// TODO we can copy descriptor ranges altogether with a single call rather than 1 range at a time
 	}
 
-	void D3D12DynamicDescHeap::CommitStagedDescriptorsForDraw(GEPUtils::Graphics::D3D12CommandList& InCmdList)
+	void D3D12GpuDescHeap::CommitStagedDescriptorsForDraw(GEPUtils::Graphics::D3D12CommandList& InCmdList)
 	{
 		CommitStagedDescriptors_Internal(InCmdList, &ID3D12GraphicsCommandList::SetGraphicsRootDescriptorTable);
 	}
 
-	void D3D12DynamicDescHeap::CommitStagedDescriptorsForDispatch(GEPUtils::Graphics::D3D12CommandList& InCmdList)
+	void D3D12GpuDescHeap::CommitStagedDescriptorsForDispatch(GEPUtils::Graphics::D3D12CommandList& InCmdList)
 	{
 		CommitStagedDescriptors_Internal(InCmdList, &ID3D12GraphicsCommandList::SetComputeRootDescriptorTable);
 	}
 
-	D3D12_GPU_DESCRIPTOR_HANDLE D3D12DynamicDescHeap::UploadSingleDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle)
+	D3D12_GPU_DESCRIPTOR_HANDLE D3D12GpuDescHeap::UploadSingleStaticDescriptor(D3D12_CPU_DESCRIPTOR_HANDLE InCPUDescHandle)
 	{
-		Check(m_NumFreeHandles > 0)
+		Check(m_NumFreeStaticHandles > 0)
 		// Note: we are assuming a single desc heap will be used for the whole instance, and so assuming it will be big enough to contain all the descriptors we need
 
 		auto device = static_cast<Graphics::D3D12Device&>(Graphics::GetDevice()).GetInner();
-		D3D12_GPU_DESCRIPTOR_HANDLE allocatedGPUDescHandle = m_CurrentGPUDescHandle;
+		D3D12_GPU_DESCRIPTOR_HANDLE allocatedGPUDescHandle = m_CurrentDynamicGPUDescHandle;
 
-		device->CopyDescriptorsSimple(1, m_CurrentCPUDescHandle, InCPUDescHandle, m_DescHeapType);
+		device->CopyDescriptorsSimple(1, m_CurrentDynamicCPUDescHandle, InCPUDescHandle, m_DescHeapType);
 
 		// Offset current CPU and GPU desc handles by 1
-		m_CurrentCPUDescHandle.Offset(m_DescHandleIncrementSize);
-		m_CurrentGPUDescHandle.Offset(m_DescHandleIncrementSize);
+		m_CurrentStaticCPUDescHandle.Offset(m_DescHandleIncrementSize);
+		m_CurrentStaticGPUDescHandle.Offset(m_DescHandleIncrementSize);
 
-		m_NumFreeHandles -= 1;
+		m_NumFreeStaticHandles -= 1;
 
 		return allocatedGPUDescHandle;
 	}
 
-	void D3D12DynamicDescHeap::ParseRootSignature(GEPUtils::Graphics::D3D12PipelineState& InPipelineState)
+	void D3D12GpuDescHeap::ParseRootSignature(GEPUtils::Graphics::D3D12PipelineState& InPipelineState)
 	{
 		// If the root signature changes, all descriptors must be rebound to the command list
 		m_StaleDescTableBitMask = 0;
@@ -183,13 +192,13 @@ namespace GEPUtils { namespace Graphics {
 
 	}
 
-	void D3D12DynamicDescHeap::Reset()
+	void D3D12GpuDescHeap::Reset()
 	{
 		m_D3d12DescHeap.Reset(); // Note: we are resetting the ComPtr: it releases the interface associated with this ComPtr and returns a new reference count
 
-		m_CurrentCPUDescHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(D3D12_DEFAULT);
-		m_CurrentGPUDescHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(D3D12_DEFAULT);
-		m_NumFreeHandles = 0;
+		m_CurrentDynamicCPUDescHandle = CD3DX12_CPU_DESCRIPTOR_HANDLE(D3D12_DEFAULT);
+		m_CurrentDynamicGPUDescHandle = CD3DX12_GPU_DESCRIPTOR_HANDLE(D3D12_DEFAULT);
+		m_NumFreeDynamicHandles = 0;
 		m_DescTableBitMask = 0;
 		m_StaleDescTableBitMask = 0;
 
@@ -198,7 +207,7 @@ namespace GEPUtils { namespace Graphics {
 			m_RootTableCache[i].Reset();
 	}
 
-	GEPUtils::Graphics::D3D12DynamicDescHeap& D3D12DynamicDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE InType)
+	GEPUtils::Graphics::D3D12GpuDescHeap& D3D12GpuDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE InType)
 	{
 		switch (InType)
 		{
@@ -214,12 +223,12 @@ namespace GEPUtils { namespace Graphics {
 		return m_CbvSrvUavDescHeap;
 	}
 
-	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> D3D12DynamicDescHeap::GetInner()
+	Microsoft::WRL::ComPtr<ID3D12DescriptorHeap> D3D12GpuDescHeap::GetInner()
 	{
 		return m_D3d12DescHeap;
 	}
 
-	uint32_t D3D12DynamicDescHeap::ComputeStaleDescriptorCount() const
+	uint32_t D3D12GpuDescHeap::ComputeStaleDescriptorCount() const
 	{
 		uint32_t staleDescriptorsNum = 0;
 		uint32_t staleDescMask = m_StaleDescTableBitMask;

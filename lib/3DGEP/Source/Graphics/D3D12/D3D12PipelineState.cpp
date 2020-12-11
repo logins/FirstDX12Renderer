@@ -44,15 +44,24 @@ namespace GEPUtils{ namespace Graphics {
 			0, D3D12_APPEND_ALIGNED_ELEMENT, D3D12_INPUT_CLASSIFICATION::D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA, 0 };
 	}
 
+	CD3DX12_STATIC_SAMPLER_DESC D3D12PipelineState::TransformStaticSamplerElement(Graphics::StaticSampler& InLayoutElementDesc)
+	{
+		return CD3DX12_STATIC_SAMPLER_DESC(InLayoutElementDesc.m_ShaderRegister, D3D12GEPUtils::SampleFilterToD3D12(InLayoutElementDesc.m_Filter), 
+			D3D12GEPUtils::TextureAddressModeToD3D12(InLayoutElementDesc.m_AddressU), D3D12GEPUtils::TextureAddressModeToD3D12(InLayoutElementDesc.m_AddressV), D3D12GEPUtils::TextureAddressModeToD3D12(InLayoutElementDesc.m_AddressW));
+	}
+
 	CD3DX12_ROOT_PARAMETER1 D3D12PipelineState::TransformResourceBinderParams(RESOURCE_BINDER_PARAM& InResourceBinderParam, std::vector<D3D12_DESCRIPTOR_RANGE1>& OutDescRanges)
 	{
-		CD3DX12_ROOT_PARAMETER1 returnParam;
-		if (InResourceBinderParam.resourceType == RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CONSTANTS)
+		CD3DX12_ROOT_PARAMETER1 returnParam = {};
+		switch (InResourceBinderParam.ResourceType)
 		{
-			returnParam.InitAsConstants(InResourceBinderParam.Num32BitValues, InResourceBinderParam.ShaderRegister, 
-				InResourceBinderParam.RegisterSpace, TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
+		case  RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CONSTANTS:
+		{
+			returnParam.InitAsConstants(InResourceBinderParam.Num32BitValues, InResourceBinderParam.ShaderRegister,
+			InResourceBinderParam.RegisterSpace, TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
+			break;
 		}
-		else if (InResourceBinderParam.resourceType == RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CBV_RANGE)
+		case RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CBV_RANGE:
 		{
 			// Note: we are assuming only 1 descriptor range per descriptor table
 			D3D12_DESCRIPTOR_RANGE1 descRange;
@@ -66,12 +75,53 @@ namespace GEPUtils{ namespace Graphics {
 			OutDescRanges.push_back(std::move(descRange));
 
 			returnParam.InitAsDescriptorTable(1, &OutDescRanges.back(), TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
-
+			break;
 		}
-		else
+		case RESOURCE_BINDER_PARAM::RESOURCE_TYPE::SRV_RANGE:
 		{
-			raise(SIGABRT); // Not implemented
+			// Note: we are assuming only 1 descriptor range per descriptor table
+			D3D12_DESCRIPTOR_RANGE1 descRange;
+			descRange.BaseShaderRegister = InResourceBinderParam.ShaderRegister;
+			descRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
+			descRange.NumDescriptors = InResourceBinderParam.NumDescriptors;
+			descRange.OffsetInDescriptorsFromTableStart = 0;
+			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			descRange.RegisterSpace = InResourceBinderParam.RegisterSpace;
+
+			OutDescRanges.push_back(std::move(descRange));
+
+			returnParam.InitAsDescriptorTable(1, &OutDescRanges.back(), TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
+			break;
 		}
+		default:
+			StopForFail("Root Param transformation not implemented yet!")
+			break;
+		}
+		//if (InResourceBinderParam.ResourceType == RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CONSTANTS)
+		//{
+		//	returnParam.InitAsConstants(InResourceBinderParam.Num32BitValues, InResourceBinderParam.ShaderRegister, 
+		//		InResourceBinderParam.RegisterSpace, TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
+		//}
+		//else if (InResourceBinderParam.ResourceType == RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CBV_RANGE)
+		//{
+		//	// Note: we are assuming only 1 descriptor range per descriptor table
+		//	D3D12_DESCRIPTOR_RANGE1 descRange;
+		//	descRange.BaseShaderRegister = InResourceBinderParam.ShaderRegister;
+		//	descRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
+		//	descRange.NumDescriptors = InResourceBinderParam.NumDescriptors;
+		//	descRange.OffsetInDescriptorsFromTableStart = 0;
+		//	descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
+		//	descRange.RegisterSpace = InResourceBinderParam.RegisterSpace;
+
+		//	OutDescRanges.push_back(std::move(descRange));
+
+		//	returnParam.InitAsDescriptorTable(1, &OutDescRanges.back(), TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
+
+		//}
+		//else
+		//{
+		//	;
+		//}
 		return returnParam;
 	}
 
@@ -86,7 +136,7 @@ namespace GEPUtils{ namespace Graphics {
 		case GEPUtils::Graphics::SHADER_VISIBILITY::SV_GEOMETRY: return D3D12_SHADER_VISIBILITY_GEOMETRY;
 		case GEPUtils::Graphics::SHADER_VISIBILITY::SV_PIXEL: return D3D12_SHADER_VISIBILITY_PIXEL;
 		}
-		std::exception("Shader Visibility undefined.");
+		StopForFail("Shader Visibility undefined.");
 		return D3D12_SHADER_VISIBILITY_ALL;
 	}
 
@@ -99,7 +149,7 @@ namespace GEPUtils{ namespace Graphics {
 		// Convert platform-agnostic parameters into d3d12 specific
 		std::transform(agnosticLayoutElements.begin(), agnosticLayoutElements.end(), std::back_inserter(layoutElements), &D3D12PipelineState::TransformInputLayoutElement);
 
-		Microsoft::WRL::ComPtr<ID3D12Device2> d3d12GraphicsDevice = static_cast<Graphics::D3D12Device&>(m_GraphicsDevice).GetInner();
+		Microsoft::WRL::ComPtr<ID3D12Device2> d3d12GraphicsDevice = static_cast<Graphics::D3D12Device&>(Graphics::GetDevice()).GetInner();
 
 		// Create Root Signature
 		D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
@@ -112,6 +162,7 @@ namespace GEPUtils{ namespace Graphics {
 		// and deny it to other stages (small optimization)
 		D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = TransformResourceBinderFlags(InPipelineStateDesc.ResourceBinderDesc.Flags);
 
+		// --- Root Parameters ---
 		// Using a single 32-bit constant root parameter (MVP matrix) that is used by the vertex shader
 		std::vector<RESOURCE_BINDER_PARAM>& agnosticRootParameters = InPipelineStateDesc.ResourceBinderDesc.Params;
 		std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters = m_RootSignatureInfo.rootParameters;
@@ -124,44 +175,49 @@ namespace GEPUtils{ namespace Graphics {
 			rootParameters.push_back(TransformResourceBinderParams(agnosticRootParameters[i], m_RootSignatureInfo.m_DescRanges));
 		}
 
+		// --- Static Samplers ---
+		std::vector<StaticSampler>& agnosticStaticSamplers = InPipelineStateDesc.ResourceBinderDesc.StaticSamplers;
+		std::vector<CD3DX12_STATIC_SAMPLER_DESC>& staticSamplers = m_RootSignatureInfo.m_StaticSamplers;
+		rootParameters.reserve(agnosticStaticSamplers.size());
+		std::transform(agnosticStaticSamplers.begin(), agnosticStaticSamplers.end(), std::back_inserter(staticSamplers), &D3D12PipelineState::TransformStaticSamplerElement);
+
 		// Init Root Signature Desc
-		m_RootSignatureInfo.rootSignatureDesc.Init_1_1(rootParameters.size(), &rootParameters[0], 0U, nullptr, rootSignatureFlags);
+		m_RootSignatureInfo.rootSignatureDesc.Init_1_1(rootParameters.size(), rootParameters.data(), staticSamplers.size(), staticSamplers.data(), rootSignatureFlags);
 		// Create Root Signature serialized blob and then the object from it
 		m_RootSignature = D3D12GEPUtils::SerializeAndCreateRootSignature(d3d12GraphicsDevice, &m_RootSignatureInfo.rootSignatureDesc, featureData.HighestVersion);
-		
 
 		//RTV Formats
-	D3D12_RT_FORMAT_ARRAY rtvFormats = {};
-	rtvFormats.NumRenderTargets = 1; // Note: we are supporting only 1 render target at the moment
-	rtvFormats.RTFormats[0] = D3D12GEPUtils::BufferFormatToD3D12(InPipelineStateDesc.RTFormat);// Note: texel data of the render target is 4x 8bit channels of range [0,1]
+		D3D12_RT_FORMAT_ARRAY rtvFormats = {};
+		rtvFormats.NumRenderTargets = 1; // Note: we are supporting only 1 render target at the moment
+		rtvFormats.RTFormats[0] = D3D12GEPUtils::BufferFormatToD3D12(InPipelineStateDesc.RTFormat);// Note: texel data of the render target is 4x 8bit channels of range [0,1]
 
-	// Pipeline State Stream definition and fill
-	// Note: for now we assume PipelineStateStreamType to be always the same
-	struct PipelineStateStreamType {
-		CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
-		CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopology;
-		CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT InputLayout;
-		CD3DX12_PIPELINE_STATE_STREAM_VS VertexShader;
-		CD3DX12_PIPELINE_STATE_STREAM_PS PixelShader;
-		CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
-		CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
-	} pipelineStateStream;
+		// Pipeline State Stream definition and fill
+		// Note: for now we assume PipelineStateStreamType to be always the same
+		struct PipelineStateStreamType {
+			CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE pRootSignature;
+			CD3DX12_PIPELINE_STATE_STREAM_PRIMITIVE_TOPOLOGY PrimitiveTopology;
+			CD3DX12_PIPELINE_STATE_STREAM_INPUT_LAYOUT InputLayout;
+			CD3DX12_PIPELINE_STATE_STREAM_VS VertexShader;
+			CD3DX12_PIPELINE_STATE_STREAM_PS PixelShader;
+			CD3DX12_PIPELINE_STATE_STREAM_DEPTH_STENCIL_FORMAT DSVFormat;
+			CD3DX12_PIPELINE_STATE_STREAM_RENDER_TARGET_FORMATS RTVFormats;
+		} pipelineStateStream;
 
-	pipelineStateStream.pRootSignature = m_RootSignature.Get();
+		pipelineStateStream.pRootSignature = m_RootSignature.Get();
 	
-	pipelineStateStream.PrimitiveTopology = D3D12GEPUtils::PrimitiveTopologyTypeToD3D12(InPipelineStateDesc.TopologyType);
-	pipelineStateStream.InputLayout = { &layoutElements[0], static_cast<UINT>(layoutElements.size()) };
-	pipelineStateStream.VertexShader = CD3DX12_SHADER_BYTECODE(static_cast<D3D12GEPUtils::D3D12Shader&>(InPipelineStateDesc.VertexShader).m_ShaderBlob.Get());
-	pipelineStateStream.PixelShader = CD3DX12_SHADER_BYTECODE(static_cast<D3D12GEPUtils::D3D12Shader&>(InPipelineStateDesc.PixelShader).m_ShaderBlob.Get());
-	pipelineStateStream.DSVFormat = D3D12GEPUtils::BufferFormatToD3D12(InPipelineStateDesc.DSFormat);
-	pipelineStateStream.RTVFormats = rtvFormats;
+		pipelineStateStream.PrimitiveTopology = D3D12GEPUtils::PrimitiveTopologyTypeToD3D12(InPipelineStateDesc.TopologyType);
+		pipelineStateStream.InputLayout = { &layoutElements[0], static_cast<UINT>(layoutElements.size()) };
+		pipelineStateStream.VertexShader = CD3DX12_SHADER_BYTECODE(static_cast<D3D12GEPUtils::D3D12Shader&>(InPipelineStateDesc.VertexShader).m_ShaderBlob.Get());
+		pipelineStateStream.PixelShader = CD3DX12_SHADER_BYTECODE(static_cast<D3D12GEPUtils::D3D12Shader&>(InPipelineStateDesc.PixelShader).m_ShaderBlob.Get());
+		pipelineStateStream.DSVFormat = D3D12GEPUtils::BufferFormatToD3D12(InPipelineStateDesc.DSFormat);
+		pipelineStateStream.RTVFormats = rtvFormats;
 
-	D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
-		sizeof(pipelineStateStream), &pipelineStateStream
-	};
-	D3D12GEPUtils::ThrowIfFailed(d3d12GraphicsDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
+		D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
+			sizeof(pipelineStateStream), &pipelineStateStream
+		};
+		D3D12GEPUtils::ThrowIfFailed(d3d12GraphicsDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
 
-	m_IsInitialized = true;
+		m_IsInitialized = true;
 	}
 
 	uint32_t D3D12PipelineState::GenerateRootTableBitMask()

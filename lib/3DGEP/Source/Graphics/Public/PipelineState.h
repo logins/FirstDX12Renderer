@@ -7,15 +7,11 @@
 
 namespace GEPUtils{ namespace Graphics {
 
-class Device;
-
 class PipelineState {
 
 public:
 
-	PipelineState(GEPUtils::Graphics::Device& InGraphicsDevice) : m_GraphicsDevice(InGraphicsDevice) {};
-
-	PipelineState() = delete; // Do not allow to instatiate this object without passing a GraphicsDevice
+	PipelineState() = default;
 
 	struct INPUT_LAYOUT_DESC {
 		struct LayoutElement {
@@ -32,7 +28,7 @@ public:
 			Num32BitValues = InNum32BitValues;
 			ShaderRegister = InShaderRegister;
 			RegisterSpace = InRegisterSpace;
-			resourceType = RESOURCE_TYPE::CONSTANTS;
+			ResourceType = RESOURCE_TYPE::CONSTANTS;
 			shaderVisibility = InShaderVisibility;
 		}
 
@@ -41,7 +37,16 @@ public:
 			NumDescriptors = InNumDescriptors;
 			ShaderRegister = InShaderRegister;
 			RegisterSpace = InRegisterSpace;
-			resourceType = RESOURCE_TYPE::CBV_RANGE;
+			ResourceType = RESOURCE_TYPE::CBV_RANGE;
+			shaderVisibility = InShaderVisibility;
+		}
+
+		void InitAsTableSRVRange(uint32_t InNumDescriptors, uint32_t InShaderRegister, uint32_t InRegisterSpace = 0, GEPUtils::Graphics::SHADER_VISIBILITY InShaderVisibility = SHADER_VISIBILITY::SV_ALL)
+		{
+			NumDescriptors = InNumDescriptors;
+			ShaderRegister = InShaderRegister;
+			RegisterSpace = InRegisterSpace;
+			ResourceType = RESOURCE_TYPE::SRV_RANGE;
 			shaderVisibility = InShaderVisibility;
 		}
 
@@ -49,8 +54,9 @@ public:
 
 		enum class RESOURCE_TYPE {
 			CONSTANTS,
-			CBV_RANGE
-		} resourceType = RESOURCE_TYPE::CONSTANTS;
+			CBV_RANGE,
+			SRV_RANGE
+		} ResourceType = RESOURCE_TYPE::CONSTANTS;
 		
 		SHADER_VISIBILITY shaderVisibility;
 	};
@@ -71,6 +77,7 @@ public:
 	struct RESOURCE_BINDER_DESC {
 		RESOURCE_BINDER_FLAGS Flags;
 		std::vector<RESOURCE_BINDER_PARAM> Params;
+		std::vector<StaticSampler> StaticSamplers;
 	};
 
 
@@ -85,10 +92,6 @@ public:
 	};
 
 	virtual void Init(PIPELINE_STATE_DESC& InPipelineStateDesc) = 0;
-
-protected:
-
-	GEPUtils::Graphics::Device& m_GraphicsDevice;
 
 };
 

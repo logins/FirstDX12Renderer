@@ -12,7 +12,7 @@ class Device;
 class D3D12PipelineState : public PipelineState{
 
 public:
-	D3D12PipelineState(GEPUtils::Graphics::Device& InGraphicsDevice) : PipelineState(InGraphicsDevice) { }
+	D3D12PipelineState() = default;
 
 	virtual void Init(PIPELINE_STATE_DESC& InPipelineStateDesc) override;
 
@@ -26,8 +26,9 @@ public:
 private:
 	bool m_IsInitialized = false;
 
-	static D3D12_ROOT_SIGNATURE_FLAGS TransformResourceBinderFlags(RESOURCE_BINDER_FLAGS InResourceBinderFlags);
+	static D3D12_ROOT_SIGNATURE_FLAGS TransformResourceBinderFlags(RESOURCE_BINDER_FLAGS InResourceBinderFlags); 
 	static D3D12_INPUT_ELEMENT_DESC TransformInputLayoutElement(INPUT_LAYOUT_DESC::LayoutElement& InLayoutElementDesc);
+	static CD3DX12_STATIC_SAMPLER_DESC TransformStaticSamplerElement(Graphics::StaticSampler& InLayoutElementDesc);
 	static CD3DX12_ROOT_PARAMETER1 TransformResourceBinderParams(RESOURCE_BINDER_PARAM& InResourceBinderParam, std::vector<D3D12_DESCRIPTOR_RANGE1>& OutDescRanges);
 
 	static D3D12_SHADER_VISIBILITY TransformShaderVisibility(SHADER_VISIBILITY shaderVisibility);
@@ -42,6 +43,7 @@ private:
 		CD3DX12_VERSIONED_ROOT_SIGNATURE_DESC rootSignatureDesc;
 		std::vector<CD3DX12_ROOT_PARAMETER1> rootParameters;
 		std::vector<D3D12_DESCRIPTOR_RANGE1> m_DescRanges;
+		std::vector<CD3DX12_STATIC_SAMPLER_DESC> m_StaticSamplers;
 	} m_RootSignatureInfo;
 
 };

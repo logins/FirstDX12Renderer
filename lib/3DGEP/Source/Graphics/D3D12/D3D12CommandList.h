@@ -45,13 +45,22 @@ namespace GEPUtils { namespace Graphics {
 		virtual void DrawIndexed(uint64_t InIndexCountPerInstance) override;
 
 
-		virtual void SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ResourceView& InView) override;
+		virtual void SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ConstantBufferView& InView) override;
 
 		uint32_t GetDynamicBufAllocatorPage() const { return m_DynamicBufferPageIdx; }
 
 		void SetDynamicBufAllocatorPage(uint32_t InPageIdx) { m_DynamicBufferPageIdx = InPageIdx; }
 
-		virtual void StoreAndReferenceDynamicBuffer(uint32_t InRootIdx, GEPUtils::Graphics::DynamicBuffer& InDynBuffer, GEPUtils::Graphics::ResourceView& InResourceView) override;
+		virtual void StoreAndReferenceDynamicBuffer(uint32_t InRootIdx, GEPUtils::Graphics::DynamicBuffer& InDynBuffer, GEPUtils::Graphics::ConstantBufferView& InResourceView) override;
+
+
+		virtual void UploadBufferData(GEPUtils::Graphics::Buffer& DestinationBuffer, GEPUtils::Graphics::Buffer& IntermediateBuffer, const void* InBufferData, size_t InDataSize) override;
+
+
+		virtual void UploadViewToGPU(GEPUtils::Graphics::ShaderResourceView& InSRV) override;
+
+
+		virtual void ReferenceSRV(uint32_t InRootIdx, GEPUtils::Graphics::ShaderResourceView& InSRV) override;
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> m_D3D12CmdList;

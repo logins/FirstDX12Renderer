@@ -29,7 +29,7 @@ private:
 	GEPUtils::Graphics::IndexBufferView& m_IndexBufferView;
 	// Standalone Constant Buffer for the color modifier
 	GEPUtils::Graphics::DynamicBuffer& m_ColorModBuffer;
-	GEPUtils::Graphics::ResourceView& m_ColorModBufferView;
+	GEPUtils::Graphics::ConstantBufferView& m_ColorModBufferView;
 
 	GEPUtils::Graphics::PipelineState& m_PipelineState;
 

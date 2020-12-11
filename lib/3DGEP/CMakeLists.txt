@@ -23,7 +23,12 @@ target_include_directories(3dgep #Note: Only the Public folder will be seen by t
 # Note: All the following libraries are implicitly linked PUBLIC, meaning that they will be part of the linking interface.
 # That means that all the projects that are linking 3dgep will also be able to use these libraries.
 # For a more proper engine application, we want parts like d3d12 libraries to be PRIVATE and used inside the graphics module only.
-target_link_libraries(3dgep d3d12.lib dxgi.lib d3dx12.h d3dcompiler.lib dxguid.lib eigen)
+target_link_libraries(3dgep
+    PUBLIC
+        d3d12.lib dxgi.lib d3dx12.h d3dcompiler.lib dxguid.lib eigen
+    PRIVATE
+        DirectXTex
+)
 
 
 target_compile_definitions(3dgep 

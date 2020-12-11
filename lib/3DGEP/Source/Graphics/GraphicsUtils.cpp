@@ -17,39 +17,34 @@ namespace GEPUtils { namespace Graphics {
 		return D3D12GEPUtils::EnableDebugLayer();
 	}
 
-	Resource& AllocateEmptyResource()
-	{
-		return GraphicsAllocator::AllocateEmptyResource();
-	}
-
 	GEPUtils::Graphics::DynamicBuffer& AllocateDynamicBuffer()
 	{
-		return GraphicsAllocator::AllocateDynamicBuffer();
+		return GraphicsAllocator::Get()->AllocateDynamicBuffer();
 	}
 
 	GEPUtils::Graphics::VertexBufferView& AllocateVertexBufferView()
 {
-		return GraphicsAllocator::AllocateVertexBufferView();
+		return GraphicsAllocator::Get()->AllocateVertexBufferView();
 	}
 
 	GEPUtils::Graphics::IndexBufferView& AllocateIndexBufferView()
 {
-		return GraphicsAllocator::AllocateIndexBufferView();
+		return GraphicsAllocator::Get()->AllocateIndexBufferView();
 	}
 
-	GEPUtils::Graphics::ResourceView& AllocateResourceView(GEPUtils::Graphics::Resource& InResource, GEPUtils::Graphics::RESOURCE_VIEW_TYPE InType)
+	GEPUtils::Graphics::ConstantBufferView& AllocateConstantBufferView(GEPUtils::Graphics::Buffer& InResource, GEPUtils::Graphics::RESOURCE_VIEW_TYPE InType)
 {
-		return GraphicsAllocator::AllocateResourceView(InResource, InType);
+		return GraphicsAllocator::Get()->AllocateConstantBufferView(InResource);
 	}
 
 	GEPUtils::Graphics::Shader& AllocateShader(wchar_t const* InShaderPath)
 	{
-		return GraphicsAllocator::AllocateShader(InShaderPath);
+		return GraphicsAllocator::Get()->AllocateShader(InShaderPath);
 	}
 
-	GEPUtils::Graphics::PipelineState& AllocatePipelineState(GEPUtils::Graphics::Device& InGraphicsDevice)
+	GEPUtils::Graphics::PipelineState& AllocatePipelineState()
 {
-		return GraphicsAllocator::AllocatePipelineState(InGraphicsDevice);
+		return GraphicsAllocator::Get()->AllocatePipelineState();
 	}
 
 	std::unique_ptr<GEPUtils::Graphics::Rect> AllocateRect(int32_t InLeft, int32_t InTop, int32_t InRight, int32_t InBottom)
@@ -61,6 +56,7 @@ namespace GEPUtils { namespace Graphics {
 	{
 		return std::make_unique<D3D12GEPUtils::D3D12ViewPort>(InTopLeftX, InTopLeftY, InWidth, InHeight);
 	}
+
 
 #endif
 }

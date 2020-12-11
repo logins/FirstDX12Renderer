@@ -21,21 +21,20 @@ namespace GEPUtils { namespace Graphics {
 
 	void EnableDebugLayer();
 
-	Resource& AllocateEmptyResource(); 
-
 	DynamicBuffer& AllocateDynamicBuffer();
 
 	VertexBufferView& AllocateVertexBufferView();
 	IndexBufferView& AllocateIndexBufferView();
-	ResourceView& AllocateResourceView(GEPUtils::Graphics::Resource& InResource, GEPUtils::Graphics::RESOURCE_VIEW_TYPE InType);
+	ConstantBufferView& AllocateConstantBufferView(GEPUtils::Graphics::Buffer& InResource, GEPUtils::Graphics::RESOURCE_VIEW_TYPE InType);
 
 	Shader& AllocateShader(wchar_t const* InShaderPath);
 
-	PipelineState& AllocatePipelineState(GEPUtils::Graphics::Device& InGraphicsDevice);
+	PipelineState& AllocatePipelineState();
 
 	std::unique_ptr<Rect> AllocateRect(int32_t InLeft, int32_t InTop, int32_t InRight, int32_t InBottom);
 
 	std::unique_ptr<ViewPort> AllocateViewport(float InTopLeftX, float InTopLeftY, float InWidth, float InHeight);
+
 
 } }
 #endif // GraphicsUtils_h__

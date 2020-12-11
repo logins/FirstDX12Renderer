@@ -101,13 +101,22 @@ namespace D3D12GEPUtils {
 		CD3DX12_GPU_DESCRIPTOR_HANDLE m_DescHandle;
 	};
 
-	struct D3D12Resource : public GEPUtils::Graphics::Resource {
+	struct D3D12Resource : public GEPUtils::Graphics::Buffer {
+		D3D12Resource() : m_D3D12Resource(nullptr) {}; // Allow empty D3D12Resource for cases like DummyBuffer
+		D3D12Resource& operator=(const D3D12Resource& InObjToCopy) = default;
 		D3D12Resource(Microsoft::WRL::ComPtr<ID3D12Resource> InResource)
 			: m_D3D12Resource(InResource)
-		{ }
+		{
+			if (InResource)
+			{
+				auto resourceDesc = m_D3D12Resource->GetDesc();
+				m_AlignmentSize = resourceDesc.Alignment;
+				m_DataSize = resourceDesc.Width * resourceDesc.Height;
+			}
+		}
 		Microsoft::WRL::ComPtr<ID3D12Resource>& GetInner() { return m_D3D12Resource; }
 		void SetInner(Microsoft::WRL::ComPtr<ID3D12Resource> InResource) { m_D3D12Resource = InResource; }
-		inline uint64_t GetSizeInBytes() const { return m_DataSize; }
+		uint64_t GetSizeInBytes() const { return m_DataSize; }
 	private:
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_D3D12Resource;
 
@@ -119,22 +128,52 @@ namespace D3D12GEPUtils {
 
 	};
 
-	struct D3D12ResourceView : public GEPUtils::Graphics::ResourceView
-	{
-		// Descriptor range referenced by this View object.
-		// Note: The Allocated Desc Range destructor will declared the relative descriptors to be stale and they will be cleared at the end of the frame
-		std::unique_ptr<GEPUtils::Graphics::AllocatedDescRange> m_AllocatedDescRange;
-		//std::deque<std::unique_ptr<GEPUtils::Graphics::AllocatedDescRange>> m_allocatedDescRangeQueue;
-	};
+	struct D3D12Texture : public GEPUtils::Graphics::Texture {
+		D3D12Texture() = default; // Allow empty D3D12Texture for cases like DummyTexture
+		D3D12Texture(Microsoft::WRL::ComPtr<ID3D12Resource> InResource, size_t InWidth, size_t InHeight, size_t InArraySize, size_t InMipLevelsNum, GEPUtils::Graphics::BUFFER_FORMAT InTexelFormat, GEPUtils::Graphics::TEXTURE_TYPE InType)
+		{    
+			m_Width = InWidth;	m_Height = InHeight; m_ArraySize = InArraySize; m_MipLevelsNum = InMipLevelsNum; m_TexelFormat = InTexelFormat;	m_Type = InType;
+			m_D3D12Resource = InResource;
+		}
+		Microsoft::WRL::ComPtr<ID3D12Resource>& GetInner() { return m_D3D12Resource; }
+	private:
+			Microsoft::WRL::ComPtr<ID3D12Resource> m_D3D12Resource;
+	};																	
 
-	struct D3D12ConstantBufferView : public D3D12ResourceView
+
+	struct D3D12ConstantBufferView : public GEPUtils::Graphics::ConstantBufferView
 	{
-		D3D12ConstantBufferView(GEPUtils::Graphics::Resource& InResource);
-		
+		D3D12ConstantBufferView() = default;
+
+		D3D12ConstantBufferView(GEPUtils::Graphics::Buffer& InResource);
+				
 		D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescHandle() { return m_AllocatedDescRange->GetDescHandleAt(0); }
 
 		void ReferenceBuffer(D3D12_GPU_VIRTUAL_ADDRESS InBufferGPUAddress, size_t InBufferSize);
 
+		virtual void ReferenceBuffer(GEPUtils::Graphics::Buffer& InResource, size_t InDataSize, size_t InStrideSize) override;
+
+		// Descriptor range referenced by this View object.
+		// Note: The Allocated Desc Range destructor will declared the relative descriptors to be stale and they will be cleared at the end of the frame
+		std::unique_ptr<GEPUtils::Graphics::AllocatedDescRange> m_AllocatedDescRange;
+
+	};
+
+	struct D3D12ShaderResourceView : public GEPUtils::Graphics::ShaderResourceView
+	{
+		D3D12ShaderResourceView() = default;
+
+		D3D12ShaderResourceView(GEPUtils::Graphics::Texture& InTextureToReference);
+
+		D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescHandle() { return m_AllocatedDescRange->GetDescHandleAt(0); }
+
+		D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescHandle() { return m_AllocatedDescRange->GetGPUDescHandle(); }
+
+		virtual void ReferenceTexture(GEPUtils::Graphics::Texture& InTexture);
+
+		// Descriptor range referenced by this View object.
+		// Note: The Allocated Desc Range destructor will declared the relative descriptors to be stale and they will be cleared at the end of the frame
+		std::unique_ptr<GEPUtils::Graphics::AllocatedDescRange> m_AllocatedDescRange;
 	};
 
 	struct D3D12VertexBufferView : public GEPUtils::Graphics::VertexBufferView {
