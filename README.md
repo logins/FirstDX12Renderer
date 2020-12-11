@@ -29,6 +29,13 @@ Part3 executable target will have most of Part2 features, plus:
 
 ![](Part3/Content/part3.gif)
 
+# Part 4
+Part4 executable target will have most of Part3 features, plus:
+- **Texture Handling** first loading a cubemap from a file and then uploading it to GPU.
+- **Static Descriptor** to sample the texture in shader.
+
+![](Part4/Content/part4.gif)
+
 # Notes
 >Note: This repo was tested in VisualStudio 2019 using FolderView Mode and CMake (Ninja generator + msvc compiler).
 
