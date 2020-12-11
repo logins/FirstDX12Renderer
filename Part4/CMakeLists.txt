@@ -7,7 +7,7 @@ target_link_libraries(part4 3dgep)
 get_target_property(3DGEP_INTERFACE_INCLUDES 3dgep INTERFACE_INCLUDE_DIRECTORIES)
 get_target_property(EIGEN_INTERFACE_INCLUDES eigen INTERFACE_INCLUDE_DIRECTORIES)
 
-target_include_directories( part3
+target_include_directories( part4
 	PRIVATE
 		${CMAKE_CURRENT_SOURCE_DIR}/Source
 		3DGEP_INTERFACE_INCLUDES

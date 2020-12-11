@@ -120,11 +120,7 @@ namespace GEPUtils { namespace Graphics {
 			currentSubresource.pData = foundImages[i].pixels;
 		}
 
-		// Resource must be in copy destination state
-		//CD3DX12_RESOURCE_BARRIER transitionBarrier = CD3DX12_RESOURCE_BARRIER::Transition(textureResource.Get(), D3D12_RESOURCE_STATE_GENERIC_READ, D3D12_RESOURCE_STATE_COPY_DEST);
-
 		ID3D12GraphicsCommandList2* d3d12CmdList = static_cast<GEPUtils::Graphics::D3D12CommandList&>(InCmdList).GetInner().Get();
-		//d3d12CmdList->ResourceBarrier(1, &transitionBarrier);
 
 		// Create the intermediate resource to upload the found data in textureResource 
 		// (we need this because textureResource is in a default heap, and the only way to access it 

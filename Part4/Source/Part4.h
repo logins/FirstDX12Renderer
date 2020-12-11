@@ -46,14 +46,6 @@ private:
 	};
 
 	const VertexPosColor m_VertexData[8] = {
-		//{ Eigen::Vector3f(-1.f, -1.f, -1.f), Eigen::Vector3f(0.f, 0.f, 0.f) },	// 0
-		//{ Eigen::Vector3f(-1.f, 1.f, -1.f), Eigen::Vector3f(0.f, 1.f, 0.f) },	// 1
-		//{ Eigen::Vector3f(1.f, 1.f, -1.f), Eigen::Vector3f(1.f, 1.f, 0.f) },	// 2
-		//{ Eigen::Vector3f(1.f, -1.f, -1.f), Eigen::Vector3f(1.f, 0.f, 0.f) },	// 3
-		//{ Eigen::Vector3f(-1.f, -1.f, 1.f), Eigen::Vector3f(0.f, 0.f, 1.f) },	// 4
-		//{ Eigen::Vector3f(-1.f, 1.f, 1.f), Eigen::Vector3f(0.f, 1.f, 1.f) },	// 5
-		//{ Eigen::Vector3f(1.f, 1.f, 1.f), Eigen::Vector3f(1.f, 1.f, 1.f) },		// 6
-		//{ Eigen::Vector3f(1.f, -1.f, 1.f), Eigen::Vector3f(1.f, 0.f, 1.f) }		// 7
 		{ Eigen::Vector3f(-1.f, -1.f, -1.f),Eigen::Vector3f(-1.f, -1.f, -1.f) },	// 0
 		{ Eigen::Vector3f(-1.f, 1.f, -1.f),Eigen::Vector3f(-1.f, 1.f, -1.f)  },	// 1
 		{ Eigen::Vector3f(1.f, 1.f, -1.f), Eigen::Vector3f(1.f, 1.f, -1.f)   },	// 2

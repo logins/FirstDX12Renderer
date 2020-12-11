@@ -97,31 +97,6 @@ namespace GEPUtils{ namespace Graphics {
 			StopForFail("Root Param transformation not implemented yet!")
 			break;
 		}
-		//if (InResourceBinderParam.ResourceType == RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CONSTANTS)
-		//{
-		//	returnParam.InitAsConstants(InResourceBinderParam.Num32BitValues, InResourceBinderParam.ShaderRegister, 
-		//		InResourceBinderParam.RegisterSpace, TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
-		//}
-		//else if (InResourceBinderParam.ResourceType == RESOURCE_BINDER_PARAM::RESOURCE_TYPE::CBV_RANGE)
-		//{
-		//	// Note: we are assuming only 1 descriptor range per descriptor table
-		//	D3D12_DESCRIPTOR_RANGE1 descRange;
-		//	descRange.BaseShaderRegister = InResourceBinderParam.ShaderRegister;
-		//	descRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
-		//	descRange.NumDescriptors = InResourceBinderParam.NumDescriptors;
-		//	descRange.OffsetInDescriptorsFromTableStart = 0;
-		//	descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_CBV;
-		//	descRange.RegisterSpace = InResourceBinderParam.RegisterSpace;
-
-		//	OutDescRanges.push_back(std::move(descRange));
-
-		//	returnParam.InitAsDescriptorTable(1, &OutDescRanges.back(), TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
-
-		//}
-		//else
-		//{
-		//	;
-		//}
 		return returnParam;
 	}
 
