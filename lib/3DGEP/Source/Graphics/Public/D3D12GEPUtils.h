@@ -130,14 +130,19 @@ namespace D3D12GEPUtils {
 
 	struct D3D12Texture : public GEPUtils::Graphics::Texture {
 		D3D12Texture() = default; // Allow empty D3D12Texture for cases like DummyTexture
-		D3D12Texture(Microsoft::WRL::ComPtr<ID3D12Resource> InResource, size_t InWidth, size_t InHeight, size_t InArraySize, size_t InMipLevelsNum, GEPUtils::Graphics::BUFFER_FORMAT InTexelFormat, GEPUtils::Graphics::TEXTURE_TYPE InType)
-		{    
-			m_Width = InWidth;	m_Height = InHeight; m_ArraySize = InArraySize; m_MipLevelsNum = InMipLevelsNum; m_TexelFormat = InTexelFormat;	m_Type = InType;
-			m_D3D12Resource = InResource;
-		}
+
+		// Constructor to load the texture from file. It will not upload it to GPU so that has to be done manually after creating the texture.
+		D3D12Texture(const wchar_t* InResourcePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat);
+
+		virtual void UploadToGPU(GEPUtils::Graphics::CommandList& InCommandList, GEPUtils::Graphics::Buffer& InIntermediateBuffer) override;
+
+		virtual size_t GetGPUSize() override;
+
 		Microsoft::WRL::ComPtr<ID3D12Resource>& GetInner() { return m_D3D12Resource; }
 	private:
-			Microsoft::WRL::ComPtr<ID3D12Resource> m_D3D12Resource;
+		CD3DX12_RESOURCE_DESC m_TextureDesc;
+		Microsoft::WRL::ComPtr<ID3D12Resource> m_D3D12Resource;
+		std::vector<D3D12_SUBRESOURCE_DATA> m_SubresourceDesc;
 	};																	
 
 

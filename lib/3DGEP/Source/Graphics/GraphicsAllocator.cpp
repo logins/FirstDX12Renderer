@@ -9,15 +9,7 @@
 
 namespace GEPUtils { namespace Graphics {
 
-
 	std::unique_ptr<GEPUtils::Graphics::GraphicsAllocatorBase> GraphicsAllocator::m_Instance;
-
-
-
-
-
-
-
 
 	GEPUtils::Graphics::GraphicsAllocatorBase* GraphicsAllocator::Get()
 	{
@@ -29,7 +21,6 @@ namespace GEPUtils { namespace Graphics {
 		}
 		return m_Instance.get();
 	}
-
 
 }
 }

@@ -102,7 +102,12 @@ void Part4Application::Initialize()
 	// Cubemap loading
 	// The file was made using the handy ATI CubeMapGen (discontinued) available at https://gpuopen.com/archived/cubemapgen/
 
-	m_Cubemap = &Graphics::GraphicsAllocator::Get()->LoadAndAllocateTextureFromFile(loadContentCmdList, Part4_CONTENT_PATH(CubeMap.dds), GEPUtils::Graphics::TEXTURE_FILE_FORMAT::DDS);
+	m_Cubemap = &Graphics::GraphicsAllocator::Get()->AllocateTextureFromFile(Part4_CONTENT_PATH(CubeMap.dds), GEPUtils::Graphics::TEXTURE_FILE_FORMAT::DDS);
+	// Uploading cubemap data in GPU
+	// Note: we are allocating intermediate buffer that will not be used anymore later on but will stay in memory (leak)
+	Graphics::Buffer& intermediateCubemapBuffer = Graphics::GraphicsAllocator::Get()->AllocateBuffer(m_Cubemap->GetGPUSize(), Graphics::RESOURCE_HEAP_TYPE::UPLOAD, Graphics::RESOURCE_STATE::GEN_READ);
+
+	m_Cubemap->UploadToGPU(loadContentCmdList, intermediateCubemapBuffer);
 
 	// SRV referencing the cubemap
 	m_CubemapView = &Graphics::GraphicsAllocator::Get()->AllocateShaderResourceView(*m_Cubemap);

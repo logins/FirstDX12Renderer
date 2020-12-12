@@ -8,6 +8,7 @@
 #include "D3D12Device.h"
 #include "D3D12DescAllocator.h"
 #include "../../Public/GEPUtilsMath.h"
+#include "D3D12CommandList.h"
 
 #ifdef max
 #undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
@@ -396,6 +397,99 @@ namespace D3D12GEPUtils
 		memcpy(m_Data.data(), InData, InSize);
 	}
 
+	D3D12Texture::D3D12Texture(const wchar_t* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat)
+	{
+		// Informations about the texture resource
+		DirectX::TexMetadata metadata;
+
+		// Content of the texture resource
+		DirectX::ScratchImage scratchImage;
+
+		switch (InFileFormat)
+		{
+		case GEPUtils::Graphics::TEXTURE_FILE_FORMAT::DDS:
+		{
+			D3D12GEPUtils::ThrowIfFailed(DirectX::LoadFromDDSFile(
+				InTexturePath,
+				DirectX::DDS_FLAGS_FORCE_RGB,
+				&metadata,
+				scratchImage));
+			break;
+		}
+		default:
+			StopForFail("Trying to load an unhandled texture format!")
+				break;
+		}
+
+		m_TextureDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+			metadata.format,
+			static_cast<UINT64>(metadata.width),
+			static_cast<UINT>(metadata.height),
+			static_cast<UINT16>(metadata.arraySize),
+			static_cast<UINT16>(metadata.mipLevels)	// Note: there is an ORRIBLE bug that comes if we do not specify mip levels here: it will display only one cube face, and the other 5 faces will be black !!!
+		);										// The reason is the default mip levels will become 9, so 9 mips will be generated for the first face all subsequent in memory,
+												// so when we later copy subresources, copying the first 6 subresources, we are going to copy the first face plus its first 5 mips instead of the other cube faces!!!
+
+		// Fetch data found from file
+		m_SubresourceDesc.resize(scratchImage.GetImageCount());
+
+		// Copying loaded texture data to internal buffer
+		m_Data.resize(scratchImage.GetPixelsSize());
+		memcpy(m_Data.data(), scratchImage.GetPixels(), scratchImage.GetPixelsSize());
+
+		const DirectX::Image* foundImages = scratchImage.GetImages();
+
+		for (int i = 0; i < scratchImage.GetImageCount(); ++i)
+		{
+			D3D12_SUBRESOURCE_DATA& currentSubresource = m_SubresourceDesc[i];
+			currentSubresource.RowPitch = foundImages[i].rowPitch;
+			currentSubresource.SlicePitch = foundImages[i].slicePitch;
+			currentSubresource.pData = m_Data.data() + (foundImages[i].pixels - scratchImage.GetPixels()); // Storing pointer to the subresource, referring now to the internal buffer region
+		}
+
+		// Setting general texture object parameters
+		m_Width = metadata.width; m_Height = metadata.height; 
+		m_ArraySize = metadata.arraySize; m_MipLevelsNum = metadata.mipLevels; 
+		m_TexelFormat = D3D12GEPUtils::BufferFormatToEngine(metadata.format); 
+		m_Type = metadata.IsCubemap() ? GEPUtils::Graphics::TEXTURE_TYPE::TEX_CUBE : D3D12GEPUtils::TextureTypeToEngine(metadata.dimension);
+	}
+
+	void D3D12Texture::UploadToGPU(GEPUtils::Graphics::CommandList& InCommandList, GEPUtils::Graphics::Buffer& InIntermediateBuffer)
+	{
+		ID3D12Device2* d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice()).GetInner().Get();
+
+		if (!m_D3D12Resource)
+		{
+			// Allocate a committed resource in GPU dedicated memory (default heap)
+			d3d12Device->CreateCommittedResource(
+			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+			D3D12_HEAP_FLAG_NONE,
+			&m_TextureDesc,
+			D3D12_RESOURCE_STATE_COPY_DEST, // We can create the resource directly in copy destination state since we want to fill it with content
+			nullptr,
+			IID_PPV_ARGS(&m_D3D12Resource));
+		}
+		else
+		{
+			StopForFail("Texture GPU resource already allocated")
+		}
+
+		ID3D12GraphicsCommandList2* d3d12CmdList = static_cast<GEPUtils::Graphics::D3D12CommandList&>(InCommandList).GetInner().Get();
+
+		::UpdateSubresources(d3d12CmdList, m_D3D12Resource.Get(), static_cast<D3D12GEPUtils::D3D12Resource&>(InIntermediateBuffer).GetInner().Get(), 0, 0, m_SubresourceDesc.size(), m_SubresourceDesc.data());
+
+		// Transition texture state to GENERIC_READ to be read by shaders
+		// Note: this is not optimal, usually we should transition the resource depending on the situation in which we want to use it, e.g. D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE in the case of pixel shader usage
+		CD3DX12_RESOURCE_BARRIER transitionBarrier = CD3DX12_RESOURCE_BARRIER::Transition(m_D3D12Resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
+		d3d12CmdList->ResourceBarrier(1, &transitionBarrier);
+	}
+
+	size_t D3D12Texture::GetGPUSize()
+	{
+		size_t requiredIntermediateSize = 0;
+		static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice()).GetInner()->GetCopyableFootprints(&m_TextureDesc, 0, m_SubresourceDesc.size(), 0, nullptr, nullptr, nullptr, &requiredIntermediateSize);
+		return requiredIntermediateSize;
+	}
 
 }
 

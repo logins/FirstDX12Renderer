@@ -26,7 +26,7 @@ public:
 	virtual GEPUtils::Graphics::DynamicBuffer& AllocateDynamicBuffer() override;
 
 
-	virtual GEPUtils::Graphics::Texture& LoadAndAllocateTextureFromFile(GEPUtils::Graphics::CommandList& InCmdList, wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat) override;
+	virtual GEPUtils::Graphics::Texture& AllocateTextureFromFile(wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat) override;
 
 
 	virtual void AllocateBufferCommittedResource(GEPUtils::Graphics::CommandList& InCmdList, GEPUtils::Graphics::Resource& InDestResource, GEPUtils::Graphics::Resource& InIntermediateResource, size_t InNunElements, size_t InElementSize, const void* InBufferData, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = GEPUtils::Graphics::RESOURCE_FLAGS::NONE) override;

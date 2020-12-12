@@ -6,6 +6,8 @@
 #endif
 #include "GraphicsAllocator.h"
 #include "Public/PipelineState.h"
+#include "../../../DirectXTex/DirectXTex/DirectXTex.h"
+#include "../Public/GEPUtils.h"
 namespace GEPUtils { namespace Graphics {
 
 

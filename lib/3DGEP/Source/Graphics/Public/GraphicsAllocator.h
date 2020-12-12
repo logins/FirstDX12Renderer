@@ -32,7 +32,7 @@ public:
 
 	virtual GEPUtils::Graphics::DynamicBuffer& AllocateDynamicBuffer() = 0;
 
-	virtual GEPUtils::Graphics::Texture& LoadAndAllocateTextureFromFile(GEPUtils::Graphics::CommandList& InCmdList, wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat) = 0;
+	virtual GEPUtils::Graphics::Texture& AllocateTextureFromFile(wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat) = 0;
 
 	// Preferable for Static Buffers such as Vertex and Index Buffers.
 	// First creates an intermediary buffer in shared memory (upload heap), then the same buffer in reserved memory (default heap)

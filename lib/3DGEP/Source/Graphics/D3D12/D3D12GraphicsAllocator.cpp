@@ -12,7 +12,6 @@
 #include "d3dcompiler.h"
 #include <wrl.h>
 #include "D3D12CommandList.h"
-#include "DirectXTex.h"
 #include "D3D12Device.h"
 #include "D3D12UtilsInternal.h"
 #include "GEPUtils.h"
@@ -59,105 +58,9 @@ namespace GEPUtils { namespace Graphics {
 		return static_cast<GEPUtils::Graphics::DynamicBuffer&>(*m_ResourceArray.back());
 	}
 
-	GEPUtils::Graphics::Texture& D3D12GraphicsAllocator::LoadAndAllocateTextureFromFile(GEPUtils::Graphics::CommandList& InCmdList, wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat)
+	GEPUtils::Graphics::Texture& D3D12GraphicsAllocator::AllocateTextureFromFile(wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat)
 	{
-		// Informations about the texture resource
-		static DirectX::TexMetadata metadata;
-
-		// Content of the texture resource
-		static DirectX::ScratchImage scratchImage;
-
-		switch (InFileFormat)
-		{
-		case GEPUtils::Graphics::TEXTURE_FILE_FORMAT::DDS:
-		{
-			D3D12GEPUtils::ThrowIfFailed(DirectX::LoadFromDDSFile(
-				InTexturePath,
-				DirectX::DDS_FLAGS_FORCE_RGB,
-				&metadata,
-				scratchImage));
-			break;
-		}
-		default:
-			StopForFail("Trying to load an unhandled texture format!")
-				break;
-		}
-
-		D3D12_RESOURCE_DESC textureDesc = {};
-
-		textureDesc = CD3DX12_RESOURCE_DESC::Tex2D(
-			metadata.format,
-			static_cast<UINT64>(metadata.width),
-			static_cast<UINT>(metadata.height),
-			static_cast<UINT16>(metadata.arraySize),
-			static_cast<UINT16>(metadata.mipLevels)	// Note: there is an ORRIBLE bug that comes if we do not specify mip levels here: it will display only one cube face, and the other 5 faces will be black !!!
-			);										// The reason is the default mip levels will become 9, so 9 mips will be generated for the first face all subsequent in memory,
-													// so when we later copy subresources, copying the first 6 subresources, we are going to copy the first face plus its first 5 mips instead of the other cube faces!!!
-
-		static Microsoft::WRL::ComPtr<ID3D12Resource> textureResource;
-
-		ID3D12Device2* d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice()).GetInner().Get();
-
-		// Allocate a committed resource in GPU dedicated memory (default heap)
-		d3d12Device->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-			D3D12_HEAP_FLAG_NONE,
-			&textureDesc,
-			D3D12_RESOURCE_STATE_COPY_DEST, // We can create the resource directly in copy destination state since we want to fill it with content
-			nullptr,
-			IID_PPV_ARGS(&textureResource));
-
-		// Fetch data found from file
-		static std::vector<D3D12_SUBRESOURCE_DATA> subresources(scratchImage.GetImageCount());
-
-		static const DirectX::Image* foundImages = scratchImage.GetImages();
-
-		for (int i = 0; i < scratchImage.GetImageCount(); ++i)
-		{
-			D3D12_SUBRESOURCE_DATA& currentSubresource = subresources[i];
-			currentSubresource.RowPitch = foundImages[i].rowPitch;
-			currentSubresource.SlicePitch = foundImages[i].slicePitch;
-			currentSubresource.pData = foundImages[i].pixels;
-		}
-
-		ID3D12GraphicsCommandList2* d3d12CmdList = static_cast<GEPUtils::Graphics::D3D12CommandList&>(InCmdList).GetInner().Get();
-
-		// Create the intermediate resource to upload the found data in textureResource 
-		// (we need this because textureResource is in a default heap, and the only way to access it 
-		// is having copying content from an intermediate resource form a copy heap).
-		static Microsoft::WRL::ComPtr<ID3D12Resource> intermediateResource;
-
-		UINT64 requiredIntermediateSize = 0;
-		// The intermediate size can be also obtained with the wrapper function GetRequiredIntermediateSize from d3dx12.h but directly calling d3d12Device->GetCopyableFootprints will be faster
-		d3d12Device->GetCopyableFootprints(&textureResource->GetDesc(), 0, subresources.size(), 0, nullptr, nullptr, nullptr, &requiredIntermediateSize);
-
-		d3d12Device->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_UPLOAD),
-			D3D12_HEAP_FLAG_NONE,
-			&CD3DX12_RESOURCE_DESC::Buffer(requiredIntermediateSize),
-			D3D12_RESOURCE_STATE_GENERIC_READ, // Note: a resource allocated in upload heap needs to start in GENERIC_READ state
-			nullptr,
-			IID_PPV_ARGS(&intermediateResource)
-		);
-
-		// UpdateSubresources will push commands on the d3d12CmdList so that it will 
-		// first copy the surbresources data to the intermediate resource through mapping memcopy operations, 
-		// then execute a resource copy from the intermediateResource content to the textureResource.
-		::UpdateSubresources(d3d12CmdList, textureResource.Get(), intermediateResource.Get(), 0, 0, subresources.size(), subresources.data());
-		//TextureUpload();
-
-
-		// Now that the command list got stored the instructions to update the texture resource, we can create the texture object for the engine
-		m_ResourceArray.push(std::make_unique<D3D12GEPUtils::D3D12Texture>(textureResource, metadata.width, metadata.height, metadata.arraySize,
-			metadata.mipLevels, D3D12GEPUtils::BufferFormatToEngine(metadata.format), metadata.IsCubemap()? Graphics::TEXTURE_TYPE::TEX_CUBE : D3D12GEPUtils::TextureTypeToEngine(metadata.dimension)));
-
-		// Transition texture state to GENERIC_READ to be read by shaders
-		// Note: this is not optimal, usually we should transition the resource depending on the situation in which we want to use it, e.g. D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE in the case of pixel shader usage
-		CD3DX12_RESOURCE_BARRIER transitionBarrier = CD3DX12_RESOURCE_BARRIER::Transition(textureResource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
-		d3d12CmdList->ResourceBarrier(1, &transitionBarrier);
-
-		// Note: Before using this texture we would have to wait for it to be uploaded to memory. 
-		// That corresponds to the command list finishing executing, which means the corresponding command allocator finishes execution on the command queue.
+		m_ResourceArray.push(std::make_unique<D3D12GEPUtils::D3D12Texture>(InTexturePath, InFileFormat));
 
 		return static_cast<GEPUtils::Graphics::Texture&>(*m_ResourceArray.back());
 	}

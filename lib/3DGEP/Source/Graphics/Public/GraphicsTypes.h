@@ -5,6 +5,8 @@
 #include <vector>
 namespace GEPUtils { namespace Graphics {
 
+	class CommandList;
+
 	enum class PRIMITIVE_TOPOLOGY_TYPE : int32_t 
 	{
 		PTT_UNDEFINED = 0,
@@ -123,17 +125,23 @@ struct Buffer : public Resource {
 };
 
 struct Texture : public Resource {
+
+	virtual void UploadToGPU(GEPUtils::Graphics::CommandList& InCommandList, GEPUtils::Graphics::Buffer& InIntermediateBuffer) = 0;
+
+	virtual size_t GetGPUSize() = 0;
+
 	BUFFER_FORMAT GetFormat() { return m_TexelFormat; }
 	TEXTURE_TYPE GetType() { return m_Type; }
 	size_t GetMipLevelsNum() { return m_MipLevelsNum; }
+
 protected:
-	Texture() = default;
 	size_t          m_Width;
 	size_t          m_Height;     // Should be 1 for 1D textures
 	size_t          m_ArraySize;  // For cubemap, this is a multiple of 6
 	size_t          m_MipLevelsNum;
 	BUFFER_FORMAT   m_TexelFormat;
 	TEXTURE_TYPE    m_Type;
+	std::vector<unsigned char> m_Data;
 };
 
 struct DynamicBuffer : public Resource {
