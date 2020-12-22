@@ -15,7 +15,6 @@
 #include "D3D12Device.h"
 #include "D3D12UtilsInternal.h"
 #include "GEPUtils.h"
-#include "D3D12GpuDescHeap.h"
 
 namespace GEPUtils { namespace Graphics {
 
@@ -90,11 +89,6 @@ namespace GEPUtils { namespace Graphics {
 		}
 	}
 
-
-	void D3D12GraphicsAllocator::ResetGPUResourceDescriptorHeap()
-	{
-		GEPUtils::Graphics::D3D12GpuDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).Reset();
-	}
 
 	GEPUtils::Graphics::VertexBufferView& D3D12GraphicsAllocator::AllocateVertexBufferView()
 	{

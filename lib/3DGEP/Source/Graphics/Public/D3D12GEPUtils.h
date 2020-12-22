@@ -8,7 +8,6 @@
 #include <dxgi1_6.h>
 #include <d3dx12.h>
 #include "GraphicsTypes.h"
-#include "../D3D12/D3D12DescAllocator.h"
 #include "../D3D12/D3D12BufferAllocator.h"
 #include "../D3D12/D3D12DescHeapFactory.h"
 

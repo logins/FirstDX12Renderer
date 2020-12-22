@@ -33,10 +33,6 @@ public:
 
 
 
-
-	virtual void ResetGPUResourceDescriptorHeap() override;
-
-
 	virtual GEPUtils::Graphics::VertexBufferView& AllocateVertexBufferView() override;
 
 

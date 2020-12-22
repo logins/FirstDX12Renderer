@@ -6,7 +6,6 @@
 #include "D3D12Device.h"
 #include "D3D12PipelineState.h"
 #include "D3D12Window.h"
-#include "D3D12GpuDescHeap.h"
 #include "GEPUtils.h"
 
 namespace GEPUtils { namespace Graphics {
@@ -57,7 +56,6 @@ namespace GEPUtils { namespace Graphics {
 		m_D3D12CmdList->SetDescriptorHeaps(1, GEPUtils::Graphics::D3D12DescHeapFactory::GetGPUHeap().GetInner().GetAddressOf());
 
 		// GPU desc heap parse root signature
-		Graphics::D3D12GpuDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).ParseRootSignature(d3d12PSO);
 	}
 
 	void D3D12CommandList::SetInputAssemblerData(GEPUtils::Graphics::PRIMITIVE_TOPOLOGY InPrimTopology, GEPUtils::Graphics::VertexBufferView& InVertexBufView, GEPUtils::Graphics::IndexBufferView& InIndexBufView)

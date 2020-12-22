@@ -6,7 +6,6 @@
 #include <d3dcompiler.h>
 #include "../../Public/GEPUtils.h"
 #include "D3D12Device.h"
-#include "D3D12DescAllocator.h"
 #include "../../Public/GEPUtilsMath.h"
 #include "D3D12CommandList.h"
 
