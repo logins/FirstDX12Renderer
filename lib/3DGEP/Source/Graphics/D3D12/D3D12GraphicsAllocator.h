@@ -32,7 +32,6 @@ public:
 	virtual void AllocateBufferCommittedResource(GEPUtils::Graphics::CommandList& InCmdList, GEPUtils::Graphics::Resource& InDestResource, GEPUtils::Graphics::Resource& InIntermediateResource, size_t InNunElements, size_t InElementSize, const void* InBufferData, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = GEPUtils::Graphics::RESOURCE_FLAGS::NONE) override;
 
 
-	virtual void UploadViewToGPU(GEPUtils::Graphics::ConstantBufferView& InView) override;
 
 
 	virtual void ResetGPUResourceDescriptorHeap() override;

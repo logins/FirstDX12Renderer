@@ -2,7 +2,8 @@
 #define D3D12CommandList_h__
 #include "CommandList.h"
 #include <wrl.h>
-#include <d3d12.h>
+#include <functional>
+#include "d3dx12.h"
 
 namespace GEPUtils { namespace Graphics {
 
@@ -62,10 +63,41 @@ namespace GEPUtils { namespace Graphics {
 
 		virtual void ReferenceSRV(uint32_t InRootIdx, GEPUtils::Graphics::ShaderResourceView& InSRV) override;
 
+		void SetGraphicsRootDescriptorTable(uint32_t InRootIdx, D3D12_GPU_DESCRIPTOR_HANDLE InGpuDescHandle);
+
+		CD3DX12_GPU_DESCRIPTOR_HANDLE CopyDynamicDescriptorsToBoundHeap(uint32_t InTablesNum, D3D12_CPU_DESCRIPTOR_HANDLE* InDescHandleArray, uint32_t* InRageSizeArray);
+
 	private:
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> m_D3D12CmdList;
 
+		// Reference to the memory space reserved for this command list to allocate dynamic resources on the fly. 
+		// Eventually this system would need to be replaced with a proper memory allocator...
 		uint32_t m_DynamicBufferPageIdx;
+
+		class D3D12StagedDescriptorManager {
+		public:
+			// Dynamic entries will be first uploaded to the desc heap bound to the root signature, and then bound to the command list as root table when the next draw/dispatch command is executed
+			void StageDynamicDescriptors(uint32_t InRootParamIndex, D3D12_CPU_DESCRIPTOR_HANDLE InFirstCpuDescHandle, uint32_t InRangeSize);
+
+			// Static entries are already allocated in GPU and they will be directly bound to the command list as root table when the next draw/dispatch command is executed
+			void StageStaticDescriptors(uint32_t InRootParamIndex, D3D12_GPU_DESCRIPTOR_HANDLE InFirstGpuDescHandle);
+
+			void CommitStagedDescriptorsForDraw(D3D12CommandList& InCmdList);
+
+		private:
+			void CommitStagedDescriptors_Internal(D3D12CommandList& InCmdList, std::function<void(ID3D12GraphicsCommandList*, UINT, D3D12_GPU_DESCRIPTOR_HANDLE)> InSetFn);
+
+			uint32_t m_DynamicTableRootIdx[32];
+			D3D12_CPU_DESCRIPTOR_HANDLE m_DynamicTableFirstHandle[32];
+			uint32_t m_DynamicRangeSizes[32];
+			uint32_t m_CurrentStagedDynamicTablesNum = 0;
+
+			uint32_t m_StaticTableRootIdx[32];
+			D3D12_GPU_DESCRIPTOR_HANDLE m_StaticTableFirstHandle[32];
+			uint32_t m_CurrentStagedStaticTablesNum = 0;
+		};
+		D3D12StagedDescriptorManager m_StagedDescriptorManager;
+
 	};
 
 	} }

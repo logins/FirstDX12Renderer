@@ -116,7 +116,6 @@ struct Resource {
 	size_t GetAlignSize() const { return m_AlignmentSize; }
 protected:
 	Resource() : m_DataSize(0), m_AlignmentSize(0) {};
-	virtual void ResetData() { m_DataSize = 0; m_AlignmentSize = 0; }
 	size_t m_DataSize;
 	size_t m_AlignmentSize;
 };

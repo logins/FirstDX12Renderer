@@ -317,12 +317,11 @@ namespace D3D12GEPUtils
 
 	void D3D12ShaderResourceView::ReferenceTexture(GEPUtils::Graphics::Texture& InTexture)
 {
-		if (!m_AllocatedDescRange)
+		if (!m_CpuAllocatedRange)
 		{
 			// Allocate descriptor in CPU descriptor heap
-			m_AllocatedDescRange = std::make_unique<GEPUtils::Graphics::AllocatedDescRange>();
-
-			GEPUtils::Graphics::D3D12DescAllocator::Get(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).Allocate(*m_AllocatedDescRange, 1);
+			// New Desc Allocator
+			m_CpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetCPUHeap().AllocateStaticRange(1);
 		}
 		// TODO Note: we are currently assuming we only handle a single descriptor and never a range... also in D3D12ConstantBufferView::ReferenceBuffer
 
@@ -344,7 +343,7 @@ namespace D3D12GEPUtils
 		// Instantiate View
 		GEPUtils::Graphics::D3D12Device& d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice());
 
-		d3d12Device.GetInner()->CreateShaderResourceView(static_cast<D3D12Texture&>(InTexture).GetInner().Get(), &viewDesc, m_AllocatedDescRange->GetDescHandleAt(0));
+		d3d12Device.GetInner()->CreateShaderResourceView(static_cast<D3D12Texture&>(InTexture).GetInner().Get(), &viewDesc, m_CpuAllocatedRange->m_FirstCpuHandle);
 
 	}
 
@@ -357,12 +356,11 @@ namespace D3D12GEPUtils
 
 	void D3D12ConstantBufferView::ReferenceBuffer(D3D12_GPU_VIRTUAL_ADDRESS InBufferGPUAddress, size_t InBufferSize)
 	{
-		if (!m_AllocatedDescRange)
+		if (!m_CpuAllocatedRange)
 		{
 			// Allocate descriptor in CPU descriptor heap
-			m_AllocatedDescRange = std::make_unique<GEPUtils::Graphics::AllocatedDescRange>();
 
-			GEPUtils::Graphics::D3D12DescAllocator::Get(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).Allocate(*m_AllocatedDescRange, 1);
+			m_CpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetCPUHeap().AllocateStaticRange(1); // Even if we have a dynamic buffer, the descriptor on the CPU staging desc heap will be allocated statically, and change value frequently
 		}
 
 		// Generate View Desc
@@ -373,7 +371,7 @@ namespace D3D12GEPUtils
 		// Instantiate View
 		GEPUtils::Graphics::D3D12Device& d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice());
 
-		d3d12Device.GetInner()->CreateConstantBufferView(&viewDesc, m_AllocatedDescRange->GetDescHandleAt(0));
+		d3d12Device.GetInner()->CreateConstantBufferView(&viewDesc, m_CpuAllocatedRange->m_FirstCpuHandle);
 	}
 
 	void D3D12ConstantBufferView::ReferenceBuffer(GEPUtils::Graphics::Buffer& InResource, size_t InDataSize, size_t InStrideSize)

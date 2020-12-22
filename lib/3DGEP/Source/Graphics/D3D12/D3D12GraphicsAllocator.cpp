@@ -90,12 +90,6 @@ namespace GEPUtils { namespace Graphics {
 		}
 	}
 
-	void D3D12GraphicsAllocator::UploadViewToGPU(GEPUtils::Graphics::ConstantBufferView& InView) // TODO continue here: Upload "Static" descriptor
-	{
-		GEPUtils::Graphics::AllocatedDescRange& allocDescRange = *static_cast<D3D12GEPUtils::D3D12ConstantBufferView&>(InView).m_AllocatedDescRange.get();
-
-		allocDescRange.SetGpuDescHandle(GEPUtils::Graphics::D3D12GpuDescHeap::Get(D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV).UploadSingleStaticDescriptor(allocDescRange.GetDescHandleAt(0)));
-	}
 
 	void D3D12GraphicsAllocator::ResetGPUResourceDescriptorHeap()
 	{

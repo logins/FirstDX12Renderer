@@ -10,6 +10,7 @@
 #include "GraphicsTypes.h"
 #include "../D3D12/D3D12DescAllocator.h"
 #include "../D3D12/D3D12BufferAllocator.h"
+#include "../D3D12/D3D12DescHeapFactory.h"
 
 #ifdef max
 #undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
@@ -152,16 +153,19 @@ namespace D3D12GEPUtils {
 
 		D3D12ConstantBufferView(GEPUtils::Graphics::Buffer& InResource);
 				
-		D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescHandle() { return m_AllocatedDescRange->GetDescHandleAt(0); }
+		D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescHandle() { return m_CpuAllocatedRange->m_FirstCpuHandle; }
+
+		uint32_t GetRangeSize() { return m_CpuAllocatedRange->m_RangeSize; }
 
 		void ReferenceBuffer(D3D12_GPU_VIRTUAL_ADDRESS InBufferGPUAddress, size_t InBufferSize);
 
 		virtual void ReferenceBuffer(GEPUtils::Graphics::Buffer& InResource, size_t InDataSize, size_t InStrideSize) override;
 
 		// Descriptor range referenced by this View object.
-		// Note: The Allocated Desc Range destructor will declared the relative descriptors to be stale and they will be cleared at the end of the frame
-		std::unique_ptr<GEPUtils::Graphics::AllocatedDescRange> m_AllocatedDescRange;
-
+		// Note: The StaticDescAllocation destructor will declared the relative descriptors to be stale and they will be cleared at the end of the frame
+		std::unique_ptr<GEPUtils::Graphics::StaticDescAllocation> m_CpuAllocatedRange;
+		
+		std::unique_ptr<GEPUtils::Graphics::StaticDescAllocation> m_GpuAllocatedRange;
 	};
 
 	struct D3D12ShaderResourceView : public GEPUtils::Graphics::ShaderResourceView
@@ -170,15 +174,18 @@ namespace D3D12GEPUtils {
 
 		D3D12ShaderResourceView(GEPUtils::Graphics::Texture& InTextureToReference);
 
-		D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescHandle() { return m_AllocatedDescRange->GetDescHandleAt(0); }
+		D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescHandle() { return m_CpuAllocatedRange->m_FirstCpuHandle; }
 
-		D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescHandle() { return m_AllocatedDescRange->GetGPUDescHandle(); }
+		D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescHandle() { return m_GpuAllocatedRange->m_FirstGpuHandle; }
 
 		virtual void ReferenceTexture(GEPUtils::Graphics::Texture& InTexture);
 
 		// Descriptor range referenced by this View object.
 		// Note: The Allocated Desc Range destructor will declared the relative descriptors to be stale and they will be cleared at the end of the frame
-		std::unique_ptr<GEPUtils::Graphics::AllocatedDescRange> m_AllocatedDescRange;
+		// Refers to a CPU desc heap that is used to stage descriptors
+		std::unique_ptr<GEPUtils::Graphics::StaticDescAllocation> m_CpuAllocatedRange;
+		// Refers to the shader visible descriptor in the desc heap used by command lists
+		std::unique_ptr<GEPUtils::Graphics::StaticDescAllocation> m_GpuAllocatedRange;
 	};
 
 	struct D3D12VertexBufferView : public GEPUtils::Graphics::VertexBufferView {

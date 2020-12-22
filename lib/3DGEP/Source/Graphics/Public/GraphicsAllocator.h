@@ -43,7 +43,6 @@ public:
 
 	virtual GEPUtils::Graphics::Buffer& AllocateBuffer(size_t InSize, GEPUtils::Graphics::RESOURCE_HEAP_TYPE InHeapType, GEPUtils::Graphics::RESOURCE_STATE InState, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = RESOURCE_FLAGS::NONE) = 0;
 
-	virtual void UploadViewToGPU(GEPUtils::Graphics::ConstantBufferView& InView) = 0;
 
 	virtual void ResetGPUResourceDescriptorHeap() = 0;
 
