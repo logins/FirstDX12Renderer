@@ -16,12 +16,15 @@ GEPUtils::Graphics::Device& GetDevice()
 {
 	static std::unique_ptr<GEPUtils::Graphics::Device> graphicsDevice = nullptr;
 
-	// Note: Debug Layer needs to be created before creating the Device
-	Graphics::EnableDebugLayer();
 
 #ifdef GRAPHICS_SDK_D3D12
-	if (!graphicsDevice)
+	if (!graphicsDevice) 
+	{
+		// Note: Debug Layer needs to be created before creating the Device
+		Graphics::EnableDebugLayer();
+
 		graphicsDevice = std::make_unique<GEPUtils::Graphics::D3D12Device>();
+	}
 #endif
 
 	return *graphicsDevice;
