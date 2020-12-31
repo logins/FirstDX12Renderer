@@ -33,6 +33,7 @@ Part3 executable target will have most of Part2 features, plus:
 Part4 executable target will have most of Part3 features, plus:
 - **Texture Handling** first loading a cubemap from a file and then uploading it to GPU.
 - **Static Descriptor** to sample the texture in shader.
+- **Generate Mips** use a compute shader to generate 4 mip levels for the cubemap.
 
 ![](Part4/Content/part4.gif)
 
