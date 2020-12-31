@@ -50,12 +50,14 @@ namespace GEPUtils { namespace Graphics {
 		m_D3D12CmdList->SetPipelineState(d3d12PSO.GetInnerPSO().Get());
 
 		// Set root signature
-		m_D3D12CmdList->SetGraphicsRootSignature(d3d12PSO.GetInnerRootSignature().Get());
+		if(InPipelineState.IsGraphics())
+			m_D3D12CmdList->SetGraphicsRootSignature(d3d12PSO.GetInnerRootSignature().Get());
+		else
+			m_D3D12CmdList->SetComputeRootSignature(d3d12PSO.GetInnerRootSignature().Get());
 
 		// Bind descriptor heap(s)
 		m_D3D12CmdList->SetDescriptorHeaps(1, GEPUtils::Graphics::D3D12DescHeapFactory::GetGPUHeap().GetInner().GetAddressOf());
 
-		// GPU desc heap parse root signature
 	}
 
 	void D3D12CommandList::SetInputAssemblerData(GEPUtils::Graphics::PRIMITIVE_TOPOLOGY InPrimTopology, GEPUtils::Graphics::VertexBufferView& InVertexBufView, GEPUtils::Graphics::IndexBufferView& InIndexBufView)
@@ -83,6 +85,11 @@ namespace GEPUtils { namespace Graphics {
 		m_D3D12CmdList->SetGraphicsRoot32BitConstants(InRootParameterIndex, InNum32BitValuesToSet, InSrcData, InDestOffsetIn32BitValues);
 	}
 
+	void D3D12CommandList::SetComputeRootConstants(uint64_t InRootParameterIndex, uint64_t InNum32BitValuesToSet, const void* InSrcData, uint64_t InDestOffsetIn32BitValues)
+	{
+		m_D3D12CmdList->SetComputeRoot32BitConstants(InRootParameterIndex, InNum32BitValuesToSet, InSrcData, InDestOffsetIn32BitValues);
+	}
+
 	void D3D12CommandList::DrawIndexed(uint64_t InIndexCountPerInstance)
 	{
 		// Note: this will upload descriptors relative to descriptor tables on GPU and then reference them in the pipeline!
@@ -90,6 +97,13 @@ namespace GEPUtils { namespace Graphics {
 
 		// Now that the descriptors are in GPU we can reference the relative views in the pipeline
 		m_D3D12CmdList->DrawIndexedInstanced(InIndexCountPerInstance, 1, 0, 0, 0);
+	}
+
+	void D3D12CommandList::Dispatch(uint32_t InGroupsNumX, uint32_t InGroupsNumY, uint32_t InGroupsNumZ)
+	{
+		// TODO commit staged descriptors for compute (but in this series of examples we are not using them)
+
+		m_D3D12CmdList->Dispatch(InGroupsNumX, InGroupsNumY, InGroupsNumZ);
 	}
 
 	void D3D12CommandList::SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ConstantBufferView& InView)
@@ -136,11 +150,28 @@ namespace GEPUtils { namespace Graphics {
 		d3d12SRV.m_GpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetGPUHeap().AllocateStaticRange(1, d3d12SRV.GetCPUDescHandle()); // Note: we are assuming SRV too always reference a range of 1 descriptors
 	}
 
+	void D3D12CommandList::UploadUavToGpu(GEPUtils::Graphics::UnorderedAccessView& InUav)
+	{
+		D3D12GEPUtils::D3D12UnorderedAccessView& d3d12Uav = static_cast<D3D12GEPUtils::D3D12UnorderedAccessView&>(InUav);
+
+		d3d12Uav.m_GpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetGPUHeap().AllocateStaticRange(1, d3d12Uav.GetCPUDescHandle()); // Note: we are assuming Uav too always reference a range of 1 descriptors
+	}
+
 	void D3D12CommandList::ReferenceSRV(uint32_t InRootIdx, GEPUtils::Graphics::ShaderResourceView& InSRV)
 	{
 		// TODO this will work for graphics command list only, it would also need to work for compute... so we would need to know the type of operation we are executing...
 
 		m_D3D12CmdList->SetGraphicsRootDescriptorTable(InRootIdx, static_cast<D3D12GEPUtils::D3D12ShaderResourceView&>(InSRV).GetGPUDescHandle());
+	}
+
+	void D3D12CommandList::ReferenceComputeTable(uint32_t InRootIdx, GEPUtils::Graphics::UnorderedAccessView& InUav)
+	{
+		m_D3D12CmdList->SetComputeRootDescriptorTable(InRootIdx, static_cast<D3D12GEPUtils::D3D12UnorderedAccessView&>(InUav).GetGPUDescHandle());
+	}
+
+	void D3D12CommandList::ReferenceComputeTable(uint32_t InRootIdx, GEPUtils::Graphics::ShaderResourceView& InUav)
+	{
+		m_D3D12CmdList->SetComputeRootDescriptorTable(InRootIdx, static_cast<D3D12GEPUtils::D3D12ShaderResourceView&>(InUav).GetGPUDescHandle());
 	}
 
 	void D3D12CommandList::SetGraphicsRootDescriptorTable(uint32_t InRootIdx, D3D12_GPU_DESCRIPTOR_HANDLE InGpuDescHandle) { m_D3D12CmdList->SetGraphicsRootDescriptorTable(InRootIdx, InGpuDescHandle); }

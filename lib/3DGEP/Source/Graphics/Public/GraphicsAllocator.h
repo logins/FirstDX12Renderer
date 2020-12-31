@@ -32,7 +32,9 @@ public:
 
 	virtual GEPUtils::Graphics::DynamicBuffer& AllocateDynamicBuffer() = 0;
 
-	virtual GEPUtils::Graphics::Texture& AllocateTextureFromFile(wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat) = 0;
+	virtual GEPUtils::Graphics::Texture& AllocateTextureFromFile(wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat, int32_t InMipsNum = 0, GEPUtils::Graphics::RESOURCE_FLAGS InCreationFlags = RESOURCE_FLAGS::NONE) = 0;
+	
+	virtual GEPUtils::Graphics::Texture& AllocateEmptyTexture(uint32_t InWidth, uint32_t InHeight, GEPUtils::Graphics::TEXTURE_TYPE InType, GEPUtils::Graphics::BUFFER_FORMAT InFormat, uint32_t InArraySize, uint32_t InMipLevels) = 0;
 
 	// Preferable for Static Buffers such as Vertex and Index Buffers.
 	// First creates an intermediary buffer in shared memory (upload heap), then the same buffer in reserved memory (default heap)
@@ -48,11 +50,15 @@ public:
 	virtual GEPUtils::Graphics::VertexBufferView& AllocateVertexBufferView() = 0;
 	virtual GEPUtils::Graphics::IndexBufferView& AllocateIndexBufferView() = 0;
 	virtual GEPUtils::Graphics::ConstantBufferView& AllocateConstantBufferView(GEPUtils::Graphics::Buffer& InResource) = 0;
-	virtual GEPUtils::Graphics::ConstantBufferView& AllocateConstantBufferView() = 0
-	{
-	}
-	virtual GEPUtils::Graphics::ShaderResourceView& AllocateShaderResourceView(GEPUtils::Graphics::Texture& InTexture) = 0;
+	virtual GEPUtils::Graphics::ConstantBufferView& AllocateConstantBufferView() = 0;
 
+	virtual GEPUtils::Graphics::ShaderResourceView& AllocateShaderResourceView(GEPUtils::Graphics::Texture& InTexture) = 0;
+	// SRV referencing a Tex2D Array
+	virtual GEPUtils::Graphics::ShaderResourceView& AllocateSrvTex2DArray(GEPUtils::Graphics::Texture& InTexture, uint32_t InArraySize, uint32_t InMostDetailedMip = 0, int32_t InMipLevels = -1, uint32_t InFirstArraySlice = 0, uint32_t InPlaceSlice = 0) = 0;
+
+	// UAV referencing a Tex2D Array
+	virtual GEPUtils::Graphics::UnorderedAccessView& AllocateUavTex2DArray(GEPUtils::Graphics::Texture& InTexture, uint32_t InArraySize, int32_t InMipSlice = -1, uint32_t InFirstArraySlice = 0, uint32_t InPlaceSlice = 0) = 0;
+	
 	virtual GEPUtils::Graphics::Shader& AllocateShader(wchar_t const* InShaderPath) = 0;
 	virtual GEPUtils::Graphics::PipelineState& AllocatePipelineState() = 0;
 

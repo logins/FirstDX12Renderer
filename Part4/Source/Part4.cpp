@@ -6,6 +6,7 @@
 #include "PipelineState.h"
 #include "GEPUtilsGeometry.h"
 #include "GraphicsAllocator.h"
+#include "GEPUtilsMath.h"
 
 #define Q(x) L#x
 #define LQUOTE(x) Q(x) // TODO these are re-defined .. find a way to link the original defines
@@ -102,7 +103,8 @@ void Part4Application::Initialize()
 	// Cubemap loading
 	// The file was made using the handy ATI CubeMapGen (discontinued) available at https://gpuopen.com/archived/cubemapgen/
 
-	m_Cubemap = &Graphics::GraphicsAllocator::Get()->AllocateTextureFromFile(Part4_CONTENT_PATH(CubeMap.dds), GEPUtils::Graphics::TEXTURE_FILE_FORMAT::DDS);
+	m_Cubemap = &Graphics::GraphicsAllocator::Get()->AllocateTextureFromFile(Part4_CONTENT_PATH(CubeMap.dds), GEPUtils::Graphics::TEXTURE_FILE_FORMAT::DDS, 
+		5, GEPUtils::Graphics::RESOURCE_FLAGS::ALLOW_UNORDERED_ACCESS); // Force mips to 5. The loaded file contains 1 mip, and we are going to generate the other 4 mip levels later on
 	// Uploading cubemap data in GPU
 	// Note: we are allocating intermediate buffer that will not be used anymore later on but will stay in memory (leak)
 	Graphics::Buffer& intermediateCubemapBuffer = Graphics::GraphicsAllocator::Get()->AllocateBuffer(m_Cubemap->GetGPUSize(), Graphics::RESOURCE_HEAP_TYPE::UPLOAD, Graphics::RESOURCE_STATE::GEN_READ);
@@ -127,7 +129,7 @@ void Part4Application::Initialize()
 	// Create Root Signature serialized blob and then the object from it
 	// RTV Formats
 	// Pipeline State Stream definition and fill
-	Graphics::PipelineState::PIPELINE_STATE_DESC pipelineStateDesc{
+	Graphics::PipelineState::GRAPHICS_PSO_DESC pipelineStateDesc{
 		inputLayout,
 		resourceBinderDesc,
 		Graphics::PRIMITIVE_TOPOLOGY_TYPE::PTT_TRIANGLE,
@@ -146,6 +148,85 @@ void Part4Application::Initialize()
 	m_CmdQueue->ExecuteCmdList(loadContentCmdList);
 
 	m_CmdQueue->Flush(); // Note: Flushing operations on the command queue here will ensure that all the operations made on resources by the loadContentCmdList finished executing!
+
+	// --- MIPS GENERATION ---
+	Graphics::CommandList& loadContentCmdList2 = m_CmdQueue->GetAvailableCommandList();
+
+	// Creating 4 UAVs to target 1 mip each starting from level 1
+	// Note: the Tex 2D Array will refer to the selected mip array of faces!
+	GEPUtils::Graphics::UnorderedAccessView& cubeMipView1 = Graphics::GraphicsAllocator::Get()->AllocateUavTex2DArray(*m_Cubemap, 6, 1);
+	GEPUtils::Graphics::UnorderedAccessView& cubeMipView2 = Graphics::GraphicsAllocator::Get()->AllocateUavTex2DArray(*m_Cubemap, 6, 2);
+	GEPUtils::Graphics::UnorderedAccessView& cubeMipView3 = Graphics::GraphicsAllocator::Get()->AllocateUavTex2DArray(*m_Cubemap, 6, 3);
+	GEPUtils::Graphics::UnorderedAccessView& cubeMipView4 = Graphics::GraphicsAllocator::Get()->AllocateUavTex2DArray(*m_Cubemap, 6, 4);
+	// We also need an SRV Tex2D Array that points to our initially loaded mip0 cubemap
+	// We can use an SRV because we are just reading from it
+	GEPUtils::Graphics::ShaderResourceView&  inputCubeFacesView = Graphics::GraphicsAllocator::Get()->AllocateSrvTex2DArray(*m_Cubemap, 6);
+
+	// Views need to be uploaded to GPU
+	loadContentCmdList2.UploadViewToGPU(inputCubeFacesView);
+	loadContentCmdList2.UploadUavToGpu(cubeMipView1);
+	loadContentCmdList2.UploadUavToGpu(cubeMipView2);
+	loadContentCmdList2.UploadUavToGpu(cubeMipView3);
+	loadContentCmdList2.UploadUavToGpu(cubeMipView4); // Note: there is room for optimization in this process since we could allocate an entire range of Uavs altogether
+
+	//Create Root Signature
+	Graphics::PipelineState::RESOURCE_BINDER_DESC resourceBinderDesc2;
+	// TODO do we need any flag?
+	// Root Signature
+	// We are gonna use a root constant to pass the GenerateMipsCB to the shader
+	Graphics::PipelineState::RESOURCE_BINDER_PARAM generateMipsCbParam;
+	generateMipsCbParam.InitAsConstants(sizeof(GenerateMipsCB) / 4, 0, 0); // TODO Add visibility compute shader
+	resourceBinderDesc2.Params.emplace_back(std::move(generateMipsCbParam));
+	// Root parameter for the cubemap
+	// We first need to have one SRV range that will be used by the input cube faces
+	Graphics::PipelineState::RESOURCE_BINDER_PARAM inputCubeFacesParam;
+	inputCubeFacesParam.InitAsTableSRVRange(1, 0); // TODO add flags functionality for ranges and add VOLATILE
+	resourceBinderDesc2.Params.emplace_back(std::move(inputCubeFacesParam));
+	// Root parameter for output mips
+	Graphics::PipelineState::RESOURCE_BINDER_PARAM cubeMipViewsParam;
+	cubeMipViewsParam.InitAsTableUAVRange(4, 0);
+	resourceBinderDesc2.Params.emplace_back(std::move(cubeMipViewsParam));
+	// Sampler for the cubemap
+	resourceBinderDesc2.StaticSamplers.emplace_back(0, Graphics::SAMPLE_FILTER_TYPE::LINEAR);
+	// Loading compute shader
+	// To generate VertexShader.cso I will be using: fxc /Zi /T cs_5_1 /Fo GenerateCubeMips_CS.cso GenerateCubeMips_CS.hlsl
+	Graphics::Shader& computeShader = GEPUtils::Graphics::AllocateShader(Part4_SHADERS_PATH(GenerateCubeMips_CS.cso));
+	// Init Root Signature and PSO
+	Graphics::PipelineState::COMPUTE_PSO_DESC pipelineStateDesc2{
+	resourceBinderDesc2,
+	computeShader
+	};
+
+	// Used to generate mips
+	GEPUtils::Graphics::PipelineState& m_PipelineState2 = Graphics::AllocatePipelineState();
+
+	//Init the Pipeline State Object
+	m_PipelineState2.Init(pipelineStateDesc2);
+	// Set the PSO+RS
+	loadContentCmdList2.SetPipelineStateAndResourceBinder(m_PipelineState2);
+	// Set resource binding
+	loadContentCmdList2.ReferenceComputeTable(1, inputCubeFacesView);
+	// Note: This descriptor table is expecting a range of 4 descriptors, 
+	// but we know that cubeMipView1 in GPU memory will be followed by 2,3 and 4 because we instantiated them one after the other
+	loadContentCmdList2.ReferenceComputeTable(2, cubeMipView1); 
+
+	// Since our compute shader handles portions of 8 by 8 texels for each thread group, 
+	// the number of thread groups, in X and Y dimensions, in our dispatch will be the size of the mip 1 (so half the size of mip0), aligned by 8 and then divided by 8.
+	uint32_t mip1SizeAligned = GEPUtils::Math::Align(m_Cubemap->GetWidth() / 2, 8);
+
+	GenerateMipsCB genMipsCB; genMipsCB.Mip1Size = Eigen::Vector2f(mip1SizeAligned, mip1SizeAligned);
+
+	loadContentCmdList2.SetComputeRootConstants(0, sizeof(GenerateMipsCB) / 4, &genMipsCB, 0);
+
+	// In the Z dimension the number of thread groups will be 6, because we are going to repeat the work on X and Y for each of the 6 cube faces.
+	loadContentCmdList2.Dispatch(mip1SizeAligned / 8, mip1SizeAligned / 8, 6);
+
+	// Executing command list and waiting for full execution
+	m_CmdQueue->ExecuteCmdList(loadContentCmdList);
+
+	m_CmdQueue->Flush(); // Wait to complete execution
+
+	// --- MIPS GENERATION ENDS ---
 
 	// Initialize the Model Matrix
 	m_ModelMatrix = Eigen::Matrix4f::Identity();

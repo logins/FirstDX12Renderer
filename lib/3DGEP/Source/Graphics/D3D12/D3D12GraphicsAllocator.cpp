@@ -57,9 +57,19 @@ namespace GEPUtils { namespace Graphics {
 		return static_cast<GEPUtils::Graphics::DynamicBuffer&>(*m_ResourceArray.back());
 	}
 
-	GEPUtils::Graphics::Texture& D3D12GraphicsAllocator::AllocateTextureFromFile(wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat)
+	GEPUtils::Graphics::Texture& D3D12GraphicsAllocator::AllocateTextureFromFile(wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat, int32_t InMipsNum /*= 0*/, GEPUtils::Graphics::RESOURCE_FLAGS InCreationFlags /*= RESOURCE_FLAGS::NONE*/)
 	{
-		m_ResourceArray.push(std::make_unique<D3D12GEPUtils::D3D12Texture>(InTexturePath, InFileFormat));
+		m_ResourceArray.push(std::make_unique<D3D12GEPUtils::D3D12Texture>(InTexturePath, InFileFormat, InMipsNum, InCreationFlags));
+
+		return static_cast<GEPUtils::Graphics::Texture&>(*m_ResourceArray.back());
+	}
+
+	GEPUtils::Graphics::Texture& D3D12GraphicsAllocator::AllocateEmptyTexture(uint32_t InWidth, uint32_t InHeight, GEPUtils::Graphics::TEXTURE_TYPE InType, GEPUtils::Graphics::BUFFER_FORMAT InFormat, uint32_t InArraySize, uint32_t InMipLevels)
+	{
+		std::unique_ptr<D3D12GEPUtils::D3D12Texture> outputTexture = std::make_unique<D3D12GEPUtils::D3D12Texture>(InWidth, InHeight, InType, InFormat, InArraySize, InMipLevels);
+		outputTexture->InstantiateOnGPU(); // Allocate empty space on GPU
+
+		m_ResourceArray.push(std::move(outputTexture));
 
 		return static_cast<GEPUtils::Graphics::Texture&>(*m_ResourceArray.back());
 	}
@@ -125,6 +135,28 @@ namespace GEPUtils { namespace Graphics {
 		m_ResourceViewArray.push(std::make_unique<D3D12GEPUtils::D3D12ShaderResourceView>(InTexture));
 
 		return static_cast<GEPUtils::Graphics::ShaderResourceView&>(*m_ResourceViewArray.back());
+	}
+
+	GEPUtils::Graphics::ShaderResourceView& D3D12GraphicsAllocator::AllocateSrvTex2DArray(GEPUtils::Graphics::Texture& InTexture, uint32_t InArraySize, uint32_t InMostDetailedMip /*= 0*/, int32_t InMipLevels /*= -1*/, uint32_t InFirstArraySlice /*= 0*/, uint32_t InPlaneSlice /*= 0*/)
+	{
+		std::unique_ptr<D3D12GEPUtils::D3D12ShaderResourceView> outUav = std::make_unique<D3D12GEPUtils::D3D12ShaderResourceView>();
+
+		outUav->InitAsTex2DArray(InTexture, InArraySize, InMostDetailedMip, InMipLevels, InFirstArraySlice, InPlaneSlice);
+
+		m_ResourceViewArray.push(std::move(outUav));
+
+		return static_cast<GEPUtils::Graphics::ShaderResourceView&>(*m_ResourceViewArray.back());
+	}
+
+	GEPUtils::Graphics::UnorderedAccessView& D3D12GraphicsAllocator::AllocateUavTex2DArray(GEPUtils::Graphics::Texture& InTexture, uint32_t InArraySize, int32_t InMipSlice /*= -1*/, uint32_t InFirstArraySlice /*= 0*/, uint32_t InPlaceSlice /*= 0*/)
+	{
+		std::unique_ptr<D3D12GEPUtils::D3D12UnorderedAccessView> outUav = std::make_unique<D3D12GEPUtils::D3D12UnorderedAccessView>();
+
+		outUav->InitAsTex2DArray(InTexture, InArraySize, InMipSlice, InFirstArraySlice, InPlaceSlice);
+
+		m_ResourceViewArray.push(std::move(outUav));
+
+		return static_cast<GEPUtils::Graphics::UnorderedAccessView&>(*m_ResourceViewArray.back());
 	}
 
 	GEPUtils::Graphics::Shader& D3D12GraphicsAllocator::AllocateShader(wchar_t const* InShaderPath)

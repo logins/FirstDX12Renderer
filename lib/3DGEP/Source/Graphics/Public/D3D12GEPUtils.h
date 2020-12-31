@@ -131,19 +131,26 @@ namespace D3D12GEPUtils {
 	struct D3D12Texture : public GEPUtils::Graphics::Texture {
 		D3D12Texture() = default; // Allow empty D3D12Texture for cases like DummyTexture
 
+		D3D12Texture(uint32_t InWidth, uint32_t InHeight, GEPUtils::Graphics::TEXTURE_TYPE InType, GEPUtils::Graphics::BUFFER_FORMAT InFormat, uint32_t InArraySize, uint32_t InMipLevels);
+
 		// Constructor to load the texture from file. It will not upload it to GPU so that has to be done manually after creating the texture.
-		D3D12Texture(const wchar_t* InResourcePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat);
+		D3D12Texture(const wchar_t* InResourcePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat, int32_t InMipsNum, GEPUtils::Graphics::RESOURCE_FLAGS InCreationFlags);
 
 		virtual void UploadToGPU(GEPUtils::Graphics::CommandList& InCommandList, GEPUtils::Graphics::Buffer& InIntermediateBuffer) override;
+
+		virtual void InstantiateOnGPU() override;
 
 		virtual size_t GetGPUSize() override;
 
 		Microsoft::WRL::ComPtr<ID3D12Resource>& GetInner() { return m_D3D12Resource; }
 	private:
+
+		void SetGeneralTextureParams(uint32_t InWidth, uint32_t InHeight, GEPUtils::Graphics::TEXTURE_TYPE InType, GEPUtils::Graphics::BUFFER_FORMAT InFormat, uint32_t InArraySize, uint32_t InMipLevels, GEPUtils::Graphics::RESOURCE_FLAGS InCreationFlags);
 		CD3DX12_RESOURCE_DESC m_TextureDesc;
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_D3D12Resource;
 		std::vector<D3D12_SUBRESOURCE_DATA> m_SubresourceDesc;
-	};																	
+
+	};
 
 
 	struct D3D12ConstantBufferView : public GEPUtils::Graphics::ConstantBufferView
@@ -173,11 +180,34 @@ namespace D3D12GEPUtils {
 
 		D3D12ShaderResourceView(GEPUtils::Graphics::Texture& InTextureToReference);
 
+		void InitAsTex2DArray(GEPUtils::Graphics::Texture& InTexture, uint32_t InArraySize, uint32_t InMostDetailedMip, uint32_t InMipLevels, uint32_t InFirstArraySlice, uint32_t InPlaceSlice);
+
 		D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescHandle() { return m_CpuAllocatedRange->m_FirstCpuHandle; }
 
 		D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescHandle() { return m_GpuAllocatedRange->m_FirstGpuHandle; }
 
-		virtual void ReferenceTexture(GEPUtils::Graphics::Texture& InTexture);
+		virtual void InitAsTex2DOrCubemap(GEPUtils::Graphics::Texture& InTexture);
+
+		// Descriptor range referenced by this View object.
+		// Note: The Allocated Desc Range destructor will declared the relative descriptors to be stale and they will be cleared at the end of the frame
+		// Refers to a CPU desc heap that is used to stage descriptors
+		std::unique_ptr<GEPUtils::Graphics::StaticDescAllocation> m_CpuAllocatedRange;
+		// Refers to the shader visible descriptor in the desc heap used by command lists
+		std::unique_ptr<GEPUtils::Graphics::StaticDescAllocation> m_GpuAllocatedRange;
+	};
+
+	struct D3D12UnorderedAccessView : public GEPUtils::Graphics::UnorderedAccessView
+	{
+		D3D12UnorderedAccessView() = default;
+
+		D3D12UnorderedAccessView(GEPUtils::Graphics::Texture& InTextureToReference);
+
+		void InitAsTex2DArray(GEPUtils::Graphics::Texture& InTexture, uint32_t InArraySize, uint32_t InMipSlice, uint32_t InFirstArraySlice, uint32_t InPlaneSlice);
+
+		D3D12_CPU_DESCRIPTOR_HANDLE GetCPUDescHandle() { return m_CpuAllocatedRange->m_FirstCpuHandle; }
+
+		D3D12_GPU_DESCRIPTOR_HANDLE GetGPUDescHandle() { return m_GpuAllocatedRange->m_FirstGpuHandle; }
+
 
 		// Descriptor range referenced by this View object.
 		// Note: The Allocated Desc Range destructor will declared the relative descriptors to be stale and they will be cleared at the end of the frame

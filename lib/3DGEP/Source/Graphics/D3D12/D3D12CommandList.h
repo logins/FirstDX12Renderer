@@ -42,9 +42,12 @@ namespace GEPUtils { namespace Graphics {
 
 		virtual void SetGraphicsRootConstants(uint64_t InRootParameterIndex, uint64_t InNum32BitValuesToSet, const void* InSrcData, uint64_t InDestOffsetIn32BitValues) override;
 
+		virtual void SetComputeRootConstants(uint64_t InRootParameterIndex, uint64_t InNum32BitValuesToSet, const void* InSrcData, uint64_t InDestOffsetIn32BitValues) override;
+
 
 		virtual void DrawIndexed(uint64_t InIndexCountPerInstance) override;
 
+		virtual void Dispatch(uint32_t InGroupsNumX, uint32_t InGroupsNumY, uint32_t InGroupsNumZ) override;
 
 		virtual void SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ConstantBufferView& InView) override;
 
@@ -60,8 +63,14 @@ namespace GEPUtils { namespace Graphics {
 
 		virtual void UploadViewToGPU(GEPUtils::Graphics::ShaderResourceView& InSRV) override;
 
+		virtual void UploadUavToGpu(GEPUtils::Graphics::UnorderedAccessView& InUav) override;
 
 		virtual void ReferenceSRV(uint32_t InRootIdx, GEPUtils::Graphics::ShaderResourceView& InSRV) override;
+
+		virtual void ReferenceComputeTable(uint32_t InRootIdx, GEPUtils::Graphics::ShaderResourceView& InUav) override;
+
+		virtual void ReferenceComputeTable(uint32_t InRootIdx, GEPUtils::Graphics::UnorderedAccessView& InUav) override;
+
 
 		void SetGraphicsRootDescriptorTable(uint32_t InRootIdx, D3D12_GPU_DESCRIPTOR_HANDLE InGpuDescHandle);
 

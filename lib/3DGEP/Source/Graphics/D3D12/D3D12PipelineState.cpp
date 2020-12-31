@@ -82,10 +82,26 @@ namespace GEPUtils{ namespace Graphics {
 			// Note: we are assuming only 1 descriptor range per descriptor table
 			D3D12_DESCRIPTOR_RANGE1 descRange;
 			descRange.BaseShaderRegister = InResourceBinderParam.ShaderRegister;
-			descRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE;
+			descRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE; // TODO need to be able to pass flags with root params
 			descRange.NumDescriptors = InResourceBinderParam.NumDescriptors;
 			descRange.OffsetInDescriptorsFromTableStart = 0;
 			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_SRV;
+			descRange.RegisterSpace = InResourceBinderParam.RegisterSpace;
+
+			OutDescRanges.push_back(std::move(descRange));
+
+			returnParam.InitAsDescriptorTable(1, &OutDescRanges.back(), TransformShaderVisibility(InResourceBinderParam.shaderVisibility));
+			break;
+		}
+		case RESOURCE_BINDER_PARAM::RESOURCE_TYPE::UAV_RANGE:
+		{
+			// Note: we are assuming only 1 descriptor range per descriptor table
+			D3D12_DESCRIPTOR_RANGE1 descRange;
+			descRange.BaseShaderRegister = InResourceBinderParam.ShaderRegister;
+			descRange.Flags = D3D12_DESCRIPTOR_RANGE_FLAG_NONE; // TODO need to be able to pass flags with root params
+			descRange.NumDescriptors = InResourceBinderParam.NumDescriptors;
+			descRange.OffsetInDescriptorsFromTableStart = 0;
+			descRange.RangeType = D3D12_DESCRIPTOR_RANGE_TYPE_UAV;
 			descRange.RegisterSpace = InResourceBinderParam.RegisterSpace;
 
 			OutDescRanges.push_back(std::move(descRange));
@@ -115,8 +131,11 @@ namespace GEPUtils{ namespace Graphics {
 		return D3D12_SHADER_VISIBILITY_ALL;
 	}
 
-	void D3D12PipelineState::Init(PIPELINE_STATE_DESC& InPipelineStateDesc)
+	// Init for a Graphics PSO
+	void D3D12PipelineState::Init(GRAPHICS_PSO_DESC& InPipelineStateDesc)
 	{
+		m_IsGraphicsPSO = true;
+
 		// Generate D3D12 Input Layout
 		std::vector<INPUT_LAYOUT_DESC::LayoutElement>& agnosticLayoutElements = InPipelineStateDesc.InputLayoutDesc.LayoutElements;
 		std::vector<D3D12_INPUT_ELEMENT_DESC> layoutElements;
@@ -125,41 +144,7 @@ namespace GEPUtils{ namespace Graphics {
 		std::transform(agnosticLayoutElements.begin(), agnosticLayoutElements.end(), std::back_inserter(layoutElements), &D3D12PipelineState::TransformInputLayoutElement);
 
 		Microsoft::WRL::ComPtr<ID3D12Device2> d3d12GraphicsDevice = static_cast<Graphics::D3D12Device&>(Graphics::GetDevice()).GetInner();
-
-		// Create Root Signature
-		D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
-		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
-		if (FAILED(d3d12GraphicsDevice->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(D3D12_FEATURE_DATA_ROOT_SIGNATURE))))
-		{
-			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
-		}
-		// Allow Input layout access to shader resources
-		// and deny it to other stages (small optimization)
-		D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = TransformResourceBinderFlags(InPipelineStateDesc.ResourceBinderDesc.Flags);
-
-		// --- Root Parameters ---
-		// Using a single 32-bit constant root parameter (MVP matrix) that is used by the vertex shader
-		std::vector<RESOURCE_BINDER_PARAM>& agnosticRootParameters = InPipelineStateDesc.ResourceBinderDesc.Params;
-		std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters = m_RootSignatureInfo.rootParameters;
-		rootParameters.reserve(agnosticRootParameters.size());
-
-		// We cannot use std::transform here because in the case of descriptor tables for example, we also need to preserve the generated D3D12_DESCRIPTOR_RANGE1 objects other than the root parameters
-		m_RootSignatureInfo.m_DescRanges.reserve(10);
-		for (uint32_t i = 0; i < agnosticRootParameters.size(); i++)
-		{
-			rootParameters.push_back(TransformResourceBinderParams(agnosticRootParameters[i], m_RootSignatureInfo.m_DescRanges));
-		}
-
-		// --- Static Samplers ---
-		std::vector<StaticSampler>& agnosticStaticSamplers = InPipelineStateDesc.ResourceBinderDesc.StaticSamplers;
-		std::vector<CD3DX12_STATIC_SAMPLER_DESC>& staticSamplers = m_RootSignatureInfo.m_StaticSamplers;
-		rootParameters.reserve(agnosticStaticSamplers.size());
-		std::transform(agnosticStaticSamplers.begin(), agnosticStaticSamplers.end(), std::back_inserter(staticSamplers), &D3D12PipelineState::TransformStaticSamplerElement);
-
-		// Init Root Signature Desc
-		m_RootSignatureInfo.rootSignatureDesc.Init_1_1(rootParameters.size(), rootParameters.data(), staticSamplers.size(), staticSamplers.data(), rootSignatureFlags);
-		// Create Root Signature serialized blob and then the object from it
-		m_RootSignature = D3D12GEPUtils::SerializeAndCreateRootSignature(d3d12GraphicsDevice, &m_RootSignatureInfo.rootSignatureDesc, featureData.HighestVersion);
+		GenerateRootSignature(d3d12GraphicsDevice, InPipelineStateDesc.ResourceBinderDesc);
 
 		//RTV Formats
 		D3D12_RT_FORMAT_ARRAY rtvFormats = {};
@@ -193,6 +178,70 @@ namespace GEPUtils{ namespace Graphics {
 		D3D12GEPUtils::ThrowIfFailed(d3d12GraphicsDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
 
 		m_IsInitialized = true;
+	}
+
+	// Init for a Compute PSO
+	void D3D12PipelineState::Init(COMPUTE_PSO_DESC& InPipelineStateDesc)
+	{
+		Microsoft::WRL::ComPtr<ID3D12Device2> d3d12GraphicsDevice = static_cast<Graphics::D3D12Device&>(Graphics::GetDevice()).GetInner();
+
+		// Root signature generation
+		GenerateRootSignature(d3d12GraphicsDevice, InPipelineStateDesc.ResourceBinderDesc);
+
+		// Pipeline State Stream definition and fill
+		// Note: for now we assume PipelineStateStreamType to be always the same
+		struct PipelineStateStreamType {
+			CD3DX12_PIPELINE_STATE_STREAM_ROOT_SIGNATURE RootSignature;
+			CD3DX12_PIPELINE_STATE_STREAM_CS ComputeShader;
+		} pipelineStateStream;
+
+		pipelineStateStream.RootSignature = m_RootSignature.Get();
+		pipelineStateStream.ComputeShader = CD3DX12_SHADER_BYTECODE(static_cast<D3D12GEPUtils::D3D12Shader&>(InPipelineStateDesc.ComputeShader).m_ShaderBlob.Get());
+
+		D3D12_PIPELINE_STATE_STREAM_DESC pipelineStateStreamDesc = {
+			sizeof(pipelineStateStream), &pipelineStateStream
+		};
+		D3D12GEPUtils::ThrowIfFailed(d3d12GraphicsDevice->CreatePipelineState(&pipelineStateStreamDesc, IID_PPV_ARGS(&m_PipelineState)));
+
+		m_IsInitialized = true;
+	}
+
+	void D3D12PipelineState::GenerateRootSignature(Microsoft::WRL::ComPtr<ID3D12Device2> d3d12GraphicsDevice, RESOURCE_BINDER_DESC& InResourceBinder)
+	{
+		// Create Root Signature
+		D3D12_FEATURE_DATA_ROOT_SIGNATURE featureData = {};
+		featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_1;
+		if (FAILED(d3d12GraphicsDevice->CheckFeatureSupport(D3D12_FEATURE_ROOT_SIGNATURE, &featureData, sizeof(D3D12_FEATURE_DATA_ROOT_SIGNATURE))))
+		{
+			featureData.HighestVersion = D3D_ROOT_SIGNATURE_VERSION_1_0;
+		}
+		// Allow Input layout access to shader resources
+		// and deny it to other stages (small optimization)
+		D3D12_ROOT_SIGNATURE_FLAGS rootSignatureFlags = TransformResourceBinderFlags(InResourceBinder.Flags);
+
+		// --- Root Parameters ---
+		// Using a single 32-bit constant root parameter (MVP matrix) that is used by the vertex shader
+		std::vector<RESOURCE_BINDER_PARAM>& agnosticRootParameters = InResourceBinder.Params;
+		std::vector<CD3DX12_ROOT_PARAMETER1>& rootParameters = m_RootSignatureInfo.rootParameters;
+		rootParameters.reserve(agnosticRootParameters.size());
+
+		// We cannot use std::transform here because in the case of descriptor tables for example, we also need to preserve the generated D3D12_DESCRIPTOR_RANGE1 objects other than the root parameters
+		m_RootSignatureInfo.m_DescRanges.reserve(10);
+		for (uint32_t i = 0; i < agnosticRootParameters.size(); i++)
+		{
+			rootParameters.push_back(TransformResourceBinderParams(agnosticRootParameters[i], m_RootSignatureInfo.m_DescRanges));
+		}
+
+		// --- Static Samplers ---
+		std::vector<StaticSampler>& agnosticStaticSamplers = InResourceBinder.StaticSamplers;
+		std::vector<CD3DX12_STATIC_SAMPLER_DESC>& staticSamplers = m_RootSignatureInfo.m_StaticSamplers;
+		rootParameters.reserve(agnosticStaticSamplers.size());
+		std::transform(agnosticStaticSamplers.begin(), agnosticStaticSamplers.end(), std::back_inserter(staticSamplers), &D3D12PipelineState::TransformStaticSamplerElement);
+
+		// Init Root Signature Desc
+		m_RootSignatureInfo.rootSignatureDesc.Init_1_1(rootParameters.size(), rootParameters.data(), staticSamplers.size(), staticSamplers.data(), rootSignatureFlags);
+		// Create Root Signature serialized blob and then the object from it
+		m_RootSignature = D3D12GEPUtils::SerializeAndCreateRootSignature(d3d12GraphicsDevice, &m_RootSignatureInfo.rootSignatureDesc, featureData.HighestVersion);
 	}
 
 	uint32_t D3D12PipelineState::GenerateRootTableBitMask()

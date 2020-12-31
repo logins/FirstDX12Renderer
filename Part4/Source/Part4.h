@@ -33,6 +33,12 @@ private:
 	// Texture for the cubemap
 	GEPUtils::Graphics::Texture* m_Cubemap;
 	GEPUtils::Graphics::ShaderResourceView* m_CubemapView;
+	// Textures for the generated mips
+	GEPUtils::Graphics::Texture* m_CubemapWithMips;
+	struct GenerateMipsCB
+	{
+		Eigen::Vector2f Mip1Size;
+	};
 
 	GEPUtils::Graphics::PipelineState* m_PipelineState;
 

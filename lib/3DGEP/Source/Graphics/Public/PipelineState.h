@@ -50,12 +50,22 @@ public:
 			shaderVisibility = InShaderVisibility;
 		}
 
+		void InitAsTableUAVRange(uint32_t InNumDescriptors, uint32_t InShaderRegister, uint32_t InRegisterSpace = 0, GEPUtils::Graphics::SHADER_VISIBILITY InShaderVisibility = SHADER_VISIBILITY::SV_ALL)
+		{
+			NumDescriptors = InNumDescriptors;
+			ShaderRegister = InShaderRegister;
+			RegisterSpace = InRegisterSpace;
+			ResourceType = RESOURCE_TYPE::UAV_RANGE;
+			shaderVisibility = InShaderVisibility;
+		}
+
 		uint32_t Num32BitValues = 0; uint32_t ShaderRegister = 0; uint32_t RegisterSpace = 0; uint32_t NumDescriptors = 0;
 
 		enum class RESOURCE_TYPE {
 			CONSTANTS,
 			CBV_RANGE,
-			SRV_RANGE
+			SRV_RANGE,
+			UAV_RANGE
 		} ResourceType = RESOURCE_TYPE::CONSTANTS;
 		
 		SHADER_VISIBILITY shaderVisibility;
@@ -81,7 +91,7 @@ public:
 	};
 
 
-	struct PIPELINE_STATE_DESC {
+	struct GRAPHICS_PSO_DESC {
 		INPUT_LAYOUT_DESC& InputLayoutDesc;
 		RESOURCE_BINDER_DESC& ResourceBinderDesc;
 		GEPUtils::Graphics::PRIMITIVE_TOPOLOGY_TYPE TopologyType;
@@ -91,8 +101,20 @@ public:
 		Graphics::BUFFER_FORMAT RTFormat; //Note: considering a single render target even though platforms support many (there is a maximum of 8 render targets in D3D12)
 	};
 
-	virtual void Init(PIPELINE_STATE_DESC& InPipelineStateDesc) = 0;
+	struct COMPUTE_PSO_DESC {
+		RESOURCE_BINDER_DESC& ResourceBinderDesc;
+		Graphics::Shader& ComputeShader;
 
+	};
+
+	virtual void Init(GRAPHICS_PSO_DESC& InPipelineStateDesc) = 0;
+
+	virtual void Init(COMPUTE_PSO_DESC& InPipelineStateDesc) = 0;
+
+	bool IsGraphics() const  {return m_IsGraphicsPSO; }
+
+protected:
+	bool m_IsGraphicsPSO = false;
 };
 
 

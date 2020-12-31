@@ -14,7 +14,10 @@ class D3D12PipelineState : public PipelineState{
 public:
 	D3D12PipelineState() = default;
 
-	virtual void Init(PIPELINE_STATE_DESC& InPipelineStateDesc) override;
+	virtual void Init(GRAPHICS_PSO_DESC& InPipelineStateDesc) override;
+
+	virtual void Init(COMPUTE_PSO_DESC& InPipelineStateDesc) override;
+
 
 	Microsoft::WRL::ComPtr<ID3D12PipelineState> GetInnerPSO() { return m_PipelineState; }
 	Microsoft::WRL::ComPtr<ID3D12RootSignature> GetInnerRootSignature() { return m_RootSignature; }
@@ -23,7 +26,11 @@ public:
 	uint32_t GenerateRootTableBitMask();
 
 	uint32_t GetRootDescriptorsNumAtIndex(uint32_t InRootIndex);
+
 private:
+
+	void GenerateRootSignature(Microsoft::WRL::ComPtr<ID3D12Device2> d3d12GraphicsDevice, RESOURCE_BINDER_DESC& InPipelineStateDesc);
+
 	bool m_IsInitialized = false;
 
 	static D3D12_ROOT_SIGNATURE_FLAGS TransformResourceBinderFlags(RESOURCE_BINDER_FLAGS InResourceBinderFlags); 

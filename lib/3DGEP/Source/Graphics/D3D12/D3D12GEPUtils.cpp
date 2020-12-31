@@ -311,15 +311,14 @@ namespace D3D12GEPUtils
 
 	D3D12ShaderResourceView::D3D12ShaderResourceView(GEPUtils::Graphics::Texture& InTextureToReference)
 	{
-		ReferenceTexture(InTextureToReference);
+		InitAsTex2DOrCubemap(InTextureToReference);
 	}
 
-	void D3D12ShaderResourceView::ReferenceTexture(GEPUtils::Graphics::Texture& InTexture)
+	void D3D12ShaderResourceView::InitAsTex2DOrCubemap(GEPUtils::Graphics::Texture& InTexture)
 {
 		if (!m_CpuAllocatedRange)
 		{
 			// Allocate descriptor in CPU descriptor heap
-			// New Desc Allocator
 			m_CpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetCPUHeap().AllocateStaticRange(1);
 		}
 		// TODO Note: we are currently assuming we only handle a single descriptor and never a range... also in D3D12ConstantBufferView::ReferenceBuffer
@@ -344,6 +343,52 @@ namespace D3D12GEPUtils
 
 		d3d12Device.GetInner()->CreateShaderResourceView(static_cast<D3D12Texture&>(InTexture).GetInner().Get(), &viewDesc, m_CpuAllocatedRange->m_FirstCpuHandle);
 
+	}
+
+	void D3D12ShaderResourceView::InitAsTex2DArray(GEPUtils::Graphics::Texture& InTexture, uint32_t InArraySize, uint32_t InMostDetailedMip, uint32_t InMipLevels, uint32_t InFirstArraySlice, uint32_t InPlaceSlice)
+	{
+		// Allocate static descriptor in the CPU-only desc heap
+		if (!m_CpuAllocatedRange)
+		{
+			m_CpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetCPUHeap().AllocateStaticRange(1);
+		}
+
+		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
+		srvDesc.Shader4ComponentMapping = D3D12_DEFAULT_SHADER_4_COMPONENT_MAPPING;
+		srvDesc.ViewDimension = D3D12_SRV_DIMENSION_TEXTURE2DARRAY;
+		srvDesc.Format = D3D12GEPUtils::BufferFormatToD3D12(InTexture.GetFormat());;
+		srvDesc.Texture2DArray.ArraySize = InArraySize;
+		srvDesc.Texture2DArray.MostDetailedMip = InMostDetailedMip;
+		srvDesc.Texture2DArray.FirstArraySlice = InFirstArraySlice;
+		srvDesc.Texture2DArray.MipLevels = InMipLevels;
+		srvDesc.Texture2DArray.PlaneSlice = InPlaceSlice;
+
+		// Instantiate View
+		GEPUtils::Graphics::D3D12Device& d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice());
+
+		d3d12Device.GetInner()->CreateShaderResourceView(static_cast<D3D12Texture&>(InTexture).GetInner().Get(), &srvDesc, m_CpuAllocatedRange->m_FirstCpuHandle);
+	}
+
+	void D3D12UnorderedAccessView::InitAsTex2DArray(GEPUtils::Graphics::Texture& InTexture, uint32_t InArraySize, uint32_t InMipSlice, uint32_t InFirstArraySlice, uint32_t InPlaneSlice)
+	{
+		// Allocate static descriptor in the CPU-only desc heap
+		if (!m_CpuAllocatedRange)
+		{
+			m_CpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetCPUHeap().AllocateStaticRange(1);
+		}
+
+		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
+		uavDesc.ViewDimension = D3D12_UAV_DIMENSION_TEXTURE2DARRAY;
+		uavDesc.Format = D3D12GEPUtils::BufferFormatToD3D12(InTexture.GetFormat());;
+		uavDesc.Texture2DArray.ArraySize = InArraySize;
+		uavDesc.Texture2DArray.FirstArraySlice = InFirstArraySlice;
+		uavDesc.Texture2DArray.MipSlice = InMipSlice;
+		uavDesc.Texture2DArray.PlaneSlice = InPlaneSlice;
+
+		// Instantiate View
+		GEPUtils::Graphics::D3D12Device& d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice());
+
+		d3d12Device.GetInner()->CreateUnorderedAccessView(static_cast<D3D12Texture&>(InTexture).GetInner().Get(), nullptr, &uavDesc, m_CpuAllocatedRange->m_FirstCpuHandle);
 	}
 
 	D3D12ConstantBufferView::D3D12ConstantBufferView(GEPUtils::Graphics::Buffer& InResource)
@@ -394,13 +439,43 @@ namespace D3D12GEPUtils
 		memcpy(m_Data.data(), InData, InSize);
 	}
 
-	D3D12Texture::D3D12Texture(const wchar_t* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat)
+	void D3D12Texture::SetGeneralTextureParams(uint32_t InWidth, uint32_t InHeight, GEPUtils::Graphics::TEXTURE_TYPE InType, GEPUtils::Graphics::BUFFER_FORMAT InFormat, uint32_t InArraySize, uint32_t InMipLevels, GEPUtils::Graphics::RESOURCE_FLAGS InCreationFlags)
+	{
+		m_Width = InWidth; m_Height = InHeight;
+		m_ArraySize = InArraySize; m_MipLevelsNum = InMipLevels;
+		m_TexelFormat = InFormat;
+		m_Type = InType;
+
+		if (InType == GEPUtils::Graphics::TEXTURE_TYPE::TEX_2D || InType == GEPUtils::Graphics::TEXTURE_TYPE::TEX_CUBE)
+		{
+			m_TextureDesc = CD3DX12_RESOURCE_DESC::Tex2D(
+				D3D12GEPUtils::BufferFormatToD3D12(InFormat),
+				static_cast<UINT>(InWidth),
+				static_cast<UINT>(InHeight),
+				static_cast<UINT16>(InArraySize),
+				static_cast<UINT16>(InMipLevels),	// Note: there is an ORRIBLE bug that comes if we do not specify mip levels here: it will display only one cube face, and the other 5 faces will be black !!!
+													// The reason is the default mip levels will become 9, so 9 mips will be generated for the first face all subsequent in memory,
+													// so when we later copy subresources, copying the first 6 subresources, we are going to copy the first face plus its first 5 mips instead of the other cube faces!!!
+				1U, 0U, D3D12GEPUtils::ResFlagsToD3D12(InCreationFlags)
+			);
+		}
+		else {
+			StopForFail("[D3D12Texture::SetGeneralTextureParams] Texture Type not handled yet.")
+		}
+	}
+
+	D3D12Texture::D3D12Texture(uint32_t InWidth, uint32_t InHeight, GEPUtils::Graphics::TEXTURE_TYPE InType, GEPUtils::Graphics::BUFFER_FORMAT InFormat, uint32_t InArraySize, uint32_t InMipLevels)
+	{
+		SetGeneralTextureParams(InWidth, InHeight, InType, InFormat, InArraySize, InMipLevels, GEPUtils::Graphics::RESOURCE_FLAGS::NONE);
+	}
+
+	D3D12Texture::D3D12Texture(const wchar_t* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat, int32_t InMipsNum, GEPUtils::Graphics::RESOURCE_FLAGS InCreationFlags)
 	{
 		// Informations about the texture resource
 		DirectX::TexMetadata metadata;
 
 		// Content of the texture resource
-		DirectX::ScratchImage scratchImage;
+		DirectX::ScratchImage loadedScratchImage;
 
 		switch (InFileFormat)
 		{
@@ -410,7 +485,7 @@ namespace D3D12GEPUtils
 				InTexturePath,
 				DirectX::DDS_FLAGS_FORCE_RGB,
 				&metadata,
-				scratchImage));
+				loadedScratchImage));
 			break;
 		}
 		default:
@@ -418,58 +493,62 @@ namespace D3D12GEPUtils
 				break;
 		}
 
-		m_TextureDesc = CD3DX12_RESOURCE_DESC::Tex2D(
-			metadata.format,
-			static_cast<UINT64>(metadata.width),
-			static_cast<UINT>(metadata.height),
-			static_cast<UINT16>(metadata.arraySize),
-			static_cast<UINT16>(metadata.mipLevels)	// Note: there is an ORRIBLE bug that comes if we do not specify mip levels here: it will display only one cube face, and the other 5 faces will be black !!!
-		);										// The reason is the default mip levels will become 9, so 9 mips will be generated for the first face all subsequent in memory,
-												// so when we later copy subresources, copying the first 6 subresources, we are going to copy the first face plus its first 5 mips instead of the other cube faces!!!
+		// If Mips number is not specified, the texture will be created with a number of mips equal to the ones found in the loaded file
+		SetGeneralTextureParams(metadata.width, metadata.height, metadata.IsCubemap() ? GEPUtils::Graphics::TEXTURE_TYPE::TEX_CUBE : D3D12GEPUtils::TextureTypeToEngine(metadata.dimension), 
+			D3D12GEPUtils::BufferFormatToEngine(metadata.format), metadata.arraySize, InMipsNum == 0? metadata.mipLevels : InMipsNum, InCreationFlags);
 
 		// Fetch data found from file
-		m_SubresourceDesc.resize(scratchImage.GetImageCount());
+		const DirectX::Image* foundImages = loadedScratchImage.GetImages();
 
-		// Copying loaded texture data to internal buffer
-		m_Data.resize(scratchImage.GetPixelsSize());
-		memcpy(m_Data.data(), scratchImage.GetPixels(), scratchImage.GetPixelsSize());
-
-		const DirectX::Image* foundImages = scratchImage.GetImages();
-
-		for (int i = 0; i < scratchImage.GetImageCount(); ++i)
+		// We create a new scratch image with the selected mip levels to compute
+		DirectX::ScratchImage newScratchImage;
+		switch (metadata.dimension)
 		{
-			D3D12_SUBRESOURCE_DATA& currentSubresource = m_SubresourceDesc[i];
-			currentSubresource.RowPitch = foundImages[i].rowPitch;
-			currentSubresource.SlicePitch = foundImages[i].slicePitch;
-			currentSubresource.pData = m_Data.data() + (foundImages[i].pixels - scratchImage.GetPixels()); // Storing pointer to the subresource, referring now to the internal buffer region
+		case DirectX::TEX_DIMENSION_TEXTURE2D:
+			newScratchImage.Initialize2D(metadata.format, m_Width, m_Height, m_ArraySize, m_MipLevelsNum); // In a Tex2D array, every different texture of the array needs to have the same size (and the same applies for their relative mip levels)
+			break;
+		default:
+			StopForFail("[D3D12Texture] Texture Dimension Not Handled.")
+			break;
 		}
 
-		// Setting general texture object parameters
-		m_Width = metadata.width; m_Height = metadata.height; 
-		m_ArraySize = metadata.arraySize; m_MipLevelsNum = metadata.mipLevels; 
-		m_TexelFormat = D3D12GEPUtils::BufferFormatToEngine(metadata.format); 
-		m_Type = metadata.IsCubemap() ? GEPUtils::Graphics::TEXTURE_TYPE::TEX_CUBE : D3D12GEPUtils::TextureTypeToEngine(metadata.dimension);
+		// Copying loaded texture data to internal buffer
+		m_Data.resize(newScratchImage.GetPixelsSize()); 
+
+		m_SubresourceDesc.resize(m_ArraySize * m_MipLevelsNum);// The number of subresources in a texture is equal to the number of textures multiplied by the number of their mips //scratchImage.GetImageCount());
+
+		const DirectX::Image* newImages = newScratchImage.GetImages();
+		size_t imgIdx = newScratchImage.GetImageCount();
+		while(imgIdx)
+		{
+			imgIdx--;
+			D3D12_SUBRESOURCE_DATA& currentSubresource = m_SubresourceDesc[imgIdx];
+			currentSubresource.RowPitch = newImages[imgIdx].rowPitch;
+			currentSubresource.SlicePitch = newImages[imgIdx].slicePitch;
+			currentSubresource.pData = m_Data.data() + (newImages[imgIdx].pixels - newScratchImage.GetPixels()); // Storing pointer to the subresource, referring now to the internal buffer region
+		}
+		// Copy and reference loaded images
+		imgIdx = loadedScratchImage.GetImageCount();
+		while (imgIdx)
+		{
+			imgIdx--;
+			uint32_t currentMip = imgIdx % metadata.mipLevels;
+			uint32_t currentSlice = imgIdx / metadata.mipLevels;
+			// Copy loaded mip in the new location
+			void* ptrSrc = foundImages[imgIdx].pixels;
+			void* ptrDest = m_Data.data() + (newImages[currentSlice * m_MipLevelsNum + currentMip].pixels - newImages->pixels);//(foundImages[imgIdx].pixels - loadedScratchImage.GetPixels());
+			memcpy(ptrDest, ptrSrc, foundImages[imgIdx].slicePitch);
+			// Assign pointer to the copied data
+			//m_SubresourceDesc[(currentSlice * m_MipLevelsNum) + currentMip].pData = ptrDest;//m_Data.data() + (foundImages[imgIdx].pixels - loadedScratchImage.GetPixels());
+
+		}
+
+
 	}
 
 	void D3D12Texture::UploadToGPU(GEPUtils::Graphics::CommandList& InCommandList, GEPUtils::Graphics::Buffer& InIntermediateBuffer)
 	{
-		ID3D12Device2* d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice()).GetInner().Get();
-
-		if (!m_D3D12Resource)
-		{
-			// Allocate a committed resource in GPU dedicated memory (default heap)
-			d3d12Device->CreateCommittedResource(
-			&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
-			D3D12_HEAP_FLAG_NONE,
-			&m_TextureDesc,
-			D3D12_RESOURCE_STATE_COPY_DEST, // We can create the resource directly in copy destination state since we want to fill it with content
-			nullptr,
-			IID_PPV_ARGS(&m_D3D12Resource));
-		}
-		else
-		{
-			StopForFail("Texture GPU resource already allocated")
-		}
+		InstantiateOnGPU();
 
 		ID3D12GraphicsCommandList2* d3d12CmdList = static_cast<GEPUtils::Graphics::D3D12CommandList&>(InCommandList).GetInner().Get();
 
@@ -479,6 +558,27 @@ namespace D3D12GEPUtils
 		// Note: this is not optimal, usually we should transition the resource depending on the situation in which we want to use it, e.g. D3D12_RESOURCE_STATE_PIXEL_SHADER_RESOURCE in the case of pixel shader usage
 		CD3DX12_RESOURCE_BARRIER transitionBarrier = CD3DX12_RESOURCE_BARRIER::Transition(m_D3D12Resource.Get(), D3D12_RESOURCE_STATE_COPY_DEST, D3D12_RESOURCE_STATE_GENERIC_READ);
 		d3d12CmdList->ResourceBarrier(1, &transitionBarrier);
+	}
+
+	void D3D12Texture::InstantiateOnGPU()
+	{
+		ID3D12Device2* d3d12Device = static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice()).GetInner().Get();
+
+		if (!m_D3D12Resource)
+		{
+			// Allocate a committed resource in GPU dedicated memory (default heap)
+			d3d12Device->CreateCommittedResource(
+				&CD3DX12_HEAP_PROPERTIES(D3D12_HEAP_TYPE_DEFAULT),
+				D3D12_HEAP_FLAG_NONE,
+				&m_TextureDesc,
+				D3D12_RESOURCE_STATE_COPY_DEST, // We can create the resource directly in copy destination state since we want to fill it with content
+				nullptr,
+				IID_PPV_ARGS(&m_D3D12Resource));
+		}
+		else
+		{
+			StopForFail("Texture GPU resource already allocated")
+		}
 	}
 
 	size_t D3D12Texture::GetGPUSize()

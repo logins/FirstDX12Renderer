@@ -126,12 +126,17 @@ struct Buffer : public Resource {
 struct Texture : public Resource {
 
 	virtual void UploadToGPU(GEPUtils::Graphics::CommandList& InCommandList, GEPUtils::Graphics::Buffer& InIntermediateBuffer) = 0;
+	// Allocate empty space on GPU
+	virtual void InstantiateOnGPU() = 0;
 
 	virtual size_t GetGPUSize() = 0;
 
+	size_t GetWidth() const { return m_Width; }
+	size_t GetHeight() const { return m_Height; }
 	BUFFER_FORMAT GetFormat() { return m_TexelFormat; }
 	TEXTURE_TYPE GetType() { return m_Type; }
 	size_t GetMipLevelsNum() { return m_MipLevelsNum; }
+	size_t GetArraySize() const { return m_ArraySize; }
 
 protected:
 	size_t          m_Width;
@@ -171,9 +176,14 @@ protected:
 };
 
 struct ShaderResourceView : public ResourceView {
-	virtual void ReferenceTexture(GEPUtils::Graphics::Texture& InTexture) = 0;
+	virtual void InitAsTex2DOrCubemap(GEPUtils::Graphics::Texture& InTexture) = 0;
 protected:
 	ShaderResourceView() = default;
+};
+
+struct UnorderedAccessView : public ResourceView {
+protected:
+	UnorderedAccessView() = default;
 };
 
 struct VertexBufferView { // size is in bytes
