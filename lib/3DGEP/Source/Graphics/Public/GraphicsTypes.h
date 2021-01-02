@@ -216,6 +216,10 @@ struct StaticSampler {
 		: m_ShaderRegister(InShaderRegister), m_Filter(InFilterType), 
 		m_AddressU(TEXTURE_ADDRESS_MODE::WRAP),	m_AddressV(TEXTURE_ADDRESS_MODE::WRAP),	m_AddressW(TEXTURE_ADDRESS_MODE::WRAP)
 	{ }
+	StaticSampler(uint32_t InShaderRegister, SAMPLE_FILTER_TYPE InFilterType, TEXTURE_ADDRESS_MODE InAddressMode)
+		: m_ShaderRegister(InShaderRegister), m_Filter(InFilterType),
+		m_AddressU(InAddressMode), m_AddressV(InAddressMode), m_AddressW(InAddressMode)
+	{ }
 	uint32_t m_ShaderRegister;
 	SAMPLE_FILTER_TYPE m_Filter;
 	TEXTURE_ADDRESS_MODE m_AddressU;

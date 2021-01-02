@@ -171,23 +171,22 @@ void Part4Application::Initialize()
 
 	//Create Root Signature
 	Graphics::PipelineState::RESOURCE_BINDER_DESC resourceBinderDesc2;
-	// TODO do we need any flag?
 	// Root Signature
 	// We are gonna use a root constant to pass the GenerateMipsCB to the shader
 	Graphics::PipelineState::RESOURCE_BINDER_PARAM generateMipsCbParam;
-	generateMipsCbParam.InitAsConstants(sizeof(GenerateMipsCB) / 4, 0, 0); // TODO Add visibility compute shader
+	generateMipsCbParam.InitAsConstants(sizeof(GenerateMipsCB) / 4, 0, 0);
 	resourceBinderDesc2.Params.emplace_back(std::move(generateMipsCbParam));
 	// Root parameter for the cubemap
 	// We first need to have one SRV range that will be used by the input cube faces
 	Graphics::PipelineState::RESOURCE_BINDER_PARAM inputCubeFacesParam;
-	inputCubeFacesParam.InitAsTableSRVRange(1, 0); // TODO add flags functionality for ranges and add VOLATILE
+	inputCubeFacesParam.InitAsTableSRVRange(1, 0);
 	resourceBinderDesc2.Params.emplace_back(std::move(inputCubeFacesParam));
 	// Root parameter for output mips
 	Graphics::PipelineState::RESOURCE_BINDER_PARAM cubeMipViewsParam;
 	cubeMipViewsParam.InitAsTableUAVRange(4, 0);
 	resourceBinderDesc2.Params.emplace_back(std::move(cubeMipViewsParam));
 	// Sampler for the cubemap
-	resourceBinderDesc2.StaticSamplers.emplace_back(0, Graphics::SAMPLE_FILTER_TYPE::LINEAR);
+	resourceBinderDesc2.StaticSamplers.emplace_back(0, Graphics::SAMPLE_FILTER_TYPE::LINEAR, Graphics::TEXTURE_ADDRESS_MODE::CLAMP);
 	// Loading compute shader
 	// To generate VertexShader.cso I will be using: fxc /Zi /T cs_5_1 /Fo GenerateCubeMips_CS.cso GenerateCubeMips_CS.hlsl
 	Graphics::Shader& computeShader = GEPUtils::Graphics::AllocateShader(Part4_SHADERS_PATH(GenerateCubeMips_CS.cso));

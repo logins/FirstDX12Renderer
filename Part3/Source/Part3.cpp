@@ -105,7 +105,7 @@ void Part3Application::Initialize()
 	// Create Root Signature serialized blob and then the object from it
 	// RTV Formats
 	// Pipeline State Stream definition and fill
-	Graphics::PipelineState::PIPELINE_STATE_DESC pipelineStateDesc{
+	Graphics::PipelineState::GRAPHICS_PSO_DESC pipelineStateDesc{
 		inputLayout,
 		resourceBinderDesc,
 		Graphics::PRIMITIVE_TOPOLOGY_TYPE::PTT_TRIANGLE,
