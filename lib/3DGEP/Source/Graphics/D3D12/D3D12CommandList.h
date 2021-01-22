@@ -1,5 +1,14 @@
+/*
+ D3D12CommandList.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef D3D12CommandList_h__
 #define D3D12CommandList_h__
+
 #include "CommandList.h"
 #include <wrl.h>
 #include <functional>

@@ -1,3 +1,11 @@
+/*
+ pch.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 // Tips for Getting Started: 
 //   1. Use the Solution Explorer window to add/manage files
 //   2. Use the Team Explorer window to connect to source control

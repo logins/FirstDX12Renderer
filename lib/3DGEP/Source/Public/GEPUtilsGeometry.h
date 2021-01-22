@@ -1,9 +1,15 @@
+/*
+ GEPUtilsGeometry.h
 
-#ifndef Geometry3DGEP_h__
-#define Geometry3DGEP_h__
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
+#ifndef GEPUtilsGeometry_h__
+#define GEPUtilsGeometry_h__
 
 #include <Eigen/Geometry>
-
 
 namespace GEPUtils {
 	namespace Geometry {

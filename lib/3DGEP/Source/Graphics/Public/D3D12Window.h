@@ -1,3 +1,11 @@
+/*
+ D3D12Window.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef D3D12Window_h__
 #define D3D12Window_h__
 

@@ -1,5 +1,14 @@
+/*
+ GraphicsTypes.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef GraphicsTypes_h__
 #define GraphicsTypes_h__
+
 #include <type_traits>
 #include <string>
 #include <vector>

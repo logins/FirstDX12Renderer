@@ -1,5 +1,14 @@
+/*
+ GraphicsUtils.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef GraphicsUtils_h__
 #define GraphicsUtils_h__
+
 #include "GraphicsTypes.h"
 #include <memory> // for std::unique_ptr
 

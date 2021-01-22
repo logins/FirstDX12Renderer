@@ -1,3 +1,11 @@
+/*
+ PipelineState.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef PipelineState_h__
 #define PipelineState_h__
 

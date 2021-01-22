@@ -1,12 +1,13 @@
-/*!
- * Project: First D3D12 Renderer - https://github.com/logins/FirstDX12Renderer
- *
- * File: D3D12DescHeapFactory.h
- *
- * Author: Riccardo Loggini
- */
-#ifndef D3D12DescHeap_h__
-#define D3D12DescHeap_h__
+/*
+ D3D12DescHeapFactory.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
+#ifndef D3D12DescHeapFactory_h__
+#define D3D12DescHeapFactory_h__
 
 #include "d3dx12.h"
 

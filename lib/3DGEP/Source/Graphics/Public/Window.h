@@ -1,6 +1,13 @@
+/*
+ Window.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef Window_h__
 #define Window_h__
-
 
 #include <memory>
 #include "CommandQueue.h"

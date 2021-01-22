@@ -1,3 +1,11 @@
+/*
+ pch.cpp
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 // pch.cpp: source file corresponding to pre-compiled header; necessary for compilation to succeed
 
 #include "pch.h"

@@ -1,3 +1,11 @@
+/*
+ D3D12UtilsInternal.cpp
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #include "D3D12UtilsInternal.h"
 #include "GEPUtils.h"
 

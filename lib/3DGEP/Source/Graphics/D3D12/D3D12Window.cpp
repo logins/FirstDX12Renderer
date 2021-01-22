@@ -1,10 +1,10 @@
-/*!
- * Project: First D3D12 Renderer - https://github.com/logins/FirstDX12Renderer
- *
- * File: D3D12Window.cpp
- *
- * Author: Riccardo Loggini
- */
+/*
+ D3D12Window.cpp
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
 
 #include "D3D12Window.h"
 #include <algorithm>

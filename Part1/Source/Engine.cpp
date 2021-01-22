@@ -1,6 +1,12 @@
-// Engine.cpp : This file contains the 'main' function. Program execution begins and ends there.
-//
+/*
+ Engine.cpp
 
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
+// Engine.cpp : This file contains the 'main' function. Program execution begins and ends there.
 
 #include "pch.h"
 

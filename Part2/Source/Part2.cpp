@@ -1,4 +1,12 @@
-#include <Part2.h>
+/*
+ Part2.cpp
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+ 
+#include "Part2.h"
 #include <iostream>
 #include <algorithm>
 #include <D3D12GEPUtils.h>

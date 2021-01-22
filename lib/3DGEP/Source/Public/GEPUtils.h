@@ -1,10 +1,11 @@
-/*!
- * Project: First D3D12 Renderer - https://github.com/logins/FirstDX12Renderer
- *
- * File: GEPUtils.h
- *
- * Author: Riccardo Loggini
- */
+/*
+ GEPUtils.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef GEPUtils_h__
 #define GEPUtils_h__
 

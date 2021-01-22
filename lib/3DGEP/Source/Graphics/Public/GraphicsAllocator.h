@@ -1,10 +1,11 @@
-/*!
- * Project: First D3D12 Renderer - https://github.com/logins/FirstDX12Renderer
- *
- * File: GraphicsAllocator.h
- *
- * Author: Riccardo Loggini
- */
+/*
+ GraphicsAllocator.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef GraphicsAllocator_h__
 #define GraphicsAllocator_h__
 

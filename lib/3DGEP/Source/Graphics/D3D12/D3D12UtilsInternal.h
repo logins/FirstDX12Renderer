@@ -1,3 +1,11 @@
+/*
+ D3D12UtilsInternal.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef D3D12UtilsInternal_h__
 #define D3D12UtilsInternal_h__
 
@@ -35,4 +43,5 @@ namespace D3D12GEPUtils {
 
 	D3D12_TEXTURE_ADDRESS_MODE TextureAddressModeToD3D12(GEPUtils::Graphics::TEXTURE_ADDRESS_MODE InAddressMode);
 }
+
 #endif // D3D12UtilsInternal_h__

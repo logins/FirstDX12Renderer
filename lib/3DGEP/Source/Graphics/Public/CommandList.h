@@ -1,5 +1,14 @@
+/*
+ CommandList.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef CommandList_h__
 #define CommandList_h__
+
 #include "GraphicsTypes.h"
 
 namespace GEPUtils { namespace Graphics {

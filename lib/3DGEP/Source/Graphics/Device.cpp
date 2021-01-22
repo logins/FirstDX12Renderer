@@ -1,3 +1,11 @@
+/*
+ Device.cpp
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+ 
 #include "Device.h"
 
 #ifdef GRAPHICS_SDK_D3D12

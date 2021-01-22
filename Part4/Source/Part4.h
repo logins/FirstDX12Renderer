@@ -1,5 +1,13 @@
-#ifndef Part3_h__
-#define Part3_h__
+/*
+ Part4.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
+#ifndef Part4_h__
+#define Part4_h__
 
 #include "Application.h"
 
@@ -80,4 +88,5 @@ protected:
 
 
 };
-#endif // Part3_h__
+
+#endif // Part4_h__

@@ -1,3 +1,11 @@
+/*
+ Part2.h
+
+ First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
+
+ MIT License - Copyright (c) 2021 Riccardo Loggini
+*/
+
 #ifndef Part2_h__
 #define Part2_h__
 
