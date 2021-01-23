@@ -20,18 +20,11 @@ namespace GEPUtils { namespace Graphics {
 
 	D3D12GraphicsAllocator::D3D12GraphicsAllocator()
 	{
-		m_DummySRV = std::make_unique<D3D12GEPUtils::D3D12ShaderResourceView>(); 
-		m_DummyCBV = std::make_unique<D3D12GEPUtils::D3D12ConstantBufferView>();
-		m_DummyVBV = std::make_unique<D3D12GEPUtils::D3D12VertexBufferView>();
-		m_DummyIBV = std::make_unique<D3D12GEPUtils::D3D12IndexBufferView>();
-		m_DummyBuffer = std::make_unique<D3D12GEPUtils::D3D12Resource>();
-		m_DummyTexture = std::make_unique<D3D12GEPUtils::D3D12Texture>();
-		m_DummyPSO = std::make_unique<GEPUtils::Graphics::D3D12PipelineState>();
 	}
 
 	GEPUtils::Graphics::Resource& D3D12GraphicsAllocator::AllocateEmptyResource()
 	{
-		m_ResourceArray.push(std::make_unique<D3D12GEPUtils::D3D12Resource>(nullptr)); //TODO possibly checking to not pass a certain number of allocations
+		m_ResourceArray.push_back(std::make_unique<D3D12GEPUtils::D3D12Resource>(nullptr)); //TODO possibly checking to not pass a certain number of allocations
 
 		return *m_ResourceArray.back();
 	}
@@ -43,7 +36,7 @@ namespace GEPUtils { namespace Graphics {
 			static_cast<GEPUtils::Graphics::D3D12Device&>(GEPUtils::Graphics::GetDevice()).GetInner(), d3d12Resource.GetAddressOf(),
 			D3D12GEPUtils::HeapTypeToD3D12(InHeapType), InSize, D3D12GEPUtils::ResFlagsToD3D12(InFlags), D3D12GEPUtils::ResourceStateTypeToD3D12(InState));
 
-		m_ResourceArray.push(std::make_unique<D3D12GEPUtils::D3D12Resource>(d3d12Resource));
+		m_ResourceArray.push_back(std::make_unique<D3D12GEPUtils::D3D12Resource>(d3d12Resource));
 
 		d3d12Resource.Reset();
 
@@ -52,14 +45,14 @@ namespace GEPUtils { namespace Graphics {
 
 	GEPUtils::Graphics::DynamicBuffer& D3D12GraphicsAllocator::AllocateDynamicBuffer()
 	{
-		m_ResourceArray.push(std::make_unique<D3D12GEPUtils::D3D12DynamicBuffer>());
+		m_ResourceArray.push_back(std::make_unique<D3D12GEPUtils::D3D12DynamicBuffer>());
 
 		return static_cast<GEPUtils::Graphics::DynamicBuffer&>(*m_ResourceArray.back());
 	}
 
 	GEPUtils::Graphics::Texture& D3D12GraphicsAllocator::AllocateTextureFromFile(wchar_t const* InTexturePath, GEPUtils::Graphics::TEXTURE_FILE_FORMAT InFileFormat, int32_t InMipsNum /*= 0*/, GEPUtils::Graphics::RESOURCE_FLAGS InCreationFlags /*= RESOURCE_FLAGS::NONE*/)
 	{
-		m_ResourceArray.push(std::make_unique<D3D12GEPUtils::D3D12Texture>(InTexturePath, InFileFormat, InMipsNum, InCreationFlags));
+		m_ResourceArray.push_back(std::make_unique<D3D12GEPUtils::D3D12Texture>(InTexturePath, InFileFormat, InMipsNum, InCreationFlags));
 
 		return static_cast<GEPUtils::Graphics::Texture&>(*m_ResourceArray.back());
 	}
@@ -69,7 +62,7 @@ namespace GEPUtils { namespace Graphics {
 		std::unique_ptr<D3D12GEPUtils::D3D12Texture> outputTexture = std::make_unique<D3D12GEPUtils::D3D12Texture>(InWidth, InHeight, InType, InFormat, InArraySize, InMipLevels);
 		outputTexture->InstantiateOnGPU(); // Allocate empty space on GPU
 
-		m_ResourceArray.push(std::move(outputTexture));
+		m_ResourceArray.push_back(std::move(outputTexture));
 
 		return static_cast<GEPUtils::Graphics::Texture&>(*m_ResourceArray.back());
 	}
@@ -102,13 +95,13 @@ namespace GEPUtils { namespace Graphics {
 
 	GEPUtils::Graphics::VertexBufferView& D3D12GraphicsAllocator::AllocateVertexBufferView()
 	{
-		m_VertexViewArray.push(std::make_unique<D3D12GEPUtils::D3D12VertexBufferView>()); //TODO possibly checking to not pass a certain number of allocations
+		m_VertexViewArray.push_back(std::make_unique<D3D12GEPUtils::D3D12VertexBufferView>()); //TODO possibly checking to not pass a certain number of allocations
 		return *m_VertexViewArray.back();
 	}
 
 	GEPUtils::Graphics::IndexBufferView& D3D12GraphicsAllocator::AllocateIndexBufferView()
 	{
-		m_IndexViewArray.push(std::make_unique <D3D12GEPUtils::D3D12IndexBufferView>());
+		m_IndexViewArray.push_back(std::make_unique <D3D12GEPUtils::D3D12IndexBufferView>());
 		return *m_IndexViewArray.back();
 	}
 
@@ -116,14 +109,14 @@ namespace GEPUtils { namespace Graphics {
 	{
 		// Allocate the view
 		// Note: the constructor will allocate a corresponding descriptor in a CPU desc heap
-		m_ResourceViewArray.push(std::make_unique<D3D12GEPUtils::D3D12ConstantBufferView>(InResource));
+		m_ResourceViewArray.push_back(std::make_unique<D3D12GEPUtils::D3D12ConstantBufferView>(InResource));
 
 		return static_cast<GEPUtils::Graphics::ConstantBufferView&>(*m_ResourceViewArray.back());
 	}
 
 	GEPUtils::Graphics::ConstantBufferView& D3D12GraphicsAllocator::AllocateConstantBufferView()
 	{
-		m_ResourceViewArray.push(std::make_unique<D3D12GEPUtils::D3D12ConstantBufferView>());
+		m_ResourceViewArray.push_back(std::make_unique<D3D12GEPUtils::D3D12ConstantBufferView>());
 
 		return static_cast<GEPUtils::Graphics::ConstantBufferView&>(*m_ResourceViewArray.back());
 	}
@@ -132,7 +125,7 @@ namespace GEPUtils { namespace Graphics {
 	{
 		// Allocate the view
 		// Note: the constructor will allocate a corresponding descriptor in a CPU desc heap
-		m_ResourceViewArray.push(std::make_unique<D3D12GEPUtils::D3D12ShaderResourceView>(InTexture));
+		m_ResourceViewArray.push_back(std::make_unique<D3D12GEPUtils::D3D12ShaderResourceView>(InTexture));
 
 		return static_cast<GEPUtils::Graphics::ShaderResourceView&>(*m_ResourceViewArray.back());
 	}
@@ -143,7 +136,7 @@ namespace GEPUtils { namespace Graphics {
 
 		outUav->InitAsTex2DArray(InTexture, InArraySize, InMostDetailedMip, InMipLevels, InFirstArraySlice, InPlaneSlice);
 
-		m_ResourceViewArray.push(std::move(outUav));
+		m_ResourceViewArray.push_back(std::move(outUav));
 
 		return static_cast<GEPUtils::Graphics::ShaderResourceView&>(*m_ResourceViewArray.back());
 	}
@@ -154,7 +147,7 @@ namespace GEPUtils { namespace Graphics {
 
 		outUav->InitAsTex2DArray(InTexture, InArraySize, InMipSlice, InFirstArraySlice, InPlaceSlice);
 
-		m_ResourceViewArray.push(std::move(outUav));
+		m_ResourceViewArray.push_back(std::move(outUav));
 
 		return static_cast<GEPUtils::Graphics::UnorderedAccessView&>(*m_ResourceViewArray.back());
 	}
@@ -163,14 +156,14 @@ namespace GEPUtils { namespace Graphics {
 	{
 		Microsoft::WRL::ComPtr<ID3DBlob> OutFileBlob;
 		D3D12GEPUtils::ThrowIfFailed(::D3DReadFileToBlob(InShaderPath, &OutFileBlob));
-		m_ShaderArray.push(std::make_unique<D3D12GEPUtils::D3D12Shader>(OutFileBlob));
+		m_ShaderArray.push_back(std::make_unique<D3D12GEPUtils::D3D12Shader>(OutFileBlob));
 
 		return *m_ShaderArray.back();
 	}
 
 	GEPUtils::Graphics::PipelineState& D3D12GraphicsAllocator::AllocatePipelineState()
 {
-		m_PipelineStateArray.push(std::make_unique<GEPUtils::Graphics::D3D12PipelineState>());
+		m_PipelineStateArray.push_back(std::make_unique<GEPUtils::Graphics::D3D12PipelineState>());
 
 		return *m_PipelineStateArray.back();
 	}

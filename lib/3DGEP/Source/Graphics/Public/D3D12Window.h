@@ -43,7 +43,7 @@ namespace D3D12GEPUtils {
 
 		virtual void ShowWindow() override;
 
-		void Close();
+		virtual void Close() override;
 
 		virtual void Present() override;
 

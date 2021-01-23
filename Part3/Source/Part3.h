@@ -20,6 +20,7 @@ public:
 	static Application* Get();
 
 	virtual void Initialize() override;
+
 private:
 
 	// Callbacks for main window mouse events

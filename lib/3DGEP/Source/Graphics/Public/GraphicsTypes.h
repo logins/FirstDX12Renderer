@@ -123,6 +123,7 @@ enum class TEXTURE_TYPE : int {
 struct Resource {
 	size_t GetDataSize() const { return m_DataSize; }
 	size_t GetAlignSize() const { return m_AlignmentSize; }
+	virtual ~Resource() = default; // Need to specify virtual to make sure the first destructor to get invoked is the one of the last derived class!
 protected:
 	Resource() : m_DataSize(0), m_AlignmentSize(0) {};
 	size_t m_DataSize;
@@ -175,7 +176,7 @@ enum class RESOURCE_VIEW_TYPE : int {
 };
 
 struct ResourceView {
-
+	virtual ~ResourceView() = default; // Need to specify virtual to make sure the first destructor to get invoked is the one of the last derived class!
 };
 
 struct ConstantBufferView : public ResourceView {

@@ -40,6 +40,11 @@ namespace GEPUtils
 
 	}
 
+	void Application::OnMainWindowClose()
+	{
+		::PostQuitMessage(0); // Next message from winapi will be WM_QUIT
+	}
+
 	void Application::OnWindowPaint()
 	{
 		m_PaintStarted = true;
@@ -103,6 +108,8 @@ namespace GEPUtils
 
 		m_MainWindow->OnResizeDelegate.Add<Application, &Application::OnWindowResize>(this);
 
+		m_MainWindow->OnDestroyDelegate.Add<Application, &Application::OnMainWindowClose>(this);
+
 		m_IsInitialized = true;
 
 	}
@@ -126,11 +133,17 @@ namespace GEPUtils
 
 			OnMainWindowUpdate();
 		}
+
+		OnQuitApplication();
 	}
 
-	void Application::QuitApplication()
+	void Application::OnQuitApplication()
 	{
+		// Finish all the render commands currently in flight
+		m_CmdQueue->Flush();
 
+		// Release all the allocated graphics resources
+		GEPUtils::Graphics::GraphicsAllocator::Get()->ReleaseAll();
 	}
 
 	void Application::Update()

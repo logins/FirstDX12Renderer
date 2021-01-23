@@ -69,7 +69,7 @@ namespace D3D12GEPUtils
 
 	void D3D12Window::Close()
 	{
-		// TODO Any other objects to take care of on window close?
+		OnDestroyDelegate.Broadcast();
 	}
 
 	void D3D12Window::Present()
@@ -392,7 +392,7 @@ namespace D3D12GEPUtils
 				break;
 			}
 			case WM_DESTROY:
-				currentWindow.OnDestroyDelegate.Broadcast();
+				currentWindow.Close();
 				break;
 			}
 		}

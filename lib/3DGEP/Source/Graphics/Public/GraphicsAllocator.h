@@ -9,7 +9,7 @@
 #ifndef GraphicsAllocator_h__
 #define GraphicsAllocator_h__
 
-#include <queue>
+#include <deque>
 #include <memory> // for std::unique_ptr
 #include "GraphicsTypes.h"
 #include "PipelineState.h"
@@ -28,6 +28,8 @@ class GraphicsAllocatorBase
 {
 public:
 	GraphicsAllocatorBase() = default;
+	
+	virtual ~GraphicsAllocatorBase() = default;
 
 	virtual GEPUtils::Graphics::Resource& AllocateEmptyResource() = 0;
 
@@ -46,8 +48,6 @@ public:
 
 	virtual GEPUtils::Graphics::Buffer& AllocateBuffer(size_t InSize, GEPUtils::Graphics::RESOURCE_HEAP_TYPE InHeapType, GEPUtils::Graphics::RESOURCE_STATE InState, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = RESOURCE_FLAGS::NONE) = 0;
 
-
-
 	virtual GEPUtils::Graphics::VertexBufferView& AllocateVertexBufferView() = 0;
 	virtual GEPUtils::Graphics::IndexBufferView& AllocateIndexBufferView() = 0;
 	virtual GEPUtils::Graphics::ConstantBufferView& AllocateConstantBufferView(GEPUtils::Graphics::Buffer& InResource) = 0;
@@ -63,15 +63,10 @@ public:
 	virtual GEPUtils::Graphics::Shader& AllocateShader(wchar_t const* InShaderPath) = 0;
 	virtual GEPUtils::Graphics::PipelineState& AllocatePipelineState() = 0;
 
-	GEPUtils::Graphics::ShaderResourceView& GetDummySRV() const { return *m_DummySRV; }
-	GEPUtils::Graphics::ConstantBufferView& GetDummyCBV() const { return *m_DummyCBV; }
-	GEPUtils::Graphics::VertexBufferView& GetDummyVBV() const { return *m_DummyVBV; }
-	GEPUtils::Graphics::IndexBufferView& GetDummyIBV() const { return *m_DummyIBV; }
 
-	GEPUtils::Graphics::Texture& GetDummyTexture() const { return *m_DummyTexture; }
-	GEPUtils::Graphics::Buffer& GetDummyBuffer() const { return *m_DummyBuffer; }
-
-	GEPUtils::Graphics::PipelineState& GetDummyPSO() const { return *m_DummyPSO; }
+	void ReleaseAll() {
+		m_ResourceArray.clear(); m_ResourceViewArray.clear(); m_ResourceViewArray.clear(); m_VertexViewArray.clear(); m_IndexViewArray.clear(); m_ShaderArray.clear(); m_PipelineStateArray.clear();
+	}
 
 	// Deleting copy constructor, assignment operator, move constructor and move assignment
 	GraphicsAllocatorBase(const GraphicsAllocatorBase&) = delete;
@@ -80,24 +75,13 @@ public:
 	GraphicsAllocatorBase& operator=(GraphicsAllocatorBase&&) = delete;
 
 protected:
-	std::queue<std::unique_ptr<GEPUtils::Graphics::Resource>> m_ResourceArray;
-	std::queue<std::unique_ptr<GEPUtils::Graphics::ResourceView>> m_ResourceViewArray;
-	std::queue<std::unique_ptr<GEPUtils::Graphics::VertexBufferView>> m_VertexViewArray;
-	std::queue<std::unique_ptr<GEPUtils::Graphics::IndexBufferView>> m_IndexViewArray;
-	std::queue<std::unique_ptr<GEPUtils::Graphics::Shader>> m_ShaderArray;
-	std::queue<std::unique_ptr<GEPUtils::Graphics::PipelineState>> m_PipelineStateArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::Resource>> m_ResourceArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::ResourceView>> m_ResourceViewArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::VertexBufferView>> m_VertexViewArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::IndexBufferView>> m_IndexViewArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::Shader>> m_ShaderArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::PipelineState>> m_PipelineStateArray;
 
-	std::unique_ptr<GEPUtils::Graphics::ConstantBufferView> m_DummyCBV;
-	std::unique_ptr<GEPUtils::Graphics::ShaderResourceView> m_DummySRV;
-	std::unique_ptr<GEPUtils::Graphics::VertexBufferView> m_DummyVBV;
-	std::unique_ptr<GEPUtils::Graphics::IndexBufferView> m_DummyIBV;
-
-	std::unique_ptr<GEPUtils::Graphics::Buffer> m_DummyBuffer;
-	std::unique_ptr<GEPUtils::Graphics::Texture> m_DummyTexture;
-
-
-
-	std::unique_ptr<GEPUtils::Graphics::PipelineState> m_DummyPSO;
 };
 
 
@@ -108,15 +92,6 @@ public:
 	// Will return the instance of the chosen graphics allocator for the current configuration (for now only the DX12 one)
 	static GraphicsAllocatorBase* Get();
 
-	static GEPUtils::Graphics::ShaderResourceView& DummySRV() { return Get()->GetDummySRV(); }
-	static GEPUtils::Graphics::ConstantBufferView& DummyCBV() { return Get()->GetDummyCBV(); }
-	static GEPUtils::Graphics::VertexBufferView& DummyVBV() { return Get()->GetDummyVBV(); }
-	static GEPUtils::Graphics::IndexBufferView& DummyIBV() { return Get()->GetDummyIBV(); }
-
-	static GEPUtils::Graphics::Buffer& DummyBuffer() { return Get()->GetDummyBuffer(); }
-	static GEPUtils::Graphics::Texture& DummyTexture() { return Get()->GetDummyTexture(); }
-
-	static GEPUtils::Graphics::PipelineState& DummyPSO() { return Get()->GetDummyPSO(); }
 
 	// Deleting copy constructor, assignment operator, move constructor and move assignment
 	GraphicsAllocator(const GraphicsAllocator&) = delete;

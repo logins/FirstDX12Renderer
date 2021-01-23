@@ -36,7 +36,7 @@ namespace GEPUtils
 		virtual void Initialize();
 
 		void Run();
-		void QuitApplication();
+		virtual void OnQuitApplication();
 
 		inline uint64_t GetCurrentFrameNumber() const { return m_FrameNumber; };
 
@@ -54,6 +54,7 @@ namespace GEPUtils
 		void SetFov(float InFov);
 
 		void OnMainWindowUpdate();
+		void OnMainWindowClose();
 		void OnWindowPaint();
 		void OnWindowResize(uint32_t InNewWidth, uint32_t InNewHeight);
 

@@ -15,14 +15,8 @@
 #include "GraphicsTypes.h"
 
 namespace GEPUtils { namespace Graphics {
-/*!
- * \class Window
- *
- * \brief Virtual class to be used as a platform-agnostic representation of a graphic window.
- *
- * \author Riccardo Loggini
- * \date July 2020
- */
+
+	// Virtual class to be used as a platform-agnostic representation of a graphic window.
 	class Window
 	{
 	public:
@@ -36,6 +30,8 @@ namespace GEPUtils { namespace Graphics {
 		};
 
 		virtual void ShowWindow() = 0;
+
+		virtual void Close() = 0;
 
 		virtual void Present() = 0;
 
