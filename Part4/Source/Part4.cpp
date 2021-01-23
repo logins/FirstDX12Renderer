@@ -151,13 +151,7 @@ void Part4Application::Initialize()
 	//Init the Pipeline State Object
 	m_PipelineState->Init(pipelineStateDesc);
 
-	// Executing command list and waiting for full execution
-	m_CmdQueue->ExecuteCmdList(loadContentCmdList);
-
-	m_CmdQueue->Flush(); // Note: Flushing operations on the command queue here will ensure that all the operations made on resources by the loadContentCmdList finished executing!
-
 	// --- MIPS GENERATION ---
-	Graphics::CommandList& loadContentCmdList2 = m_CmdQueue->GetAvailableCommandList();
 
 	// Creating 4 UAVs to target 1 mip each starting from level 1
 	// Note: the Tex 2D Array will refer to the selected mip array of faces!
@@ -170,11 +164,11 @@ void Part4Application::Initialize()
 	GEPUtils::Graphics::ShaderResourceView&  inputCubeFacesView = Graphics::GraphicsAllocator::Get()->AllocateSrvTex2DArray(*m_Cubemap, 6);
 
 	// Views need to be uploaded to GPU
-	loadContentCmdList2.UploadViewToGPU(inputCubeFacesView);
-	loadContentCmdList2.UploadUavToGpu(cubeMipView1);
-	loadContentCmdList2.UploadUavToGpu(cubeMipView2);
-	loadContentCmdList2.UploadUavToGpu(cubeMipView3);
-	loadContentCmdList2.UploadUavToGpu(cubeMipView4); // Note: there is room for optimization in this process since we could allocate an entire range of Uavs altogether
+	loadContentCmdList.UploadViewToGPU(inputCubeFacesView);
+	loadContentCmdList.UploadUavToGpu(cubeMipView1);
+	loadContentCmdList.UploadUavToGpu(cubeMipView2);
+	loadContentCmdList.UploadUavToGpu(cubeMipView3);
+	loadContentCmdList.UploadUavToGpu(cubeMipView4); // Note: there is room for optimization in this process since we could allocate an entire range of Uavs altogether
 
 	//Create Root Signature
 	Graphics::PipelineState::RESOURCE_BINDER_DESC resourceBinderDesc2;
@@ -209,12 +203,12 @@ void Part4Application::Initialize()
 	//Init the Pipeline State Object
 	m_PipelineState2.Init(pipelineStateDesc2);
 	// Set the PSO+RS
-	loadContentCmdList2.SetPipelineStateAndResourceBinder(m_PipelineState2);
+	loadContentCmdList.SetPipelineStateAndResourceBinder(m_PipelineState2);
 	// Set resource binding
-	loadContentCmdList2.ReferenceComputeTable(1, inputCubeFacesView);
+	loadContentCmdList.ReferenceComputeTable(1, inputCubeFacesView);
 	// Note: This descriptor table is expecting a range of 4 descriptors, 
 	// but we know that cubeMipView1 in GPU memory will be followed by 2,3 and 4 because we instantiated them one after the other
-	loadContentCmdList2.ReferenceComputeTable(2, cubeMipView1); 
+	loadContentCmdList.ReferenceComputeTable(2, cubeMipView1); 
 
 	// Since our compute shader handles portions of 8 by 8 texels for each thread group, 
 	// the number of thread groups, in X and Y dimensions, in our dispatch will be the size of the mip 1 (so half the size of mip0), aligned by 8 and then divided by 8.
@@ -222,15 +216,15 @@ void Part4Application::Initialize()
 
 	GenerateMipsCB genMipsCB; genMipsCB.Mip1Size = Eigen::Vector2f(mip1SizeAligned, mip1SizeAligned);
 
-	loadContentCmdList2.SetComputeRootConstants(0, sizeof(GenerateMipsCB) / 4, &genMipsCB, 0);
+	loadContentCmdList.SetComputeRootConstants(0, sizeof(GenerateMipsCB) / 4, &genMipsCB, 0);
 
 	// In the Z dimension the number of thread groups will be 6, because we are going to repeat the work on X and Y for each of the 6 cube faces.
-	loadContentCmdList2.Dispatch(mip1SizeAligned / 8, mip1SizeAligned / 8, 6);
+	loadContentCmdList.Dispatch(mip1SizeAligned / 8, mip1SizeAligned / 8, 6);
 
 	// Executing command list and waiting for full execution
 	m_CmdQueue->ExecuteCmdList(loadContentCmdList);
 
-	m_CmdQueue->Flush(); // Wait to complete execution
+	m_CmdQueue->Flush(); // Note: Flushing operations on the command queue here will ensure that all the operations made on resources by the loadContentCmdList finished executing!
 
 	// --- MIPS GENERATION ENDS ---
 
