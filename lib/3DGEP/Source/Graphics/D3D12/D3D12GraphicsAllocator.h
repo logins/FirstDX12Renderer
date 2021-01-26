@@ -16,7 +16,9 @@ namespace GEPUtils { namespace Graphics {
 class D3D12GraphicsAllocator : public GEPUtils::Graphics::GraphicsAllocatorBase
 {
 public:
-	D3D12GraphicsAllocator();
+	D3D12GraphicsAllocator() = default;
+
+	virtual ~D3D12GraphicsAllocator() override; // We need to declar base destructor as virtual to make the derived class destructor to be executed first
 
 	virtual GEPUtils::Graphics::Resource& AllocateEmptyResource() override;
 

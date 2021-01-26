@@ -29,7 +29,6 @@ namespace GEPUtils{ namespace Graphics {
  *   It might not be valid for the MVP matrix since it is stored in the root signature, so we don't need to have a standalone buffer for it... but for other, maybe material specific, parameters, it can turn useful...
  *   or when handling particles data simulated in CPU: instead of creating upload buffers on every frame, we can re-use the same buffers of the previous frame and upload different data. 
  * 
- * \author Riccardo Loggini
  * \date October 2020
  */
 	class D3D12BufferAllocator {
@@ -58,6 +57,8 @@ namespace GEPUtils{ namespace Graphics {
 		void ReleasePage(uint32_t InPageIdx);
 
 		static D3D12BufferAllocator& Get();
+
+		static void ShutDown();
 
 		D3D12BufferAllocator(size_t InPageSizeBytes = m_DefaultPageSize); // TODO need to move this in private
 		D3D12BufferAllocator& operator=(const D3D12BufferAllocator&) = delete;

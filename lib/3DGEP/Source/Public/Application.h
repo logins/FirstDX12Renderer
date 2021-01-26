@@ -31,24 +31,25 @@ namespace GEPUtils
 	{
 	public:
 		~Application() { m_Instance = nullptr; }
-		static Application* Get();
 
 		virtual void Initialize();
 
 		void Run();
-		virtual void OnQuitApplication();
 
 		inline uint64_t GetCurrentFrameNumber() const { return m_FrameNumber; };
 
+		virtual void OnQuitApplication();
 	protected:
+
+
 		// Singleton : Default constructor, copy constructor and assingment operators to be private
 		Application();
 
 		static Application* m_Instance; //Note: This is just a declaration, not a definition! m_Instance must be explicitly defined
 
-		virtual void UpdateContent(float InDeltaTime) {};
+		virtual void UpdateContent(float InDeltaTime) = 0;
 
-		virtual void RenderContent(Graphics::CommandList& InCmdList) {}
+		virtual void RenderContent(Graphics::CommandList & InCmdList) = 0;
 
 		void SetAspectRatio(float InAspectRatio);
 		void SetFov(float InFov);

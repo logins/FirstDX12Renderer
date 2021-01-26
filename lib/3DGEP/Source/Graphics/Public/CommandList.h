@@ -21,6 +21,8 @@ namespace GEPUtils { namespace Graphics {
 	{
 	public:
 
+		virtual ~CommandList() = default;
+
 		virtual void Close() = 0;
 
 		virtual void ResourceBarrier(GEPUtils::Graphics::Resource& InResource,

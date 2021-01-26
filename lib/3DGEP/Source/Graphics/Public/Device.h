@@ -24,7 +24,11 @@ namespace GEPUtils { namespace Graphics {
 class Device
 {
 public:
-	Device();
+
+	virtual void ReportLiveObjects() = 0;
+
+	virtual void ShutDown() = 0;
+
 private:
 	bool m_IsMainDevice=false;
 };

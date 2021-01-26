@@ -15,11 +15,6 @@
 
 namespace GEPUtils { namespace Graphics {
 
-Device::Device()
-{
-
-}
-
 GEPUtils::Graphics::Device& GetDevice()
 {
 	static std::unique_ptr<GEPUtils::Graphics::Device> graphicsDevice = nullptr;

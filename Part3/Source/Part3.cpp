@@ -28,6 +28,12 @@ int main()
 	Part3Application::Get()->Initialize();
 
 	Part3Application::Get()->Run();
+
+	Graphics::GetDevice().ShutDown();
+
+	// The following will trigger a breakpoint if we have some interfaces to graphics objects that were not cleaned up(leaking)!
+	GEPUtils::Graphics::GetDevice().ReportLiveObjects();
+
 }
 
 Part3Application::Part3Application()
@@ -145,6 +151,13 @@ void Part3Application::Initialize()
 	// Window events delegates
 	m_MainWindow->OnMouseMoveDelegate.Add<Part3Application, &Part3Application::OnMouseMove>(this);
 	m_MainWindow->OnMouseWheelDelegate.Add<Part3Application, &Part3Application::OnMouseWheel>(this);
+
+}
+
+void Part3Application::OnQuitApplication()
+{
+	Application::OnQuitApplication();
+
 }
 
 void Part3Application::OnMouseWheel(float InDeltaRot)

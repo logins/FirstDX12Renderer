@@ -94,12 +94,16 @@ namespace GEPUtils { namespace Graphics {
 	{
 	public:
 		D3D12DescHeapFactory();
+
+		static void ShutDown() { m_Instance.reset(); }
+
 		// Caches descriptors on CPU side
 		static D3D12DescriptorHeap& GetCPUHeap();
 		// Shader visible CBV_SRV_UAV descriptor heap used by the command lists
 		static D3D12DescriptorHeap& GetGPUHeap();
 	private:
 		static D3D12DescHeapFactory* Get();
+
 		// TODO delete copy construct and assignment op
 		static std::unique_ptr<D3D12DescHeapFactory> m_Instance;
 		std::unique_ptr<D3D12DescriptorHeap> m_CPUDescHeap;

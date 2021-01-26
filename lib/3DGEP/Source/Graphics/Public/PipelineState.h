@@ -21,6 +21,10 @@ public:
 
 	PipelineState() = default;
 
+	// Note: Virtual base destructor is necessary to call the destructor of the derived class first! 
+	// We need it to release references to graphics resources (with ComPtr)!!
+	virtual ~PipelineState() = default; 
+
 	struct INPUT_LAYOUT_DESC {
 		struct LayoutElement {
 			std::string m_Name;

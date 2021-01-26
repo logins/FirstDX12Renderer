@@ -65,12 +65,6 @@ namespace GEPUtils
 		m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_Fov);
 	}
 
-	Application* Application::Get()
-	{
-		if (m_Instance == nullptr)
-			m_Instance = new Application();
-		return m_Instance;
-	}
 
 	Application::Application()
 		: m_GraphicsDevice(Graphics::GetDevice())
@@ -83,7 +77,6 @@ namespace GEPUtils
 
 		// Create Command Queue
 		m_CmdQueue = Graphics::CreateCommandQueue(m_GraphicsDevice, Graphics::COMMAND_LIST_TYPE::COMMAND_LIST_TYPE_DIRECT);
-
 
 		uint32_t mainWindowWidth = 1024, mainWindowHeight = 768;
 
@@ -142,8 +135,12 @@ namespace GEPUtils
 		// Finish all the render commands currently in flight
 		m_CmdQueue->Flush();
 
+		m_MainWindow.reset();
+
+		m_CmdQueue.reset();
+
 		// Release all the allocated graphics resources
-		GEPUtils::Graphics::GraphicsAllocator::Get()->ReleaseAll();
+		GEPUtils::Graphics::GraphicsAllocator::ShutDown();
 	}
 
 	void Application::Update()

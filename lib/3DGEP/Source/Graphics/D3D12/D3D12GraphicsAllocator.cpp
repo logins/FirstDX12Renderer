@@ -18,8 +18,11 @@
 
 namespace GEPUtils { namespace Graphics {
 
-	D3D12GraphicsAllocator::D3D12GraphicsAllocator()
+	D3D12GraphicsAllocator::~D3D12GraphicsAllocator()
 	{
+		GEPUtils::Graphics::GraphicsAllocatorBase::~GraphicsAllocatorBase();
+
+		GEPUtils::Graphics::D3D12DescHeapFactory::ShutDown(); // TODO desc heap factory needs to become a member of graphics allocator
 	}
 
 	GEPUtils::Graphics::Resource& D3D12GraphicsAllocator::AllocateEmptyResource()

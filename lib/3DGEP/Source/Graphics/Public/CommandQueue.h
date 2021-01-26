@@ -30,7 +30,7 @@ class Device;
 	class CommandQueue
 	{
 	public:
-		virtual ~CommandQueue() = 0;// Do not allow this class to be instantiated by itself: it needs to be derived from a platform specific implementation
+		virtual ~CommandQueue() = default;
 
 		CommandQueue(GEPUtils::Graphics::Device& InDevice);
 
@@ -52,9 +52,6 @@ class Device;
 		// Platform-agnostic reference to the device that holds this command queue
 		GEPUtils::Graphics::Device& m_GraphicsDevice;
 	};
-
-	// Note: This definition is necessary to compile, and still having CommandQueue as abstract class
-	inline CommandQueue::~CommandQueue() { }
 
 	std::unique_ptr<CommandQueue> CreateCommandQueue(class Device& InDevice, COMMAND_LIST_TYPE InCmdListType);
 

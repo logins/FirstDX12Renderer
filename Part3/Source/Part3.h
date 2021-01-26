@@ -21,7 +21,10 @@ public:
 
 	virtual void Initialize() override;
 
+	virtual void OnQuitApplication() override;
+
 private:
+
 
 	// Callbacks for main window mouse events
 	void OnMouseWheel(float InDeltaRot);

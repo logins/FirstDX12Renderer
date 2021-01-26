@@ -64,9 +64,6 @@ public:
 	virtual GEPUtils::Graphics::PipelineState& AllocatePipelineState() = 0;
 
 
-	void ReleaseAll() {
-		m_ResourceArray.clear(); m_ResourceViewArray.clear(); m_ResourceViewArray.clear(); m_VertexViewArray.clear(); m_IndexViewArray.clear(); m_ShaderArray.clear(); m_PipelineStateArray.clear();
-	}
 
 	// Deleting copy constructor, assignment operator, move constructor and move assignment
 	GraphicsAllocatorBase(const GraphicsAllocatorBase&) = delete;
@@ -92,6 +89,7 @@ public:
 	// Will return the instance of the chosen graphics allocator for the current configuration (for now only the DX12 one)
 	static GraphicsAllocatorBase* Get();
 
+	static void ShutDown() { m_Instance.reset(); }
 
 	// Deleting copy constructor, assignment operator, move constructor and move assignment
 	GraphicsAllocator(const GraphicsAllocator&) = delete;

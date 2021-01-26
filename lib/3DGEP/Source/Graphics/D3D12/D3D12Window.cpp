@@ -277,6 +277,7 @@ namespace D3D12GEPUtils
 
 		// Cast to swapchain 4 and assign to member variable
 		ThrowIfFailed(swapChain1.As(&m_SwapChain));
+
 	}
 
 	void D3D12Window::UpdateDepthStencil()
@@ -287,6 +288,9 @@ namespace D3D12GEPUtils
 		optimizedClearValue.DepthStencil = { 1.f, 0 }; 
 		// Note: passing the same address of ID3DResource of m_DSBuffer to CreateDepthStencilCommittedResource on a second call of this function
 		// will actually replace (update) the committed resource on the GPU (and so it will recreate the corresponding heap)
+
+		m_DSBuffer.Reset(); // Note: Need to release the interface to the previous depth-stencil buffer before assigning to a new one or there will be an interface leak!
+
 		D3D12GEPUtils::CreateDepthStencilCommittedResource(m_CurrentDevice, m_DSBuffer.GetAddressOf(), m_FrameWidth, M_FrameHeight,
 			D3D12_RESOURCE_STATE_DEPTH_WRITE, &optimizedClearValue);
 		// Need to update the view pointing to the updated resource

@@ -26,6 +26,8 @@ namespace D3D12GEPUtils {
 
 	D3D12CommandQueue::~D3D12CommandQueue()
 	{
+		GEPUtils::Graphics::D3D12BufferAllocator::ShutDown(); // TODO this class needs to be refractored inside the graphics allocator
+
 		::CloseHandle(m_FenceEvent);
 	}
 
@@ -88,7 +90,6 @@ namespace D3D12GEPUtils {
 	{
 		// Get an available command allocator first
 		ComPtr<ID3D12CommandAllocator> cmdAllocator;
-		GEPUtils::Graphics::D3D12BufferAllocator* selectedBuffAllocator = nullptr;
 		// Check first if we have an available allocator in the queue (each allocator uniquely corresponds to a different list)
 		// Note: an allocator is available if the relative commands have been fully executed, 
 		// so if the relative fence value has been reached by the command queue
@@ -134,9 +135,9 @@ namespace D3D12GEPUtils {
 	{
 		InCmdList->Close();
 
-		ID3D12CommandAllocator* cmdAllocator;
+		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdAllocator;
 		UINT dataSize = sizeof(cmdAllocator);
-		D3D12GEPUtils::ThrowIfFailed(InCmdList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &dataSize, &cmdAllocator));
+		D3D12GEPUtils::ThrowIfFailed(InCmdList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &dataSize, cmdAllocator.GetAddressOf()));
 
 		ID3D12CommandList* const ppCmdLists[] = { InCmdList.Get() };
 
@@ -147,7 +148,7 @@ namespace D3D12GEPUtils {
 		m_CmdLists.push(InCmdList);
 
 		// We do not need the local command allocator Pointer anymore, we can release it because the allocator reference is stored in the queue
-		cmdAllocator->Release();
+
 
 		return fenceValue;
 	}
@@ -157,12 +158,12 @@ namespace D3D12GEPUtils {
 	{
 		InCmdList.Close();
 
-		ID3D12CommandAllocator* cmdAllocator;
+		Microsoft::WRL::ComPtr<ID3D12CommandAllocator> cmdAllocator;
 		UINT dataSize = sizeof(cmdAllocator);
 
 		auto d3d12CmdList = static_cast<GEPUtils::Graphics::D3D12CommandList&>(InCmdList).GetInner();
 
-		D3D12GEPUtils::ThrowIfFailed(d3d12CmdList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &dataSize, &cmdAllocator));
+		D3D12GEPUtils::ThrowIfFailed(d3d12CmdList->GetPrivateData(__uuidof(ID3D12CommandAllocator), &dataSize, cmdAllocator.GetAddressOf()));
 
 		ID3D12CommandList* const ppCmdLists[] = { d3d12CmdList.Get() };
 
@@ -174,7 +175,7 @@ namespace D3D12GEPUtils {
 		m_CmdListsAvailable.push(&InCmdList);
 
 		// We do not need the local command allocator Pointer anymore, we can release it because the allocator reference is stored in the queue
-		cmdAllocator->Release();
+
 
 		return fenceValue;
 	}

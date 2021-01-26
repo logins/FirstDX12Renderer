@@ -69,6 +69,11 @@ namespace GEPUtils{ namespace Graphics {
 		return *m_Instance;
 	}
 
+	void D3D12BufferAllocator::ShutDown()
+	{
+		m_Instance.reset();
+	}
+
 	void D3D12BufferAllocator::Reset()
 	{
 		uint32_t tempIdx = 0;

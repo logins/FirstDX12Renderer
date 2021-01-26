@@ -30,6 +30,11 @@ int main()
 	Part4Application::Get()->Initialize();
 
 	Part4Application::Get()->Run();
+
+	Graphics::GetDevice().ShutDown();
+
+	// The following will trigger a breakpoint if we have some interfaces to graphics objects that were not cleaned up(leaking)!
+	GEPUtils::Graphics::GetDevice().ReportLiveObjects();
 }
 
 GEPUtils::Application* Part4Application::Get()
