@@ -34,6 +34,7 @@ namespace D3D12GEPUtils {
 			D3D12CommandQueue& CmdQueue;
 			uint32_t WinWidth; uint32_t WinHeight;
 			uint32_t BufWidth; uint32_t BufHeight; WNDPROC WndProc;
+			bool VSyncEnabled;
 		};
 
 		D3D12Window() = delete;
@@ -60,8 +61,8 @@ namespace D3D12GEPUtils {
 		inline bool IsFullScreen() { return m_IsFullScreen; };
 		void SetFullscreenState(bool InNowFullScreen);
 
-		bool IsVSyncEnabled() const { return m_VSync; }
-		void SetVSync(bool InNowEnabled) { m_VSync = InNowEnabled; }
+		virtual bool IsVSyncEnabled() const { return m_VSyncEnabled; }
+		virtual void SetVSyncEnabled(bool InNowEnabled) { m_VSyncEnabled = InNowEnabled; UpdatePresentFlags(); }
 
 		virtual void Resize(uint32_t InNewWidth, uint32_t InNewHeight) override;
 
@@ -76,6 +77,8 @@ namespace D3D12GEPUtils {
 
 		void CreateHWND(const wchar_t* InWindowClassName, HINSTANCE InHInstance,
 			const wchar_t* InWindowTitle, uint32_t width, uint32_t height);
+
+		void UpdatePresentFlags();
 
 		void CreateSwapChain(ComPtr<ID3D12CommandQueue> InCmdQueue, uint32_t InBufWidth, uint32_t InBufHeight);
 
@@ -98,8 +101,9 @@ namespace D3D12GEPUtils {
 		ComPtr<ID3D12DescriptorHeap> m_DSVHeap;
 		UINT m_RTVDescIncrementSize = 0;
 		bool m_IsFullScreen = false;
-		bool m_VSync = false;
+		bool m_VSyncEnabled = false;
 		bool m_TearingSupported = false;
+		UINT m_PresentFlags = 0;
 
 		bool m_IsInitialized = false;
 

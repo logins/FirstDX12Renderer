@@ -107,7 +107,7 @@ void Part2::Initialize()
 		*m_CmdQueue,
 		mainWindowWidth, mainWindowHeight, // Window sizes
 		mainWindowWidth, mainWindowHeight, // BackBuffer sizes
-		MainWndProc
+		MainWndProc, true
 	};
 	m_MainWindow = std::make_unique<D3D12GEPUtils::D3D12Window>(windowInitInput);
 
@@ -137,6 +137,10 @@ void Part2::OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 
 void Part2::OnApplicationQuit()
 {
+	// Flush all render commands (stop until all has been executed)
+	m_CmdQueue->Flush();
+
+	// Clear all the references to graphics resources
 	m_CmdQueue.reset();
 	m_MainWindow.reset();
 	m_GraphicsDevice.Reset();

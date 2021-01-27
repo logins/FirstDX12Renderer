@@ -16,6 +16,13 @@
 
 namespace GEPUtils { namespace Graphics {
 
+	// In a bigger application this would go in an Input class
+	enum class KEYBOARD_KEY : uint32_t
+	{
+		KEY_V,
+		KEY_ESC
+	};
+
 	// Virtual class to be used as a platform-agnostic representation of a graphic window.
 	class Window
 	{
@@ -30,6 +37,7 @@ namespace GEPUtils { namespace Graphics {
 			CommandQueue& CmdQueue;
 			uint32_t WinWidth; uint32_t WinHeight;
 			uint32_t BufWidth; uint32_t BufHeight;
+			bool vSyncEnabled;
 		};
 
 		virtual void ShowWindow() = 0;
@@ -47,6 +55,9 @@ namespace GEPUtils { namespace Graphics {
 		uint32_t GetFrameWidth() const { return m_FrameWidth; }
 		uint32_t GetFrameHeight() const { return M_FrameHeight; }
 
+		virtual bool IsVSyncEnabled() const = 0;
+		virtual void SetVSyncEnabled(bool InNowEnabled) = 0;
+
 		GEPUtils::Graphics::Resource& GetCurrentBackBuffer() { return *m_BackBuffers[m_CurrentBackBufferIndex]; }
 
 		GEPUtils::MulticastDelegate<> OnPaintDelegate;
@@ -56,8 +67,8 @@ namespace GEPUtils { namespace Graphics {
 		GEPUtils::MulticastDelegate<uint32_t, int32_t, int32_t> OnMouseButtonDownDelegate;
 		GEPUtils::MulticastDelegate<float> OnMouseWheelDelegate;
 		GEPUtils::MulticastDelegate<int32_t, int32_t> OnMouseMoveDelegate;
-		GEPUtils::MulticastDelegate<uint64_t> OnKeyDownDelegate;
-		GEPUtils::MulticastDelegate<uint64_t> OnSysKeyDownDelegate;
+		GEPUtils::MulticastDelegate<KEYBOARD_KEY> OnTypingKeyDownDelegate;
+		GEPUtils::MulticastDelegate<KEYBOARD_KEY> OnControlKeyDownDelegate;
 		GEPUtils::MulticastDelegate<uint32_t, uint32_t> OnResizeDelegate;
 
 		bool IsMouseRightHold() const { return m_IsMouseRightHold; }

@@ -151,6 +151,8 @@ void Part3Application::Initialize()
 	// Window events delegates
 	m_MainWindow->OnMouseMoveDelegate.Add<Part3Application, &Part3Application::OnMouseMove>(this);
 	m_MainWindow->OnMouseWheelDelegate.Add<Part3Application, &Part3Application::OnMouseWheel>(this);
+	m_MainWindow->OnTypingKeyDownDelegate.Add<Part3Application, &Part3Application::OnTypingKeyPressed>(this);
+	m_MainWindow->OnControlKeyDownDelegate.Add<Part3Application, &Part3Application::OnControlKeyPressed>(this);
 
 }
 
@@ -194,6 +196,18 @@ void Part3Application::OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 	tr.translate(Eigen::Vector3f(InDeltaX / static_cast<float>(m_MainWindow->GetFrameWidth()), -InDeltaY / static_cast<float>(m_MainWindow->GetFrameHeight()), 0));
 
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
+}
+
+void Part3Application::OnTypingKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InKeyPressed)
+{
+	if (InKeyPressed == Graphics::KEYBOARD_KEY::KEY_V)
+		m_MainWindow->SetVSyncEnabled(!m_MainWindow->IsVSyncEnabled());
+}
+
+void Part3Application::OnControlKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedSysKey)
+{
+	if (InPressedSysKey == Graphics::KEYBOARD_KEY::KEY_ESC)
+		m_MainWindow->Close();
 }
 
 void Part3Application::UpdateContent(float InDeltaTime)

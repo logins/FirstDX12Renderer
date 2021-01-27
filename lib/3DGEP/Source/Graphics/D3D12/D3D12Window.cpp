@@ -29,8 +29,10 @@ namespace D3D12GEPUtils
 		// RTV Descriptor Size is vendor-dependent.
 		// We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
 		m_RTVDescIncrementSize = m_CurrentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
 		m_TearingSupported = D3D12GEPUtils::CheckTearingSupport();
-		// TODO check vsync support and store it to m_vSync
+		m_VSyncEnabled = InInitParams.VSyncEnabled;
+		UpdatePresentFlags();
 
 		m_BackBuffers.reserve(m_DefaultBufferCount);
 		for(int i=0; i < m_DefaultBufferCount; i++)
@@ -74,8 +76,7 @@ namespace D3D12GEPUtils
 
 	void D3D12Window::Present()
 	{
-		UINT presentFlags = m_TearingSupported && !IsVSyncEnabled() ? DXGI_PRESENT_ALLOW_TEARING : 0;
-		ThrowIfFailed(m_SwapChain->Present(IsVSyncEnabled(), presentFlags));
+		ThrowIfFailed(m_SwapChain->Present(IsVSyncEnabled(), m_PresentFlags));
 
 		// Signal fence for the current backbuffer "on the fly"
 		m_FrameFenceValues[m_CurrentBackBufferIndex] = m_CmdQueue.Signal();
@@ -335,12 +336,19 @@ namespace D3D12GEPUtils
 			case WM_PAINT:
 				currentWindow.OnPaintDelegate.Broadcast();
 				break;
-			case WM_SYSKEYDOWN:
-				currentWindow.OnSysKeyDownDelegate.Broadcast(InWParam);
-				break;
 			case  WM_KEYDOWN:
-				currentWindow.OnKeyDownDelegate.Broadcast(InWParam);
+			{
+				switch (InWParam) // Only two cases as an example, easily extensible
+				{
+				case  'V':
+					currentWindow.OnTypingKeyDownDelegate.Broadcast(GEPUtils::Graphics::KEYBOARD_KEY::KEY_V);
+					break;
+				case  VK_ESCAPE:
+					currentWindow.OnControlKeyDownDelegate.Broadcast(GEPUtils::Graphics::KEYBOARD_KEY::KEY_ESC);
+					break;
+				}
 				break;
+			}
 			case WM_MOUSEMOVE:
 				currentWindow.OnMouseMoveDelegate.Broadcast(GET_X_LPARAM(InLParam), GET_Y_LPARAM(InLParam));
 				break;
@@ -402,6 +410,11 @@ namespace D3D12GEPUtils
 		}
 
 		return ::DefWindowProcW(InHwnd, InMsg, InWParam, InLParam); //Message will be handled by the Default Window Procedure !
+	}
+
+	void D3D12Window::UpdatePresentFlags()
+	{
+		m_PresentFlags = m_TearingSupported && !IsVSyncEnabled() ? DXGI_PRESENT_ALLOW_TEARING : 0;
 	}
 
 	void D3D12Window::RegisterWindowClass(HINSTANCE hInst, const wchar_t* windowClassName, WNDPROC InWndProc)

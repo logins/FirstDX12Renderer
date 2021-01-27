@@ -27,7 +27,7 @@ namespace GEPUtils { namespace Graphics {
 			static_cast<D3D12GEPUtils::D3D12CommandQueue&>(InWindowInitInput.CmdQueue), // Static cast on the reference since here we should be convinced that it is a D3D12 CmdQueue
 			InWindowInitInput.WinWidth, InWindowInitInput.WinHeight,
 			InWindowInitInput.BufWidth, InWindowInitInput.BufHeight,
-			nullptr
+			nullptr, InWindowInitInput.vSyncEnabled
 		};
 
 		return std::make_unique<D3D12GEPUtils::D3D12Window>(d3d12WinInput);

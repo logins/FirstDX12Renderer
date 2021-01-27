@@ -22,11 +22,13 @@ public:
 	virtual void Initialize() override;
 private:
 
-	// Callbacks for main window mouse events
+	// Callbacks for main window mouse and keyboard events
 	void OnMouseWheel(float InDeltaRot);
 	void OnMouseMove(int32_t InX, int32_t InY);
 	void OnLeftMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
 	void OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
+	void OnTypingKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedKey);
+	void OnControlKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedKey);
 
 	// Note: most of the following member variables should not belong to the application
 	// but instead to a draw command object for the current entity being drawn.

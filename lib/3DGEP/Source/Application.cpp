@@ -93,6 +93,7 @@ namespace GEPUtils
 		*m_CmdQueue,
 		mainWindowWidth, mainWindowHeight, // Window sizes
 		mainWindowWidth, mainWindowHeight, // BackBuffer sizes
+		false // vsync disabled to test max fps, but you can set it here if the used monitor allows tearing to happen
 		};
 		m_MainWindow = Graphics::CreateGraphicsWindow(mainWindowInput);
 

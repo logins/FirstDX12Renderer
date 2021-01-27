@@ -26,12 +26,13 @@ public:
 private:
 
 
-	// Callbacks for main window mouse events
+	// Callbacks for main window mouse and keyboard events
 	void OnMouseWheel(float InDeltaRot);
 	void OnMouseMove(int32_t InX, int32_t InY);
 	void OnLeftMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
 	void OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
-
+	void OnTypingKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedKey);
+	void OnControlKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedKey);
 
 	// Vertex buffer for the cube
 	GEPUtils::Graphics::Resource& m_VertexBuffer;
