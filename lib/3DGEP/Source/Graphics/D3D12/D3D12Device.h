@@ -13,6 +13,7 @@
 #include <d3d12.h>
 #include "Device.h"
 #if _DEBUG
+#include <initguid.h> // Sometimes necessary in cases where defined guids by macros cause linking errors
 #include <dxgidebug.h>
 #endif
 namespace GEPUtils { namespace Graphics {

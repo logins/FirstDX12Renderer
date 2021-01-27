@@ -1,5 +1,5 @@
 /*
- Engine.cpp
+ Part1.cpp
 
  First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
 
@@ -12,9 +12,6 @@
 
 #include "Helpers.h"
 
-
-#define WIN32_LEAN_AND_MEAN //This will shrink the inclusion of windows.h to the essential functions
-#include <Windows.h> //For window handling
 #include <wrl.h> //For WRL::ComPtr
 #include <d3d12.h>
 #include <d3dx12.h> //Helper functions from https://github.com/Microsoft/DirectX-Graphics-Samples/tree/master/Libraries/D3DX12
@@ -23,8 +20,11 @@
 #include <assert.h>
 #include <algorithm>
 #include <chrono>
-#include <debugapi.h>
 
+#if _DEBUG
+#include <initguid.h>
+#include <dxgidebug.h>
+#endif
 
 // The min/max macros conflict with like-named member functions.
 // Only use std::min and std::max defined in <algorithm>.
@@ -799,9 +799,28 @@ int main()
 
 	//Closing event handle
 	::CloseHandle(g_FenceEvent);
-	
-	//Wait for Enter key press before returning
-	getchar();
+
+	// Releasing all the graphics resources
+	g_Device.Reset();
+	g_CommandQueue.Reset();
+	g_SwapChain.Reset();
+	for (int32_t i = 0; i < g_NumFrames; i++)
+	{
+		g_BackBuffers[i].Reset();
+		g_CommandAllocators[i].Reset();
+	}
+	g_CommandList.Reset();
+	g_RTVDescriptorHeap.Reset();
+	g_Fence.Reset();
+	dxgiAdapter4.Reset();
+
+#if _DEBUG
+	// Check if there are still some graphics resources alive leaking.
+	// If that is the case, ReportLiveObjects will trigger a breakpoint and output details in the console
+	Microsoft::WRL::ComPtr<IDXGIDebug1> dxgiDebug;
+	ThrowIfFailed(DXGIGetDebugInterface1(0, IID_PPV_ARGS(&dxgiDebug)));
+	dxgiDebug->ReportLiveObjects(DXGI_DEBUG_ALL, DXGI_DEBUG_RLO_FLAGS(DXGI_DEBUG_RLO_SUMMARY | DXGI_DEBUG_RLO_IGNORE_INTERNAL));
+#endif
 
 	return 0;
 }

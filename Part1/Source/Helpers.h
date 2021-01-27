@@ -9,9 +9,6 @@
 #ifndef Helpers_h__
 #define Helpers_h__
 
-#define WIN32_LEAN_AND_MEAN
-#include <Windows.h>
-
 inline void ThrowIfFailed(HRESULT hr)
 {
 	if (FAILED(hr))

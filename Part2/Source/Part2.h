@@ -30,7 +30,10 @@ private:
 	Part2() { }
 	Part2(const Part2&);
 	Part2& operator=(const Part2&);
+	// Orders the application to quit
 	void QuitApplication();
+	// Deallocates graphics resources
+	void OnApplicationQuit();
 	struct MouseWheelEventArgs { float WheelDelta; };
 	struct MouseButtonEventArgs { int32_t X; int32_t Y; uint8_t Button; bool DragDetected; }; // 0=Left, 1=Middle, 2=Right
 	void OnMouseWheel(MouseWheelEventArgs& InEvent);

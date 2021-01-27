@@ -37,7 +37,9 @@ void D3D12Device::ReportLiveObjects()
 
 void D3D12Device::ShutDown()
 {
-	m_D3d12Device->Release();
+	// The graphics interface object will be destroyed, but the D3D12Device will still be alive,
+	// useful if we want to call ReportLiveObjects() after ShutDown()
+	m_D3d12Device.Reset();
 }
 
 void D3D12Device::SetMessageBreaksOnSeverity()

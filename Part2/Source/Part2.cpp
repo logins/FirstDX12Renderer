@@ -46,6 +46,11 @@ int main()
 
 	Part2::Get()->Run();
 
+	GEPUtils::Graphics::GetDevice().ShutDown();
+
+	// The following will trigger a breakpoint if we have some interfaces to graphics objects that were not cleaned up(leaking)!
+	GEPUtils::Graphics::GetDevice().ReportLiveObjects();
+
 }
 
 void Part2::SetFoV(float InFoV)
@@ -128,6 +133,17 @@ void Part2::OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 	tr.translate(Eigen::Vector3f(InDeltaX/ static_cast<float>(m_MainWindow->GetFrameWidth()), -InDeltaY/ static_cast<float>(m_MainWindow->GetFrameHeight()), 0));
 	
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
+}
+
+void Part2::OnApplicationQuit()
+{
+	m_CmdQueue.reset();
+	m_MainWindow.reset();
+	m_GraphicsDevice.Reset();
+	m_VertexBuffer.Reset();
+	m_IndexBuffer.Reset();
+	m_RootSignature.Reset();
+	m_PipelineState.Reset();
 }
 
 void Part2::LoadContent()
@@ -261,6 +277,8 @@ void Part2::Run()
 
 		OnMainWindowPaint();
 	}
+
+	OnApplicationQuit();
 }
 
 void Part2::OnMainWindowPaint()
@@ -367,12 +385,11 @@ void Part2::Render()
 
 void Part2::QuitApplication()
 {
-	// TODO make sure all the instantiated objects are cleaned up (see output log when closing application if there were some forgotten live objects)
 	m_MainWindow->Close();
 
 	m_CmdQueue->Flush();
 
-	::PostQuitMessage(0); // Causes the application to terminate
+	::PostQuitMessage(0); // Causes the winapi to send a WM_QUIT message, that in our case will make the application exit from the main loop
 }
 
 void Part2::OnMouseWheel(MouseWheelEventArgs& e)

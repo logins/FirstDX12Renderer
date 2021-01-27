@@ -1,5 +1,5 @@
 
-add_executable(part1 Source/Engine.cpp)
+add_executable(part1 "Source/Part1.cpp")
 
 # Include directories for target part1.
 # It will allow to include headers in C++ considering

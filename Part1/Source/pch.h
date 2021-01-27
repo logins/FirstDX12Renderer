@@ -17,8 +17,8 @@
 #ifndef PCH_H
 #define PCH_H
 
-// TODO: add headers that you want to pre-compile here
+#define WIN32_LEAN_AND_MEAN //This will shrink the inclusion of windows.h to the essential functions
 #include <iostream>
-
+#include <Windows.h> //For window handling
 
 #endif //PCH_H
