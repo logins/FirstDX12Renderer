@@ -48,6 +48,13 @@ namespace D3D12GEPUtils {
 
 		Microsoft::WRL::ComPtr<ID3D12Device2> GetD3D12Device() const { return m_Device; };
 
+		virtual void OnCpuFrameStarted() override;
+
+		virtual void OnCpuFrameFinished() override;
+
+		virtual uint64_t ComputeFramesInFlightNum() override;
+
+		virtual void WaitForQueuedFramesOnGpu(uint64_t InFramesToWaitNum) override;
 
 	private:
 		// Keep track of command allocators in current execution
@@ -55,7 +62,6 @@ namespace D3D12GEPUtils {
 		{
 			uint64_t FenceValue;
 			Microsoft::WRL::ComPtr<ID3D12CommandAllocator> CmdAllocator;
-			uint32_t DynamicBufAllocatorPageIdx;
 		};
 		using D3D12CmdAllocatorQueue = std::queue<CmdAllocatorEntry>;
 
@@ -68,7 +74,7 @@ namespace D3D12GEPUtils {
 		Microsoft::WRL::ComPtr<ID3D12Fence> m_Fence;
 		HANDLE m_FenceEvent;
 		uint64_t m_LastSeenFenceValue = 0;
-
+		std::queue<uint64_t> m_CpuFrameCompleteFenceValues;
 		D3D12CmdAllocatorQueue m_CmdAllocators;
 		D3D12CmdListQueue m_CmdLists;
 

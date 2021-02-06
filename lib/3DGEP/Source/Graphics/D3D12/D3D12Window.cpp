@@ -76,18 +76,21 @@ namespace D3D12GEPUtils
 
 	void D3D12Window::Present()
 	{
-		ThrowIfFailed(m_SwapChain->Present(IsVSyncEnabled(), m_PresentFlags));
+		// If v-sync enabled we need to wait for the current (front) backbuffer to finish presenting before presenting again.
+		// This happens because now it is up to the swapchain to decide at what rate to finish frames, instead of the application.
+		// Swapchain base its decision on the current monitor refresh rate (vertical sync).
+		if (m_VSyncEnabled)
+		{
+			m_CmdQueue.WaitForFenceValue(m_FrameFenceValues[m_CurrentBackBufferIndex]);
+		}
+
+		ThrowIfFailed(m_SwapChain->Present(m_VSyncEnabled, m_PresentFlags));
+
+		// Note: the present operation changed the swapchain current backbuffer index to the next available !
+		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
 
 		// Signal fence for the current backbuffer "on the fly"
 		m_FrameFenceValues[m_CurrentBackBufferIndex] = m_CmdQueue.Signal();
-
-		// Update current backbuffer index and wait for the present operation to be finished (it will when the fence value will be reached)
-		// Note: the present operation changed the swapchain's current backbuffer index to the next available !
-		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
-
-		// Note: we are blocking up until the NEW command allocator (obtained with the buffer index After presenting the backbuffer)
-		// finished executing the old commands
-		m_CmdQueue.WaitForFenceValue(m_FrameFenceValues[m_CurrentBackBufferIndex]);
 	}
 
 	ComPtr<ID3D12Resource> D3D12Window::GetCurrentBackbuffer()
@@ -155,6 +158,12 @@ namespace D3D12GEPUtils
 		}
 
 		m_IsFullScreen = InNowFullScreen;
+	}
+
+	void D3D12Window::SetVSyncEnabled(bool InNowEnabled)
+	{
+		m_VSyncEnabled = InNowEnabled;
+		UpdatePresentFlags();
 	}
 
 	// Note: When a window resize happens, all the swapchain backbuffers need to be released.

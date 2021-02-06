@@ -54,9 +54,9 @@ void Part4Application::Initialize()
 	// --- Vertex Buffer ---
 	size_t vertexDataSize = sizeof(VertexPosColor) * _countof(m_VertexData);
 
-	m_VertexBuffer = &Graphics::GraphicsAllocator::Get()->AllocateBuffer(vertexDataSize, Graphics::RESOURCE_HEAP_TYPE::DEFAULT, Graphics::RESOURCE_STATE::COPY_DEST); // Note: this is this supposed to be created as COPY_DEST and later changing state to read
+	m_VertexBuffer = &Graphics::GraphicsAllocator::Get()->AllocateBufferResource(vertexDataSize, Graphics::RESOURCE_HEAP_TYPE::DEFAULT, Graphics::RESOURCE_STATE::COPY_DEST); // Note: this is this supposed to be created as COPY_DEST and later changing state to read
 	// Note: we are allocating intermediate buffer that will not be used anymore later on but will stay in memory (leak)
-	Graphics::Buffer& intermediateVertexBuffer = Graphics::GraphicsAllocator::Get()->AllocateBuffer(vertexDataSize, Graphics::RESOURCE_HEAP_TYPE::UPLOAD, Graphics::RESOURCE_STATE::GEN_READ); 
+	Graphics::Buffer& intermediateVertexBuffer = Graphics::GraphicsAllocator::Get()->AllocateBufferResource(vertexDataSize, Graphics::RESOURCE_HEAP_TYPE::UPLOAD, Graphics::RESOURCE_STATE::GEN_READ); 
 	
 	loadContentCmdList.UploadBufferData(*m_VertexBuffer, intermediateVertexBuffer, m_VertexData, vertexDataSize);
 
@@ -67,9 +67,9 @@ void Part4Application::Initialize()
 	// --- Index Buffer ---
 	size_t indexDataSize = sizeof(unsigned short) * _countof(m_IndexData);
 
-	m_IndexBuffer = &Graphics::GraphicsAllocator::Get()->AllocateBuffer(indexDataSize, Graphics::RESOURCE_HEAP_TYPE::DEFAULT, Graphics::RESOURCE_STATE::COPY_DEST);
+	m_IndexBuffer = &Graphics::GraphicsAllocator::Get()->AllocateBufferResource(indexDataSize, Graphics::RESOURCE_HEAP_TYPE::DEFAULT, Graphics::RESOURCE_STATE::COPY_DEST);
 	// Note: we are allocating intermediate buffer that will not be used anymore later on but will stay in memory (leak)
-	Graphics::Buffer& intermediateIndexBuffer = Graphics::GraphicsAllocator::Get()->AllocateBuffer(indexDataSize, Graphics::RESOURCE_HEAP_TYPE::UPLOAD, Graphics::RESOURCE_STATE::GEN_READ);
+	Graphics::Buffer& intermediateIndexBuffer = Graphics::GraphicsAllocator::Get()->AllocateBufferResource(indexDataSize, Graphics::RESOURCE_HEAP_TYPE::UPLOAD, Graphics::RESOURCE_STATE::GEN_READ);
 
 	loadContentCmdList.UploadBufferData(*m_IndexBuffer, intermediateIndexBuffer, m_IndexData, indexDataSize);
 
@@ -119,7 +119,7 @@ void Part4Application::Initialize()
 		5, GEPUtils::Graphics::RESOURCE_FLAGS::ALLOW_UNORDERED_ACCESS); // Force mips to 5. The loaded file contains 1 mip, and we are going to generate the other 4 mip levels later on
 	// Uploading cubemap data in GPU
 	// Note: we are allocating intermediate buffer that will not be used anymore later on but will stay in memory (leak)
-	Graphics::Buffer& intermediateCubemapBuffer = Graphics::GraphicsAllocator::Get()->AllocateBuffer(m_Cubemap->GetGPUSize(), Graphics::RESOURCE_HEAP_TYPE::UPLOAD, Graphics::RESOURCE_STATE::GEN_READ);
+	Graphics::Buffer& intermediateCubemapBuffer = Graphics::GraphicsAllocator::Get()->AllocateBufferResource(m_Cubemap->GetGPUSize(), Graphics::RESOURCE_HEAP_TYPE::UPLOAD, Graphics::RESOURCE_STATE::GEN_READ);
 
 	m_Cubemap->UploadToGPU(loadContentCmdList, intermediateCubemapBuffer);
 

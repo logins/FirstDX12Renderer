@@ -18,6 +18,11 @@
 
 namespace GEPUtils {
 
+	namespace Constants {
+		static constexpr size_t g_MaxConcurrentFramesNum = 2;
+
+	}
+
 #define StopForFail(X) std::cout << X << std::endl; __debugbreak(); // This last will generate a breakpoint
 
 #define DebugPrint(X) do {if(DEBUG_TEST) std::cout << X << std::endl;} while (0)

@@ -15,11 +15,12 @@
 #include "D3D12PipelineState.h"
 #include "D3D12Window.h"
 #include "GEPUtils.h"
+#include "D3D12GraphicsAllocator.h"
 
 namespace GEPUtils { namespace Graphics {
 
 	D3D12CommandList::D3D12CommandList(Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> InCmdList, GEPUtils::Graphics::Device& InOwningDevice) 
-		: CommandList(InOwningDevice), m_D3D12CmdList(InCmdList), m_DynamicBufferPageIdx(GEPUtils::Graphics::D3D12BufferAllocator::Get().ReservePage())
+		: CommandList(InOwningDevice), m_D3D12CmdList(InCmdList)
 	{
 	}
 
@@ -123,13 +124,14 @@ namespace GEPUtils { namespace Graphics {
 	void D3D12CommandList::StoreAndReferenceDynamicBuffer(uint32_t InRootIndex, GEPUtils::Graphics::DynamicBuffer& InDynBuffer, GEPUtils::Graphics::ConstantBufferView& InResourceView)
 	{
 		// Create space for current Dynamic Buffer value
-		D3D12BufferAllocator::Allocation dynamicAllocation = D3D12BufferAllocator::Get().Allocate(m_DynamicBufferPageIdx, InDynBuffer.GetBufferSize(), InDynBuffer.GetAlignSize()); // TODO here Allocation object will be lost.. we could probably need it in the future..
+		void* cpuPtr; D3D12_GPU_VIRTUAL_ADDRESS gpuPtr;
+		static_cast<GEPUtils::Graphics::D3D12GraphicsAllocator*>(GEPUtils::Graphics::GraphicsAllocator::Get())->ReserveDynamicBufferMemory(InDynBuffer.GetBufferSize(), cpuPtr, gpuPtr);
 
 		// Copy buffer content in the allocation
-		memcpy(dynamicAllocation.CPU, InDynBuffer.GetData(), InDynBuffer.GetDataSize());
+		memcpy(cpuPtr, InDynBuffer.GetData(), InDynBuffer.GetDataSize());
 
 		// Reference it in the view object
-		static_cast<D3D12GEPUtils::D3D12ConstantBufferView&>(InResourceView).ReferenceBuffer(dynamicAllocation.GPU, InDynBuffer.GetBufferSize());
+		static_cast<D3D12GEPUtils::D3D12ConstantBufferView&>(InResourceView).ReferenceBuffer(gpuPtr, InDynBuffer.GetBufferSize());
 
 		// Stage View's descriptor for GPU heap insertion
 		D3D12GEPUtils::D3D12ConstantBufferView& bufferView = static_cast<D3D12GEPUtils::D3D12ConstantBufferView&>(InResourceView);

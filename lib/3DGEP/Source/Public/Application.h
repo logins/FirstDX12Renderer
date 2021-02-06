@@ -36,11 +36,15 @@ namespace GEPUtils
 
 		void Run();
 
-		inline uint64_t GetCurrentFrameNumber() const { return m_FrameNumber; };
+		static uint64_t GetCurrentFrameNumber() { return m_CpuFrameNumber; };
+
+		static constexpr uint32_t GetMaxConcurrentFramesNum() { return GEPUtils::Constants::g_MaxConcurrentFramesNum; };
 
 		virtual void OnQuitApplication();
 	protected:
+		virtual void OnCpuFrameStarted();
 
+		virtual void OnCpuFrameFinished();
 
 		// Singleton : Default constructor, copy constructor and assingment operators to be private
 		Application();
@@ -54,7 +58,6 @@ namespace GEPUtils
 		void SetAspectRatio(float InAspectRatio);
 		void SetFov(float InFov);
 
-		void OnMainWindowUpdate();
 		void OnMainWindowClose();
 		void OnWindowPaint();
 		void OnWindowResize(uint32_t InNewWidth, uint32_t InNewHeight);
@@ -85,7 +88,7 @@ namespace GEPUtils
 
 		bool m_PaintStarted = false;
 
-		uint64_t m_FrameNumber = 0;
+		static uint64_t m_CpuFrameNumber;
 
 	private:
 		Application(const Application&) = delete; // We do not want Application to be copiable
@@ -96,6 +99,8 @@ namespace GEPUtils
 		void Render();
 
 		float m_DeltaTime = 0.f;
+
+		bool CanComputeFrame();
 	};
 
 }

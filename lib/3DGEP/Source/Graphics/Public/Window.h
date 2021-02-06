@@ -13,6 +13,7 @@
 #include "CommandQueue.h"
 #include "Delegate.h"
 #include "GraphicsTypes.h"
+#include "GEPUtils.h"
 
 namespace GEPUtils { namespace Graphics {
 
@@ -79,7 +80,7 @@ namespace GEPUtils { namespace Graphics {
 		uint32_t m_FrameWidth = 1, M_FrameHeight = 1;
 
 		// Default number of buffers handled by the swapchain
-		static const uint32_t m_DefaultBufferCount = 3;
+		static const uint32_t m_DefaultBufferCount = GEPUtils::Constants::g_MaxConcurrentFramesNum;
 
 		uint32_t m_CurrentBackBufferIndex = 0;
 

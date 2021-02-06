@@ -21,6 +21,13 @@ namespace GEPUtils
 {
 	Application* Application::m_Instance; // Necessary (as standard 9.4.2.2 specifies) definition of the singleton instance
 
+	uint64_t Application::m_CpuFrameNumber = 1;
+
+	bool Application::CanComputeFrame()
+	{
+		return m_PaintStarted;
+	}
+
 	void Application::SetFov(float InFov)
 	{
 		m_Fov = InFov;
@@ -29,15 +36,6 @@ namespace GEPUtils
 		::OutputDebugStringA(buffer);
 		// Projection Matrix needs updating
 		m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_Fov);
-	}
-
-	void Application::OnMainWindowUpdate()
-	{
-		if (!m_PaintStarted)
-			return;
-		// Window paint event will trigger game thread update and render methods (as we are in a simple single threaded example)
-		Update();
-
 	}
 
 	void Application::OnMainWindowClose()
@@ -58,6 +56,7 @@ namespace GEPUtils
 		SetAspectRatio(InNewWidth / static_cast<float>(InNewHeight));
 	}
 
+
 	void Application::SetAspectRatio(float InAspectRatio)
 	{
 		m_AspectRatio = InAspectRatio;
@@ -65,6 +64,27 @@ namespace GEPUtils
 		m_ProjMatrix = GEPUtils::Geometry::Perspective(m_ZMin, m_ZMax, m_AspectRatio, m_Fov);
 	}
 
+
+	void Application::OnCpuFrameStarted()
+	{
+		// Checking if we are too far in frame computation compared to the GPU work.
+		// If it is the case, wait for completion
+		const int64_t framesToWaitNum = m_CmdQueue->ComputeFramesInFlightNum() - GetMaxConcurrentFramesNum() + 1; // +1 because we need space for the current frame
+		if (framesToWaitNum > 0)
+		{
+			m_CmdQueue->WaitForQueuedFramesOnGpu(framesToWaitNum);
+		}
+
+		// Trigger all the begin CPU frame mechanics
+		m_CmdQueue->OnCpuFrameStarted();
+
+		GEPUtils::Graphics::GraphicsAllocator::Get()->OnNewFrameStarted();
+	}
+
+	void Application::OnCpuFrameFinished()
+	{
+		m_CmdQueue->OnCpuFrameFinished();
+	}
 
 	Application::Application()
 		: m_GraphicsDevice(Graphics::GetDevice())
@@ -74,6 +94,7 @@ namespace GEPUtils
 
 	void Application::Initialize()
 	{
+		GEPUtils::Graphics::GraphicsAllocator::Get()->Initialize();
 
 		// Create Command Queue
 		m_CmdQueue = Graphics::CreateCommandQueue(m_GraphicsDevice, Graphics::COMMAND_LIST_TYPE::COMMAND_LIST_TYPE_DIRECT);
@@ -125,7 +146,12 @@ namespace GEPUtils
 				::DispatchMessage(&windowMessage);
 			}
 
-			OnMainWindowUpdate();
+			if (CanComputeFrame())
+			{
+
+				Update();
+
+			}
 		}
 
 		OnQuitApplication();
@@ -151,11 +177,16 @@ namespace GEPUtils
 		static std::chrono::high_resolution_clock clock;
 		auto t0 = clock.now();
 
+		OnCpuFrameStarted();
+
 		UpdateContent(m_DeltaTime);
 
 		Render();
 
-		m_FrameNumber++;
+		// Frame on CPU side finished computing, send the notice
+		OnCpuFrameFinished();
+
+		m_CpuFrameNumber++;
 		frameNumberPerSecond++;
 
 		auto t1 = clock.now();
@@ -212,5 +243,6 @@ namespace GEPUtils
 		}
 
 	}
+
 
 }

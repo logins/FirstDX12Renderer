@@ -12,6 +12,7 @@
 #include <memory>
 #include <queue>
 #include "CommandList.h"
+#include "Delegate.h"
 
 namespace GEPUtils { namespace Graphics {
 
@@ -40,7 +41,17 @@ class Device;
 
 		virtual void Flush() = 0;
 
+		virtual void OnCpuFrameStarted() = 0;
+
+		virtual void OnCpuFrameFinished() = 0;
+
+		virtual uint64_t ComputeFramesInFlightNum() = 0;
+
+		virtual void WaitForQueuedFramesOnGpu(uint64_t InFramesToWaitNum) = 0;
+
 	protected:
+
+		uint64_t m_CompletedGPUFramesNum = 0;
 
 		using CmdListQueue = std::queue<std::unique_ptr<GEPUtils::Graphics::CommandList>>;
 		// Note: references are objects that are not copyable hence we cannot use them for containers and need to store pointers

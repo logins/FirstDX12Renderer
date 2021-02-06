@@ -10,6 +10,8 @@
 #define D3D12DescHeapFactory_h__
 
 #include "d3dx12.h"
+#include "GraphicsTypes.h"
+#include <deque>
 
 namespace GEPUtils { namespace Graphics {
 
@@ -18,21 +20,8 @@ namespace GEPUtils { namespace Graphics {
 	// DiligentGraphics: http://diligentgraphics.com/diligent-engine/architecture/d3d12/managing-descriptor-heaps/
 	// with the difference that there is going to be a bit less abstraction and smaller classes.
 
-	// Note: a range allocator is a generic class, and it's purpose relies on working with indices. It just knows that there are a pool of indices, and we can request ranges of them.
-	class RangeAllocator {
-	public:
-		RangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize);
-
-		// Returns the offset of the range
-		virtual uint32_t AllocateRange(uint32_t InRangeSize) = 0;
-		virtual void FreeAllocatedRange(uint32_t InStartingIndex, uint32_t InRangeSize) = 0;
-	protected:
-		RangeAllocator() = default;
-
-		uint32_t m_StartingOffset, m_EndingOffset, m_PoolSize;
-	};
-
 	class D3D12DescriptorHeap;
+	class RangeAllocator;
 
 	struct DescAllocation {
 		DescAllocation(D3D12_CPU_DESCRIPTOR_HANDLE InCPUHandle, uint32_t InRangeSize) : m_FirstCpuHandle(InCPUHandle), m_RangeSize(InRangeSize) { }
@@ -59,6 +48,8 @@ namespace GEPUtils { namespace Graphics {
 	class D3D12DescriptorHeap {
 	public:
 		D3D12DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE InType, bool IsShaderVisible, uint32_t InDescSize, uint32_t InDescriptorsNum = 256, float InStaticDescPercentage = 1.0f);
+		
+		~D3D12DescriptorHeap(); //  Define a destructor is needed to forward declare unique_ptr members that use forward declared object types (e.g. std::unique_ptr<RangeAllocator> )
 
 		std::unique_ptr<StaticDescAllocation> AllocateStaticRange(uint32_t InRangeSize);
 		// This version allocates a range and directly copies descriptors from an input cpu handle
@@ -95,14 +86,23 @@ namespace GEPUtils { namespace Graphics {
 	public:
 		D3D12DescHeapFactory();
 
+		~D3D12DescHeapFactory();
+
+		static D3D12DescHeapFactory* Get();
+
 		static void ShutDown() { m_Instance.reset(); }
 
 		// Caches descriptors on CPU side
 		static D3D12DescriptorHeap& GetCPUHeap();
 		// Shader visible CBV_SRV_UAV descriptor heap used by the command lists
 		static D3D12DescriptorHeap& GetGPUHeap();
+
+		GEPUtils::Graphics::ResourceView& AddViewObject(std::unique_ptr<GEPUtils::Graphics::ResourceView> InResourceView);
+
 	private:
-		static D3D12DescHeapFactory* Get();
+
+		// The desc heap factory owns view objects since views are stored in desc heaps
+		std::deque<std::unique_ptr<GEPUtils::Graphics::ResourceView>> m_ResourceViewArray;
 
 		// TODO delete copy construct and assignment op
 		static std::unique_ptr<D3D12DescHeapFactory> m_Instance;

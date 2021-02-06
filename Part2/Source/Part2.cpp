@@ -458,7 +458,7 @@ LRESULT CALLBACK Part2::MainWndProc_Internal(HWND InHWND, UINT InMsg, WPARAM InW
 		switch (InWParam)
 		{
 		case 'V':
-			m_MainWindow->SetVSync(!m_MainWindow->IsVSyncEnabled());
+			m_MainWindow->SetVSyncEnabled(!m_MainWindow->IsVSyncEnabled());
 			break;
 		case VK_ESCAPE:
 			QuitApplication();

@@ -1,13 +1,14 @@
 /*
- D3D12DescHeapAllocators.cpp
+ RangeAllocators.cpp
 
  First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
 
  MIT License - Copyright (c) 2021 Riccardo Loggini
 */
  
-#include "D3D12DescHeapAllocators.h"
-#include "../../Public/GEPUtils.h"
+#include "RangeAllocators.h"
+ 
+#include "GEPUtils.h"
 
 namespace GEPUtils { namespace Graphics {
 
@@ -25,7 +26,7 @@ namespace GEPUtils { namespace Graphics {
 		// Find a range big enough to contain the range
 		auto freeRangesIt = m_FreeRangesBySize.lower_bound(InRangeSize); //lower_bound returns an iterator with the first element Not less than the given key
 		if (freeRangesIt == m_FreeRangesBySize.end()) {
-			StopForFail("[D3D12StaticDescHeapAllocator] Not enough free spaces.")
+			StopForFail("[StaticRangeAllocator] Not enough free spaces.")
 			return 0;
 		}
 
@@ -92,14 +93,14 @@ namespace GEPUtils { namespace Graphics {
 		freeRangeOffsetIt.first->second.m_FreeRangeBySizeIt = freeRangeSizeIt;
 	}
 
-	DynamicRangeAllocator::DynamicRangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize)
+	LinearRangeAllocator::LinearRangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize)
 	{
 		m_StartingOffset = InStartingOffset;
 		m_EndingOffset = InStartingOffset + InPoolSize;
 		m_PoolSize = InPoolSize;
 	}
 
-	uint32_t DynamicRangeAllocator::AllocateRange(uint32_t InRangeSize)
+	uint32_t LinearRangeAllocator::AllocateRange(uint32_t InRangeSize)
 	{
 		// Allocating in a circular buffer manner
 		m_CurrentOffset = (m_CurrentOffset - m_StartingOffset) % m_PoolSize;

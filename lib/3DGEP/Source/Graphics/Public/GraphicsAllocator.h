@@ -31,6 +31,11 @@ public:
 	
 	virtual ~GraphicsAllocatorBase() = default;
 
+	// Creates default resources
+	virtual void Initialize() = 0;
+
+	virtual void OnNewFrameStarted() = 0;
+
 	virtual GEPUtils::Graphics::Resource& AllocateEmptyResource() = 0;
 
 	virtual GEPUtils::Graphics::DynamicBuffer& AllocateDynamicBuffer() = 0;
@@ -46,7 +51,7 @@ public:
 	virtual void AllocateBufferCommittedResource(GEPUtils::Graphics::CommandList& InCmdList, GEPUtils::Graphics::Resource& InDestResource, GEPUtils::Graphics::Resource& InIntermediateResource,
 		size_t InNunElements, size_t InElementSize, const void* InBufferData, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = GEPUtils::Graphics::RESOURCE_FLAGS::NONE) = 0;
 
-	virtual GEPUtils::Graphics::Buffer& AllocateBuffer(size_t InSize, GEPUtils::Graphics::RESOURCE_HEAP_TYPE InHeapType, GEPUtils::Graphics::RESOURCE_STATE InState, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = RESOURCE_FLAGS::NONE) = 0;
+	virtual GEPUtils::Graphics::Buffer& AllocateBufferResource(size_t InSize, GEPUtils::Graphics::RESOURCE_HEAP_TYPE InHeapType, GEPUtils::Graphics::RESOURCE_STATE InState, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = RESOURCE_FLAGS::NONE) = 0;
 
 	virtual GEPUtils::Graphics::VertexBufferView& AllocateVertexBufferView() = 0;
 	virtual GEPUtils::Graphics::IndexBufferView& AllocateIndexBufferView() = 0;
@@ -73,7 +78,6 @@ public:
 
 protected:
 	std::deque<std::unique_ptr<GEPUtils::Graphics::Resource>> m_ResourceArray;
-	std::deque<std::unique_ptr<GEPUtils::Graphics::ResourceView>> m_ResourceViewArray;
 	std::deque<std::unique_ptr<GEPUtils::Graphics::VertexBufferView>> m_VertexViewArray;
 	std::deque<std::unique_ptr<GEPUtils::Graphics::IndexBufferView>> m_IndexViewArray;
 	std::deque<std::unique_ptr<GEPUtils::Graphics::Shader>> m_ShaderArray;

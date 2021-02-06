@@ -12,6 +12,7 @@
 #include "D3D12UtilsInternal.h"
 #include "D3D12CommandList.h"
 #include "../Public/CommandList.h"
+#include "GEPUtils.h"
 
 namespace D3D12GEPUtils {
 
@@ -26,7 +27,6 @@ namespace D3D12GEPUtils {
 
 	D3D12CommandQueue::~D3D12CommandQueue()
 	{
-		GEPUtils::Graphics::D3D12BufferAllocator::ShutDown(); // TODO this class needs to be refractored inside the graphics allocator
 
 		::CloseHandle(m_FenceEvent);
 	}
@@ -96,7 +96,6 @@ namespace D3D12GEPUtils {
 		if (!m_CmdAllocators.empty() && IsFenceComplete(m_CmdAllocators.front().FenceValue))
 		{
 			cmdAllocator = m_CmdAllocators.front().CmdAllocator;
-			GEPUtils::Graphics::D3D12BufferAllocator::Get().ReleasePage(m_CmdAllocators.front().DynamicBufAllocatorPageIdx); // When the command allocator finishes executing, we can release memory of the relative dynamic buffer allocator
 			m_CmdAllocators.pop();
 
 			D3D12GEPUtils::ThrowIfFailed(cmdAllocator->Reset());
@@ -110,7 +109,6 @@ namespace D3D12GEPUtils {
 		if (!m_CmdListsAvailable.empty())
 		{
 			GEPUtils::Graphics::D3D12CommandList* outObj = static_cast<GEPUtils::Graphics::D3D12CommandList*>(m_CmdListsAvailable.front());
-			outObj->SetDynamicBufAllocatorPage(GEPUtils::Graphics::D3D12BufferAllocator::Get().ReservePage()); // We need to assign an available dynamic buffer allocator because the previous one can be in flight
 
 			auto cmdList = outObj->GetInner();
 			m_CmdListsAvailable.pop();
@@ -144,7 +142,7 @@ namespace D3D12GEPUtils {
 		m_CmdQueue->ExecuteCommandLists(1, ppCmdLists);
 		uint64_t fenceValue = Signal();
 
-		m_CmdAllocators.emplace( CmdAllocatorEntry{fenceValue, cmdAllocator, 0 } ); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
+		m_CmdAllocators.emplace( CmdAllocatorEntry{ fenceValue, cmdAllocator } ); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
 		m_CmdLists.push(InCmdList);
 
 		// We do not need the local command allocator Pointer anymore, we can release it because the allocator reference is stored in the queue
@@ -170,7 +168,7 @@ namespace D3D12GEPUtils {
 		m_CmdQueue->ExecuteCommandLists(1, ppCmdLists);
 		uint64_t fenceValue = Signal();
 
-		m_CmdAllocators.emplace(CmdAllocatorEntry{ fenceValue, cmdAllocator, static_cast<GEPUtils::Graphics::D3D12CommandList&>(InCmdList).GetDynamicBufAllocatorPage() }); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
+		m_CmdAllocators.emplace(CmdAllocatorEntry{ fenceValue, cmdAllocator }); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
 		
 		m_CmdListsAvailable.push(&InCmdList);
 
@@ -201,5 +199,47 @@ namespace D3D12GEPUtils {
 		D3D12GEPUtils::FlushCmdQueue(m_CmdQueue, m_Fence, m_FenceEvent, m_LastSeenFenceValue);
 	}
 
+	void D3D12CommandQueue::OnCpuFrameStarted()
+	{
+
+	}
+
+	void D3D12CommandQueue::OnCpuFrameFinished()
+	{
+		m_CpuFrameCompleteFenceValues.push(Signal());
+
+		// Note: If we were in a multi-threaded environment, we would be (at least) 1 frame delay from the main thread, and so more mechanics would have to be in place.
+		// More details here: https://docs.microsoft.com/en-us/windows/win32/direct3d12/user-mode-heap-synchronization
+	}
+
+	uint64_t D3D12CommandQueue::ComputeFramesInFlightNum()
+	{
+		// Checking for any finished frames on GPU side and update relative variables
+		const uint64_t currentFenceValue = m_Fence->GetCompletedValue();
+
+		while (!m_CpuFrameCompleteFenceValues.empty() && m_CpuFrameCompleteFenceValues.front() < currentFenceValue)
+		{
+			m_CpuFrameCompleteFenceValues.pop();
+			m_CompletedGPUFramesNum++;
+		}
+		return m_CpuFrameCompleteFenceValues.size();
+	}
+
+	void D3D12CommandQueue::WaitForQueuedFramesOnGpu(uint64_t InFramesToWaitNum)
+	{
+		Check(InFramesToWaitNum <= m_CpuFrameCompleteFenceValues.size());
+		// We just need to wait for the last frame of the ones we are interested in
+		// because when that executes we are sure that all the others finished first.
+		while (InFramesToWaitNum > 1)
+		{
+			m_CpuFrameCompleteFenceValues.pop();
+			--InFramesToWaitNum;
+		}
+		
+		m_CmdQueue->Wait(m_Fence.Get(), m_CpuFrameCompleteFenceValues.front());
+		m_CpuFrameCompleteFenceValues.pop();
+		
+
+	}
 
 }

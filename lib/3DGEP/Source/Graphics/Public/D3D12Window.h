@@ -62,7 +62,7 @@ namespace D3D12GEPUtils {
 		void SetFullscreenState(bool InNowFullScreen);
 
 		virtual bool IsVSyncEnabled() const { return m_VSyncEnabled; }
-		virtual void SetVSyncEnabled(bool InNowEnabled) { m_VSyncEnabled = InNowEnabled; UpdatePresentFlags(); }
+		virtual void SetVSyncEnabled(bool InNowEnabled);
 
 		virtual void Resize(uint32_t InNewWidth, uint32_t InNewHeight) override;
 
@@ -94,7 +94,6 @@ namespace D3D12GEPUtils {
 		ComPtr<IDXGISwapChain4> m_SwapChain;
 		// Replaced with the platform-agnostic version in Window
 		uint64_t m_FrameFenceValues[m_DefaultBufferCount] = { 0 }; // Note: important to initialize every member variable, otherwise it could contain garbage!
-		
 		ComPtr<ID3D12DescriptorHeap> m_RTVDescriptorHeap;
 		ComPtr<ID3D12Resource> m_DSBuffer;
 		// DS buffer views need to be contained in a heap even if we use just one

@@ -125,6 +125,8 @@ namespace D3D12GEPUtils {
 		Microsoft::WRL::ComPtr<ID3D12Resource>& GetInner() { return m_D3D12Resource; }
 		void SetInner(Microsoft::WRL::ComPtr<ID3D12Resource> InResource) { m_D3D12Resource = InResource; }
 		uint64_t GetSizeInBytes() const { return m_DataSize; }
+		void Map(void** OutCpuPp) { m_D3D12Resource->Map(0, nullptr, OutCpuPp); }
+		void UnMap() { m_D3D12Resource->Unmap(0, nullptr); }
 	private:
 		Microsoft::WRL::ComPtr<ID3D12Resource> m_D3D12Resource;
 

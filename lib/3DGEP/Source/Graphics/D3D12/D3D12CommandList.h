@@ -60,10 +60,6 @@ namespace GEPUtils { namespace Graphics {
 
 		virtual void SetGraphicsRootTable(uint32_t InRootIndex, GEPUtils::Graphics::ConstantBufferView& InView) override;
 
-		uint32_t GetDynamicBufAllocatorPage() const { return m_DynamicBufferPageIdx; }
-
-		void SetDynamicBufAllocatorPage(uint32_t InPageIdx) { m_DynamicBufferPageIdx = InPageIdx; }
-
 		virtual void StoreAndReferenceDynamicBuffer(uint32_t InRootIdx, GEPUtils::Graphics::DynamicBuffer& InDynBuffer, GEPUtils::Graphics::ConstantBufferView& InResourceView) override;
 
 
@@ -87,10 +83,6 @@ namespace GEPUtils { namespace Graphics {
 
 	private:
 		Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList2> m_D3D12CmdList;
-
-		// Reference to the memory space reserved for this command list to allocate dynamic resources on the fly. 
-		// Eventually this system would need to be replaced with a proper memory allocator...
-		uint32_t m_DynamicBufferPageIdx;
 
 		class D3D12StagedDescriptorManager {
 		public:

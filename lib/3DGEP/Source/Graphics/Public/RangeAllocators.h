@@ -1,18 +1,31 @@
 /*
- D3D12DescHeapAllocators.h
+ RangeAllocators.h
 
  First DX12 Renderer - https://github.com/logins/FirstDX12Renderer
 
  MIT License - Copyright (c) 2021 Riccardo Loggini
 */
 
-#ifndef D3D12DescHeapAllocators_h__
-#define D3D12DescHeapAllocators_h__
+#ifndef RangeAllocators_h__
+#define RangeAllocators_h__
 
-#include "D3D12DescHeapFactory.h"
 #include <map>
 
 namespace GEPUtils { namespace Graphics {
+
+	// Note: a range allocator is a generic class, and it's purpose relies on working with indices. It just knows that there are a pool of indices, and we can request ranges of them.
+	class RangeAllocator {
+	public:
+		RangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize);
+
+		// Returns the offset of the range
+		virtual uint32_t AllocateRange(uint32_t InRangeSize) = 0;
+		virtual void FreeAllocatedRange(uint32_t InStartingIndex, uint32_t InRangeSize) = 0;
+	protected:
+		RangeAllocator() = default;
+
+		uint32_t m_StartingOffset, m_EndingOffset, m_PoolSize;
+	};
 
 	class StaticRangeAllocator : public GEPUtils::Graphics::RangeAllocator
 	{
@@ -52,10 +65,10 @@ private:
 
 	};
 
-	class DynamicRangeAllocator : public GEPUtils::Graphics::RangeAllocator
+	class LinearRangeAllocator : public GEPUtils::Graphics::RangeAllocator
 	{
 	public:
-		DynamicRangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize);
+		LinearRangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize);
 
 		virtual uint32_t AllocateRange(uint32_t InRangeSize);
 
@@ -63,13 +76,14 @@ private:
 		// and all the allocations are executed in a linear manner, so it would not make sense to free a specific range...
 		virtual void FreeAllocatedRange(uint32_t InRangeOffset, uint32_t InRangeSize) { } 
 	protected:
-		DynamicRangeAllocator() = default;
+		LinearRangeAllocator() = default;
 		// No copies, only moves are allowed
-		DynamicRangeAllocator(const DynamicRangeAllocator&) = delete;
-		DynamicRangeAllocator& operator= (const DynamicRangeAllocator&) = delete;
+		LinearRangeAllocator(const LinearRangeAllocator&) = delete;
+		LinearRangeAllocator& operator= (const LinearRangeAllocator&) = delete;
 	private:
 		uint32_t m_CurrentOffset;
 	};
 
 } }
-#endif // D3D12DescHeapAllocators_h__
+
+#endif // RangeAllocators_h__

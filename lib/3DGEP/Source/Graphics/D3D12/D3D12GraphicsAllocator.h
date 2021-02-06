@@ -10,8 +10,11 @@
 #define D3D12GraphicsAllocator_h__
 
 #include "GraphicsAllocator.h"
+#include "d3d12.h"
+#include "D3D12BufferAllocator.h" // TODO can we forward declare it?
 
 namespace GEPUtils { namespace Graphics {
+
 
 class D3D12GraphicsAllocator : public GEPUtils::Graphics::GraphicsAllocatorBase
 {
@@ -20,9 +23,13 @@ public:
 
 	virtual ~D3D12GraphicsAllocator() override; // We need to declar base destructor as virtual to make the derived class destructor to be executed first
 
+	virtual void Initialize() override;
+
+	virtual void OnNewFrameStarted() override;
+
 	virtual GEPUtils::Graphics::Resource& AllocateEmptyResource() override;
 
-	virtual GEPUtils::Graphics::Buffer& AllocateBuffer(size_t InSize, GEPUtils::Graphics::RESOURCE_HEAP_TYPE InHeapType, GEPUtils::Graphics::RESOURCE_STATE InState, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = RESOURCE_FLAGS::NONE) override;
+	virtual GEPUtils::Graphics::Buffer& AllocateBufferResource(size_t InSize, GEPUtils::Graphics::RESOURCE_HEAP_TYPE InHeapType, GEPUtils::Graphics::RESOURCE_STATE InState, GEPUtils::Graphics::RESOURCE_FLAGS InFlags = RESOURCE_FLAGS::NONE) override;
 
 	virtual GEPUtils::Graphics::DynamicBuffer& AllocateDynamicBuffer() override;
 
@@ -50,7 +57,11 @@ public:
 
 	virtual GEPUtils::Graphics::PipelineState& AllocatePipelineState() override;
 
+	void ReserveDynamicBufferMemory(size_t InSize, void*& OutCpuPtr, D3D12_GPU_VIRTUAL_ADDRESS& OutGpuPtr);
 
+
+private:
+	std::unique_ptr<GEPUtils::Graphics::D3D12LinearBufferAllocator> m_DynamicBufferAllocator;
 };
 	
 

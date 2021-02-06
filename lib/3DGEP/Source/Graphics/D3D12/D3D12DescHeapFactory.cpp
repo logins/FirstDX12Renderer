@@ -8,8 +8,8 @@
  
 #include "D3D12DescHeapFactory.h"
 #include "D3D12Device.h"
-#include "../Public/D3D12GEPUtils.h"
-#include "D3D12DescHeapAllocators.h"
+#include "D3D12GEPUtils.h"
+#include "RangeAllocators.h"
 
 namespace GEPUtils { namespace Graphics {
 
@@ -36,8 +36,10 @@ namespace GEPUtils { namespace Graphics {
 		uint32_t staticAllocatorSize = InDescriptorsNum * InStaticDescPercentage;
 		m_StaticDescAllocator = std::make_unique<GEPUtils::Graphics::StaticRangeAllocator>(InDescriptorsNum - staticAllocatorSize, staticAllocatorSize);
 		
-		m_DynamicDescAllocator = std::make_unique<GEPUtils::Graphics::DynamicRangeAllocator>(0, InDescriptorsNum - staticAllocatorSize - 1);
+		m_DynamicDescAllocator = std::make_unique<GEPUtils::Graphics::LinearRangeAllocator>(0, InDescriptorsNum - staticAllocatorSize - 1);
 	}
+
+	D3D12DescriptorHeap::~D3D12DescriptorHeap() = default; // Defining the destructor in source will prevent the compiler to make it inline, and consequently inline the unique_ptr object members as well !! Otherwise unique_ptr type could not be forward declared!
 
 	std::unique_ptr<GEPUtils::Graphics::StaticDescAllocation> D3D12DescriptorHeap::AllocateStaticRange(uint32_t InRangeSize)
 	{
@@ -113,6 +115,12 @@ namespace GEPUtils { namespace Graphics {
 		m_GPUDescHeap = std::make_unique<D3D12DescriptorHeap>(D3D12_DESCRIPTOR_HEAP_TYPE::D3D12_DESCRIPTOR_HEAP_TYPE_CBV_SRV_UAV, true, descriptorSize, 256, 0.5f);
 	}
 
+	D3D12DescHeapFactory::~D3D12DescHeapFactory()
+	{
+		// Views need to go first, before heaps get destroyed
+		m_ResourceViewArray.clear();
+	}
+
 	GEPUtils::Graphics::D3D12DescriptorHeap& D3D12DescHeapFactory::GetCPUHeap()
 	{
 		return *Get()->m_CPUDescHeap.get();
@@ -127,6 +135,12 @@ namespace GEPUtils { namespace Graphics {
 	{
 		if (!m_Instance) m_Instance = std::make_unique<D3D12DescHeapFactory>();
 		return m_Instance.get();
+	}
+
+	GEPUtils::Graphics::ResourceView& D3D12DescHeapFactory::AddViewObject(std::unique_ptr<GEPUtils::Graphics::ResourceView> InResourceView)
+	{
+		m_ResourceViewArray.push_back(std::move(InResourceView));
+		return *m_ResourceViewArray.back();
 	}
 
 	StaticDescAllocation::~StaticDescAllocation()
