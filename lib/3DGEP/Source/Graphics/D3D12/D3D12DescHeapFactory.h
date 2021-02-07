@@ -51,6 +51,8 @@ namespace GEPUtils { namespace Graphics {
 		
 		~D3D12DescriptorHeap(); //  Define a destructor is needed to forward declare unique_ptr members that use forward declared object types (e.g. std::unique_ptr<RangeAllocator> )
 
+		void SetAllowedDynamicAllocationRegion(float InStartPercentage, float InEndPercentage);
+
 		std::unique_ptr<StaticDescAllocation> AllocateStaticRange(uint32_t InRangeSize);
 		// This version allocates a range and directly copies descriptors from an input cpu handle
 		std::unique_ptr<StaticDescAllocation> AllocateStaticRange(uint32_t InRangeSize, D3D12_CPU_DESCRIPTOR_HANDLE InStartingCpuHandleToCopyFrom);

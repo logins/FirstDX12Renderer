@@ -15,7 +15,6 @@ namespace GEPUtils { namespace Graphics {
 	StaticRangeAllocator::StaticRangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize)
 	{
 		m_StartingOffset = InStartingOffset;
-		m_EndingOffset = InStartingOffset + InPoolSize;
 		m_PoolSize = InPoolSize;
 		// Adding the initial free allocated range
 		FreeAllocatedRange(m_StartingOffset, InPoolSize);
@@ -96,18 +95,28 @@ namespace GEPUtils { namespace Graphics {
 	LinearRangeAllocator::LinearRangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize)
 	{
 		m_StartingOffset = InStartingOffset;
-		m_EndingOffset = InStartingOffset + InPoolSize;
+		m_CurrentOffset = InStartingOffset;
+		m_AllocationLimit = InStartingOffset + InPoolSize;
 		m_PoolSize = InPoolSize;
 	}
 
 	uint32_t LinearRangeAllocator::AllocateRange(uint32_t InRangeSize)
 	{
-		// Allocating in a circular buffer manner
-		m_CurrentOffset = (m_CurrentOffset - m_StartingOffset) % m_PoolSize;
+		m_CurrentOffset += InRangeSize;
+		
+		if (m_CurrentOffset > m_AllocationLimit)
+		{
+			StopForFail("[LinearRangeAllocator] Not enough space");
+		}
+		
+		return m_CurrentOffset - InRangeSize;
+	}
 
-		Check(InRangeSize <= m_PoolSize - m_StartingOffset + m_CurrentOffset)
+	void LinearRangeAllocator::SetAdmittedAllocationRegion(float InStartPercentage, float InEndPercentage)
+	{
+		m_CurrentOffset = m_StartingOffset + std::ceil(m_PoolSize * InStartPercentage);
 
-		return m_CurrentOffset += InRangeSize;
+		m_AllocationLimit = m_StartingOffset + std::trunc(m_PoolSize * InEndPercentage);
 	}
 
 } }

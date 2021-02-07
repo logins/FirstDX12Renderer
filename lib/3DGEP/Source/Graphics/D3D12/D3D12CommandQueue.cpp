@@ -217,7 +217,7 @@ namespace D3D12GEPUtils {
 		// Checking for any finished frames on GPU side and update relative variables
 		const uint64_t currentFenceValue = m_Fence->GetCompletedValue();
 
-		while (!m_CpuFrameCompleteFenceValues.empty() && m_CpuFrameCompleteFenceValues.front() < currentFenceValue)
+		while (!m_CpuFrameCompleteFenceValues.empty() && m_CpuFrameCompleteFenceValues.front() <= currentFenceValue)
 		{
 			m_CpuFrameCompleteFenceValues.pop();
 			m_CompletedGPUFramesNum++;
@@ -235,11 +235,10 @@ namespace D3D12GEPUtils {
 			m_CpuFrameCompleteFenceValues.pop();
 			--InFramesToWaitNum;
 		}
-		
-		m_CmdQueue->Wait(m_Fence.Get(), m_CpuFrameCompleteFenceValues.front());
+
+		WaitForFenceValue(m_CpuFrameCompleteFenceValues.front());
 		m_CpuFrameCompleteFenceValues.pop();
 		
-
 	}
 
 }

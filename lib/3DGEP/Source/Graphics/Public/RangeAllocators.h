@@ -24,7 +24,7 @@ namespace GEPUtils { namespace Graphics {
 	protected:
 		RangeAllocator() = default;
 
-		uint32_t m_StartingOffset, m_EndingOffset, m_PoolSize;
+		uint32_t m_StartingOffset, m_PoolSize;
 	};
 
 	class StaticRangeAllocator : public GEPUtils::Graphics::RangeAllocator
@@ -75,6 +75,12 @@ private:
 		// Trying to free a range in a DynamicRangeAllocator will do nothing at the moment, since this is a circular allocator
 		// and all the allocations are executed in a linear manner, so it would not make sense to free a specific range...
 		virtual void FreeAllocatedRange(uint32_t InRangeOffset, uint32_t InRangeSize) { } 
+
+		// Sets the possible allocation region to a fraction of the whole pool size. Useful when we are allocating for multiple different frames.
+		// If something tries to allocate more than the assigned buffer region, an assert will be called.
+		// Current offset will be shifted at the start of the admitted allocation region
+		void SetAdmittedAllocationRegion(float InStartPercentage, float InEndPercentage);
+
 	protected:
 		LinearRangeAllocator() = default;
 		// No copies, only moves are allowed
@@ -82,6 +88,7 @@ private:
 		LinearRangeAllocator& operator= (const LinearRangeAllocator&) = delete;
 	private:
 		uint32_t m_CurrentOffset;
+		uint32_t m_AllocationLimit;
 	};
 
 } }

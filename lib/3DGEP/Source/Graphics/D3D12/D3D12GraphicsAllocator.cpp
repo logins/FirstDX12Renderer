@@ -193,6 +193,8 @@ namespace GEPUtils { namespace Graphics {
 		static const float fractionSize = 1.0f / Application::GetMaxConcurrentFramesNum();
 
 		m_DynamicBufferAllocator->SetAdmittedAllocationRegion(currentFramePartition, currentFramePartition + fractionSize);
+
+		D3D12DescHeapFactory::GetGPUHeap().SetAllowedDynamicAllocationRegion(currentFramePartition, currentFramePartition + fractionSize);
 	}
 
 	void D3D12GraphicsAllocator::Initialize()

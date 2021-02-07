@@ -33,13 +33,18 @@ namespace GEPUtils { namespace Graphics {
 		m_FirstGpuDesc = GetInner()->GetGPUDescriptorHandleForHeapStart();
 
 		// Set allocators
-		uint32_t staticAllocatorSize = InDescriptorsNum * InStaticDescPercentage;
+		int32_t staticAllocatorSize = InDescriptorsNum * InStaticDescPercentage;
 		m_StaticDescAllocator = std::make_unique<GEPUtils::Graphics::StaticRangeAllocator>(InDescriptorsNum - staticAllocatorSize, staticAllocatorSize);
 		
-		m_DynamicDescAllocator = std::make_unique<GEPUtils::Graphics::LinearRangeAllocator>(0, InDescriptorsNum - staticAllocatorSize - 1);
+		m_DynamicDescAllocator = std::make_unique<GEPUtils::Graphics::LinearRangeAllocator>(0, std::max( 0, static_cast<int32_t>(InDescriptorsNum) - staticAllocatorSize - 1));
 	}
 
 	D3D12DescriptorHeap::~D3D12DescriptorHeap() = default; // Defining the destructor in source will prevent the compiler to make it inline, and consequently inline the unique_ptr object members as well !! Otherwise unique_ptr type could not be forward declared!
+
+	void D3D12DescriptorHeap::SetAllowedDynamicAllocationRegion(float InStartPercentage, float InEndPercentage)
+	{
+		static_cast<GEPUtils::Graphics::LinearRangeAllocator*>(m_DynamicDescAllocator.get())->SetAdmittedAllocationRegion(InStartPercentage, InEndPercentage);
+	}
 
 	std::unique_ptr<GEPUtils::Graphics::StaticDescAllocation> D3D12DescriptorHeap::AllocateStaticRange(uint32_t InRangeSize)
 	{
