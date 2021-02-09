@@ -20,6 +20,8 @@ namespace GEPUtils { namespace Graphics {
 		FreeAllocatedRange(m_StartingOffset, InPoolSize);
 	}
 
+	StaticRangeAllocator::~StaticRangeAllocator() = default;
+
 	uint32_t StaticRangeAllocator::AllocateRange(uint32_t InRangeSize)
 	{
 		// Find a range big enough to contain the range
@@ -99,6 +101,8 @@ namespace GEPUtils { namespace Graphics {
 		m_AllocationLimit = InStartingOffset + InPoolSize;
 		m_PoolSize = InPoolSize;
 	}
+
+	LinearRangeAllocator::~LinearRangeAllocator() = default;
 
 	uint32_t LinearRangeAllocator::AllocateRange(uint32_t InRangeSize)
 	{

@@ -16,6 +16,7 @@
 #include "D3D12Device.h"
 #include "../../Public/GEPUtilsMath.h"
 #include "D3D12CommandList.h"
+#include "D3D12GraphicsAllocator.h"
 
 #ifdef max
 #undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
@@ -327,7 +328,7 @@ namespace D3D12GEPUtils
 		if (!m_CpuAllocatedRange)
 		{
 			// Allocate descriptor in CPU descriptor heap
-			m_CpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetCPUHeap().AllocateStaticRange(1);
+			m_CpuAllocatedRange = static_cast<GEPUtils::Graphics::D3D12GraphicsAllocator*>(GEPUtils::Graphics::GraphicsAllocator::Get())->GetCpuHeap().AllocateStaticRange(1);
 		}
 		// TODO Note: we are currently assuming we only handle a single descriptor and never a range... also in D3D12ConstantBufferView::ReferenceBuffer
 
@@ -358,7 +359,7 @@ namespace D3D12GEPUtils
 		// Allocate static descriptor in the CPU-only desc heap
 		if (!m_CpuAllocatedRange)
 		{
-			m_CpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetCPUHeap().AllocateStaticRange(1);
+			m_CpuAllocatedRange = static_cast<GEPUtils::Graphics::D3D12GraphicsAllocator*>(GEPUtils::Graphics::GraphicsAllocator::Get())->GetCpuHeap().AllocateStaticRange(1);
 		}
 
 		D3D12_SHADER_RESOURCE_VIEW_DESC srvDesc = {};
@@ -382,7 +383,7 @@ namespace D3D12GEPUtils
 		// Allocate static descriptor in the CPU-only desc heap
 		if (!m_CpuAllocatedRange)
 		{
-			m_CpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetCPUHeap().AllocateStaticRange(1);
+			m_CpuAllocatedRange = static_cast<GEPUtils::Graphics::D3D12GraphicsAllocator*>(GEPUtils::Graphics::GraphicsAllocator::Get())->GetCpuHeap().AllocateStaticRange(1);
 		}
 
 		D3D12_UNORDERED_ACCESS_VIEW_DESC uavDesc = {};
@@ -412,7 +413,7 @@ namespace D3D12GEPUtils
 		{
 			// Allocate descriptor in CPU descriptor heap
 
-			m_CpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetCPUHeap().AllocateStaticRange(1); // Even if we have a dynamic buffer, the descriptor on the CPU staging desc heap will be allocated statically, and change value frequently
+			m_CpuAllocatedRange = static_cast<GEPUtils::Graphics::D3D12GraphicsAllocator*>(GEPUtils::Graphics::GraphicsAllocator::Get())->GetCpuHeap().AllocateStaticRange(1); // Even if we have a dynamic buffer, the descriptor on the CPU staging desc heap will be allocated statically, and change value frequently
 		}
 
 		// Generate View Desc

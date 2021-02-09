@@ -65,7 +65,7 @@ namespace GEPUtils { namespace Graphics {
 			m_D3D12CmdList->SetComputeRootSignature(d3d12PSO.GetInnerRootSignature().Get());
 
 		// Bind descriptor heap(s)
-		m_D3D12CmdList->SetDescriptorHeaps(1, GEPUtils::Graphics::D3D12DescHeapFactory::GetGPUHeap().GetInner().GetAddressOf());
+		m_D3D12CmdList->SetDescriptorHeaps(1, static_cast<GEPUtils::Graphics::D3D12GraphicsAllocator*>(GEPUtils::Graphics::GraphicsAllocator::Get())->GetGpuHeap().GetInner().GetAddressOf());
 
 	}
 
@@ -157,14 +157,14 @@ namespace GEPUtils { namespace Graphics {
 	{
 		D3D12GEPUtils::D3D12ShaderResourceView& d3d12SRV = static_cast<D3D12GEPUtils::D3D12ShaderResourceView&>(InSRV);
 
-		d3d12SRV.m_GpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetGPUHeap().AllocateStaticRange(1, d3d12SRV.GetCPUDescHandle()); // Note: we are assuming SRV too always reference a range of 1 descriptors
+		d3d12SRV.m_GpuAllocatedRange = static_cast<GEPUtils::Graphics::D3D12GraphicsAllocator*>(GEPUtils::Graphics::GraphicsAllocator::Get())->GetGpuHeap().AllocateStaticRange(1, d3d12SRV.GetCPUDescHandle()); // Note: we are assuming SRV too always reference a range of 1 descriptors
 	}
 
 	void D3D12CommandList::UploadUavToGpu(GEPUtils::Graphics::UnorderedAccessView& InUav)
 	{
 		D3D12GEPUtils::D3D12UnorderedAccessView& d3d12Uav = static_cast<D3D12GEPUtils::D3D12UnorderedAccessView&>(InUav);
 
-		d3d12Uav.m_GpuAllocatedRange = GEPUtils::Graphics::D3D12DescHeapFactory::GetGPUHeap().AllocateStaticRange(1, d3d12Uav.GetCPUDescHandle()); // Note: we are assuming Uav too always reference a range of 1 descriptors
+		d3d12Uav.m_GpuAllocatedRange = static_cast<GEPUtils::Graphics::D3D12GraphicsAllocator*>(GEPUtils::Graphics::GraphicsAllocator::Get())->GetGpuHeap().AllocateStaticRange(1, d3d12Uav.GetCPUDescHandle()); // Note: we are assuming Uav too always reference a range of 1 descriptors
 	}
 
 	void D3D12CommandList::ReferenceSRV(uint32_t InRootIdx, GEPUtils::Graphics::ShaderResourceView& InSRV)
@@ -188,7 +188,7 @@ namespace GEPUtils { namespace Graphics {
 
 	CD3DX12_GPU_DESCRIPTOR_HANDLE D3D12CommandList::CopyDynamicDescriptorsToBoundHeap(uint32_t InRangesNum, D3D12_CPU_DESCRIPTOR_HANDLE* InDescHandleArray, uint32_t* InRageSizeArray)
 	{
-		return GEPUtils::Graphics::D3D12DescHeapFactory::GetGPUHeap().CopyDynamicDescriptors(InRangesNum, InDescHandleArray, InRageSizeArray);
+		return static_cast<GEPUtils::Graphics::D3D12GraphicsAllocator*>(GEPUtils::Graphics::GraphicsAllocator::Get())->GetGpuHeap().CopyDynamicDescriptors(InRangesNum, InDescHandleArray, InRageSizeArray);
 	}
 
 	void D3D12CommandList::D3D12StagedDescriptorManager::StageDynamicDescriptors(uint32_t InRootParamIndex, D3D12_CPU_DESCRIPTOR_HANDLE InFirstCpuDescHandle, uint32_t InRangeSize)

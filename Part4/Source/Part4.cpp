@@ -14,6 +14,9 @@
 #include "GEPUtilsGeometry.h"
 #include "GraphicsAllocator.h"
 #include "GEPUtilsMath.h"
+#include "CommandQueue.h"
+#include "Window.h"
+#include "Device.h"
 
 #define Q(x) L#x
 #define LQUOTE(x) Q(x) // TODO these are re-defined .. find a way to link the original defines
@@ -288,15 +291,15 @@ void Part4Application::OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
 }
 
-void Part4Application::OnTypingKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InKeyPressed)
+void Part4Application::OnTypingKeyPressed(GEPUtils::KEYBOARD_KEY InKeyPressed)
 {
-	if (InKeyPressed == Graphics::KEYBOARD_KEY::KEY_V)
+	if (InKeyPressed == KEYBOARD_KEY::KEY_V)
 		m_MainWindow->SetVSyncEnabled(!m_MainWindow->IsVSyncEnabled());
 }
 
-void Part4Application::OnControlKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedSysKey)
+void Part4Application::OnControlKeyPressed(GEPUtils::KEYBOARD_KEY InPressedSysKey)
 {
-	if (InPressedSysKey == Graphics::KEYBOARD_KEY::KEY_ESC)
+	if (InPressedSysKey == KEYBOARD_KEY::KEY_ESC)
 		m_MainWindow->Close();
 }
 

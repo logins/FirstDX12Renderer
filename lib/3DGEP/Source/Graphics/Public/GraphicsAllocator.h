@@ -14,6 +14,7 @@
 #include "GraphicsTypes.h"
 #include "PipelineState.h"
 
+
 namespace GEPUtils { namespace Graphics {
 
 	class Device;
@@ -27,9 +28,9 @@ namespace GEPUtils { namespace Graphics {
 class GraphicsAllocatorBase
 {
 public:
-	GraphicsAllocatorBase() = default;
+	GraphicsAllocatorBase();
 	
-	virtual ~GraphicsAllocatorBase() = default;
+	virtual ~GraphicsAllocatorBase();
 
 	// Creates default resources
 	virtual void Initialize() = 0;
@@ -91,9 +92,13 @@ class GraphicsAllocator
 {
 public:
 	// Will return the instance of the chosen graphics allocator for the current configuration (for now only the DX12 one)
-	static GraphicsAllocatorBase* Get();
+	static GraphicsAllocatorBase* Get() { return m_DefaultInstance; };
 
-	static void ShutDown() { m_Instance.reset(); }
+	static std::unique_ptr<GraphicsAllocatorBase> CreateInstance();
+
+	// Sets the default reference to be called with the Get() method.
+	// This allows other systems (such as Application) to control the lifetime and take ownership of the default graphics allocator
+	static void SetDefaultInstance(GraphicsAllocatorBase* InGraphicsAllocator);
 
 	// Deleting copy constructor, assignment operator, move constructor and move assignment
 	GraphicsAllocator(const GraphicsAllocator&) = delete;
@@ -102,7 +107,9 @@ public:
 	GraphicsAllocator& operator=(GraphicsAllocator&&) = delete;
 
 private:
-	static std::unique_ptr<GraphicsAllocatorBase> m_Instance;
+	// This class is not intended to be instantiated
+	GraphicsAllocator() = default;
+	static GraphicsAllocatorBase* m_DefaultInstance;
 };
 
 

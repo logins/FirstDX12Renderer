@@ -17,14 +17,19 @@
 #include "GEPUtils.h"
 #include "D3D12BufferAllocator.h"
 #include "Application.h"
+#include "D3D12DescHeapFactory.h"
 
 namespace GEPUtils { namespace Graphics {
+
+	// Note: The non-inline definition of the constructor is necessary to forward classes used in member smart pointers!!
+	// More info in this thread: https://stackoverflow.com/questions/27336779/unique-ptr-and-forward-declaration
+	D3D12GraphicsAllocator::D3D12GraphicsAllocator() = default;
 
 	D3D12GraphicsAllocator::~D3D12GraphicsAllocator()
 	{
 		m_DynamicBufferAllocator.reset();
 
-		GEPUtils::Graphics::D3D12DescHeapFactory::ShutDown(); // TODO desc heap factory needs to become a member of graphics allocator
+		m_DescHeapFactory.reset();
 
 	}
 
@@ -120,14 +125,14 @@ namespace GEPUtils { namespace Graphics {
 		// Allocate the view
 		// Note: the constructor will allocate a corresponding descriptor in a CPU desc heap
 		return static_cast<GEPUtils::Graphics::ConstantBufferView&>(
-			GEPUtils::Graphics::D3D12DescHeapFactory::Get()->AddViewObject(std::make_unique<D3D12GEPUtils::D3D12ConstantBufferView>(InResource))
+			m_DescHeapFactory->AddViewObject(std::make_unique<D3D12GEPUtils::D3D12ConstantBufferView>(InResource))
 			);
 	}
 
 	GEPUtils::Graphics::ConstantBufferView& D3D12GraphicsAllocator::AllocateConstantBufferView()
 	{
 		return static_cast<GEPUtils::Graphics::ConstantBufferView&>(
-			GEPUtils::Graphics::D3D12DescHeapFactory::Get()->AddViewObject(std::make_unique<D3D12GEPUtils::D3D12ConstantBufferView>())
+			m_DescHeapFactory->AddViewObject(std::make_unique<D3D12GEPUtils::D3D12ConstantBufferView>())
 			);
 	}
 
@@ -136,7 +141,7 @@ namespace GEPUtils { namespace Graphics {
 		// Allocate the view
 		// Note: the constructor will allocate a corresponding descriptor in a CPU desc heap
 		return static_cast<GEPUtils::Graphics::ShaderResourceView&>(
-			GEPUtils::Graphics::D3D12DescHeapFactory::Get()->AddViewObject(std::make_unique<D3D12GEPUtils::D3D12ShaderResourceView>(InTexture))
+			m_DescHeapFactory->AddViewObject(std::make_unique<D3D12GEPUtils::D3D12ShaderResourceView>(InTexture))
 			);
 	}
 
@@ -147,7 +152,7 @@ namespace GEPUtils { namespace Graphics {
 		outSrv->InitAsTex2DArray(InTexture, InArraySize, InMostDetailedMip, InMipLevels, InFirstArraySlice, InPlaneSlice);
 
 		return static_cast<GEPUtils::Graphics::ShaderResourceView&>(
-			GEPUtils::Graphics::D3D12DescHeapFactory::Get()->AddViewObject(std::move(outSrv))
+			m_DescHeapFactory->AddViewObject(std::move(outSrv))
 			);
 	}
 
@@ -158,7 +163,7 @@ namespace GEPUtils { namespace Graphics {
 		outUav->InitAsTex2DArray(InTexture, InArraySize, InMipSlice, InFirstArraySlice, InPlaceSlice);
 
 		return static_cast<GEPUtils::Graphics::UnorderedAccessView&>(
-			GEPUtils::Graphics::D3D12DescHeapFactory::Get()->AddViewObject(std::move(outUav))
+			m_DescHeapFactory->AddViewObject(std::move(outUav))
 			);
 	}
 
@@ -183,6 +188,16 @@ namespace GEPUtils { namespace Graphics {
 		m_DynamicBufferAllocator->Allocate(InSize, OutCpuPtr, OutGpuPtr);
 	}
 
+	GEPUtils::Graphics::D3D12DescriptorHeap& D3D12GraphicsAllocator::GetCpuHeap()
+	{
+		return m_DescHeapFactory->GetCPUHeap();
+	}
+
+	GEPUtils::Graphics::D3D12DescriptorHeap& D3D12GraphicsAllocator::GetGpuHeap()
+	{
+		return m_DescHeapFactory->GetGPUHeap();
+	}
+
 	void D3D12GraphicsAllocator::OnNewFrameStarted()
 	{
 		// When a new frame starts, we are sure by the application that there are a total of Application::GetMaxConcurrentFramesNum() active,
@@ -194,15 +209,17 @@ namespace GEPUtils { namespace Graphics {
 
 		m_DynamicBufferAllocator->SetAdmittedAllocationRegion(currentFramePartition, currentFramePartition + fractionSize);
 
-		D3D12DescHeapFactory::GetGPUHeap().SetAllowedDynamicAllocationRegion(currentFramePartition, currentFramePartition + fractionSize);
+		GetGpuHeap().SetAllowedDynamicAllocationRegion(currentFramePartition, currentFramePartition + fractionSize);
 	}
 
 	void D3D12GraphicsAllocator::Initialize()
 	{
+		m_DescHeapFactory = std::make_unique<GEPUtils::Graphics::D3D12DescHeapFactory>();
+
 		// Allocate an empty resource and create the dynamic buffer allocator on it
 		GEPUtils::Graphics::Buffer& dynamicBufferResource = AllocateBufferResource(0, RESOURCE_HEAP_TYPE::UPLOAD, RESOURCE_STATE::GEN_READ);
 
-		m_DynamicBufferAllocator = std::make_unique<D3D12LinearBufferAllocator>(static_cast<D3D12GEPUtils::D3D12Resource&>(dynamicBufferResource));
+		m_DynamicBufferAllocator = std::make_unique<GEPUtils::Graphics::D3D12LinearBufferAllocator>(static_cast<D3D12GEPUtils::D3D12Resource&>(dynamicBufferResource));
 
 	}
 

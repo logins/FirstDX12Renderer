@@ -17,6 +17,7 @@ namespace GEPUtils { namespace Graphics {
 	class RangeAllocator {
 	public:
 		RangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize);
+		virtual ~RangeAllocator() = default;
 
 		// Returns the offset of the range
 		virtual uint32_t AllocateRange(uint32_t InRangeSize) = 0;
@@ -31,6 +32,8 @@ namespace GEPUtils { namespace Graphics {
 	{
 	public:
 		StaticRangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize);
+
+		virtual ~StaticRangeAllocator() override;
 
 		virtual uint32_t AllocateRange(uint32_t InRangeSize);
 
@@ -69,6 +72,8 @@ private:
 	{
 	public:
 		LinearRangeAllocator(uint32_t InStartingOffset, uint32_t InPoolSize);
+
+		virtual ~LinearRangeAllocator() override;
 
 		virtual uint32_t AllocateRange(uint32_t InRangeSize);
 

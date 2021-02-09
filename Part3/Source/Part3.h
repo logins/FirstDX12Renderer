@@ -10,6 +10,9 @@
 #define Part3_h__
 
 #include "Application.h"
+#include "GraphicsTypes.h"
+
+namespace GEPUtils { namespace Graphics { class PipelineState; } }
 
 class Part3Application : public GEPUtils::Application
 {
@@ -31,20 +34,20 @@ private:
 	void OnMouseMove(int32_t InX, int32_t InY);
 	void OnLeftMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
 	void OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
-	void OnTypingKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedKey);
-	void OnControlKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedKey);
+	void OnTypingKeyPressed(GEPUtils::KEYBOARD_KEY InPressedKey);
+	void OnControlKeyPressed(GEPUtils::KEYBOARD_KEY InPressedKey);
 
 	// Vertex buffer for the cube
-	GEPUtils::Graphics::Resource& m_VertexBuffer;
-	GEPUtils::Graphics::VertexBufferView& m_VertexBufferView;
+	GEPUtils::Graphics::Resource* m_VertexBuffer;
+	GEPUtils::Graphics::VertexBufferView* m_VertexBufferView;
 	// Index buffer for the cube
-	GEPUtils::Graphics::Resource& m_IndexBuffer;
-	GEPUtils::Graphics::IndexBufferView& m_IndexBufferView;
+	GEPUtils::Graphics::Resource* m_IndexBuffer;
+	GEPUtils::Graphics::IndexBufferView* m_IndexBufferView;
 	// Standalone Constant Buffer for the color modifier
-	GEPUtils::Graphics::DynamicBuffer& m_ColorModBuffer;
-	GEPUtils::Graphics::ConstantBufferView& m_ColorModBufferView;
+	GEPUtils::Graphics::DynamicBuffer* m_ColorModBuffer;
+	GEPUtils::Graphics::ConstantBufferView* m_ColorModBufferView;
 
-	GEPUtils::Graphics::PipelineState& m_PipelineState;
+	GEPUtils::Graphics::PipelineState* m_PipelineState;
 
 	Eigen::Matrix4f m_MvpMatrix;
 

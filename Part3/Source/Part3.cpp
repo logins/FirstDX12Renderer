@@ -13,6 +13,9 @@
 #include "PipelineState.h"
 #include "GEPUtilsGeometry.h"
 #include "GraphicsAllocator.h"
+#include "CommandQueue.h"
+#include "Window.h"
+#include "Device.h"
 
 #define Q(x) L#x
 #define LQUOTE(x) Q(x) // TODO these are re-defined .. find a way to link the original defines
@@ -36,14 +39,7 @@ int main()
 
 }
 
-Part3Application::Part3Application()
-	: m_VertexBuffer(Graphics::GraphicsAllocator::Get()->AllocateEmptyResource()), m_IndexBuffer(Graphics::GraphicsAllocator::Get()->AllocateEmptyResource()), m_ColorModBuffer(Graphics::AllocateDynamicBuffer()),
-		m_VertexBufferView(Graphics::AllocateVertexBufferView()), 
-		m_IndexBufferView(Graphics::AllocateIndexBufferView()),
-		m_ColorModBufferView(Graphics::GraphicsAllocator::Get()->AllocateConstantBufferView()),
-		m_PipelineState(Graphics::AllocatePipelineState())
-{
-}
+Part3Application::Part3Application() = default;
 
 GEPUtils::Application* Part3Application::Get()
 {
@@ -56,23 +52,31 @@ void Part3Application::Initialize()
 {
 	Application::Initialize();
 
+	m_VertexBuffer = &Graphics::GraphicsAllocator::Get()->AllocateEmptyResource();
+	m_IndexBuffer = &Graphics::GraphicsAllocator::Get()->AllocateEmptyResource();
+	m_ColorModBuffer = &Graphics::AllocateDynamicBuffer();
+	m_VertexBufferView = &Graphics::AllocateVertexBufferView();
+	m_IndexBufferView = &Graphics::AllocateIndexBufferView();
+	m_ColorModBufferView = &Graphics::GraphicsAllocator::Get()->AllocateConstantBufferView();
+	m_PipelineState = &Graphics::AllocatePipelineState();
+
 	// Load Content
 	Graphics::CommandList& loadContentCmdList = m_CmdQueue->GetAvailableCommandList();
 
 	// Upload vertex buffer data
 	Graphics::Resource& intermediateVertexBuffer = Graphics::GraphicsAllocator::Get()->AllocateEmptyResource(); // Note: we are allocating intermediate buffer that will not be used anymore later on but will stay in memory (leak)
-	Graphics::GraphicsAllocator::GraphicsAllocator::Get()->AllocateBufferCommittedResource(loadContentCmdList, m_VertexBuffer, intermediateVertexBuffer, _countof(m_VertexData), sizeof(VertexPosColor), m_VertexData);
+	Graphics::GraphicsAllocator::GraphicsAllocator::Get()->AllocateBufferCommittedResource(loadContentCmdList, *m_VertexBuffer, intermediateVertexBuffer, _countof(m_VertexData), sizeof(VertexPosColor), m_VertexData);
 
 	// Create the Vertex Buffer View associated to m_VertexBuffer
-	m_VertexBufferView.ReferenceResource(m_VertexBuffer, sizeof(m_VertexData), sizeof(VertexPosColor));
+	m_VertexBufferView->ReferenceResource(*m_VertexBuffer, sizeof(m_VertexData), sizeof(VertexPosColor));
 
 	// Upload index buffer data
 	Graphics::Resource& intermediateIndexBuffer = Graphics::GraphicsAllocator::Get()->AllocateEmptyResource(); // Note: we are allocating intermediate buffer that will not be used anymore later on but will stay in memory (leak)
 
-	Graphics::GraphicsAllocator::GraphicsAllocator::Get()->AllocateBufferCommittedResource(loadContentCmdList, m_IndexBuffer, intermediateIndexBuffer, _countof(m_IndexData), sizeof(unsigned short), m_IndexData);
+	Graphics::GraphicsAllocator::GraphicsAllocator::Get()->AllocateBufferCommittedResource(loadContentCmdList, *m_IndexBuffer, intermediateIndexBuffer, _countof(m_IndexData), sizeof(unsigned short), m_IndexData);
 
 	// Create the Index Buffer View associated to m_IndexBuffer
-	m_IndexBufferView.ReferenceResource(m_IndexBuffer, sizeof(m_IndexData), Graphics::BUFFER_FORMAT::R16_UINT); // Single channel 16 bits, because WORD = unsigned short = 2 bytes = 16 bits
+	m_IndexBufferView->ReferenceResource(*m_IndexBuffer, sizeof(m_IndexData), Graphics::BUFFER_FORMAT::R16_UINT); // Single channel 16 bits, because WORD = unsigned short = 2 bytes = 16 bits
 
 	// --- Shader Loading ---
 	// Note: to generate the .cso file I will be using the offline method, using fxc.exe integrated in visual studio (but downloadable separately).
@@ -129,7 +133,7 @@ void Part3Application::Initialize()
 	};
 
 	//Init the Pipeline State Object
-	m_PipelineState.Init(pipelineStateDesc);
+	m_PipelineState->Init(pipelineStateDesc);
 
 	// Executing command list and waiting for full execution
 	m_CmdQueue->ExecuteCmdList(loadContentCmdList);
@@ -198,15 +202,15 @@ void Part3Application::OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY)
 	m_ModelMatrix = tr.matrix() * m_ModelMatrix;
 }
 
-void Part3Application::OnTypingKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InKeyPressed)
+void Part3Application::OnTypingKeyPressed(GEPUtils::KEYBOARD_KEY InKeyPressed)
 {
-	if (InKeyPressed == Graphics::KEYBOARD_KEY::KEY_V)
+	if (InKeyPressed == KEYBOARD_KEY::KEY_V)
 		m_MainWindow->SetVSyncEnabled(!m_MainWindow->IsVSyncEnabled());
 }
 
-void Part3Application::OnControlKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedSysKey)
+void Part3Application::OnControlKeyPressed(GEPUtils::KEYBOARD_KEY InPressedSysKey)
 {
-	if (InPressedSysKey == Graphics::KEYBOARD_KEY::KEY_ESC)
+	if (InPressedSysKey == KEYBOARD_KEY::KEY_ESC)
 		m_MainWindow->Close();
 }
 
@@ -221,16 +225,16 @@ void Part3Application::UpdateContent(float InDeltaTime)
 	counter = 0.5f + std::sin(progress)/2.f;
 	progress += 0.002f * InDeltaTime;
 
-	m_ColorModBuffer.SetData(&counter, sizeof(counter), sizeof(float));
+	m_ColorModBuffer->SetData(&counter, sizeof(counter), sizeof(float));
 }
 
 void Part3Application::RenderContent(Graphics::CommandList& InCmdList)
 {
 	// Fill Command List Pipeline-related Data
 	{
-		InCmdList.SetPipelineStateAndResourceBinder(m_PipelineState);
+		InCmdList.SetPipelineStateAndResourceBinder(*m_PipelineState);
 
-		InCmdList.SetInputAssemblerData(Graphics::PRIMITIVE_TOPOLOGY::PT_TRIANGLELIST, m_VertexBufferView, m_IndexBufferView);
+		InCmdList.SetInputAssemblerData(Graphics::PRIMITIVE_TOPOLOGY::PT_TRIANGLELIST, *m_VertexBufferView, *m_IndexBufferView);
 
 		InCmdList.SetViewportAndScissorRect(*m_Viewport, *m_ScissorRect);
 
@@ -241,7 +245,7 @@ void Part3Application::RenderContent(Graphics::CommandList& InCmdList)
 	{
 		InCmdList.SetGraphicsRootConstants(0, sizeof(Eigen::Matrix4f) / 4, m_MvpMatrix.data(), 0);
 
-		InCmdList.StoreAndReferenceDynamicBuffer(1, m_ColorModBuffer, m_ColorModBufferView);
+		InCmdList.StoreAndReferenceDynamicBuffer(1, *m_ColorModBuffer, *m_ColorModBufferView);
 
 		InCmdList.DrawIndexed(_countof(m_IndexData));
 	}

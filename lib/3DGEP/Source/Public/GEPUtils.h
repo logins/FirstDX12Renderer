@@ -23,6 +23,13 @@ namespace GEPUtils {
 
 	}
 
+	// In a bigger application this would go in an Input class
+	enum class KEYBOARD_KEY : uint32_t
+	{
+		KEY_V,
+		KEY_ESC
+	};
+
 #define StopForFail(X) std::cout << X << std::endl; __debugbreak(); // This last will generate a breakpoint
 
 #define DebugPrint(X) do {if(DEBUG_TEST) std::cout << X << std::endl;} while (0)

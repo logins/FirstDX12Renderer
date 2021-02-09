@@ -350,10 +350,10 @@ namespace D3D12GEPUtils
 				switch (InWParam) // Only two cases as an example, easily extensible
 				{
 				case  'V':
-					currentWindow.OnTypingKeyDownDelegate.Broadcast(GEPUtils::Graphics::KEYBOARD_KEY::KEY_V);
+					currentWindow.OnTypingKeyDownDelegate.Broadcast(GEPUtils::KEYBOARD_KEY::KEY_V);
 					break;
 				case  VK_ESCAPE:
-					currentWindow.OnControlKeyDownDelegate.Broadcast(GEPUtils::Graphics::KEYBOARD_KEY::KEY_ESC);
+					currentWindow.OnControlKeyDownDelegate.Broadcast(GEPUtils::KEYBOARD_KEY::KEY_ESC);
 					break;
 				}
 				break;

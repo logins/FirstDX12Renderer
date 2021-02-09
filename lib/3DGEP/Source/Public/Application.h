@@ -9,14 +9,21 @@
 #ifndef Application_h__
 #define Application_h__
 
-#include "Window.h"
-#include "CommandQueue.h" // TODO can we forward declare CommandQueue and Device?
-#include "Device.h"
-#include "GraphicsTypes.h"
 #include <Eigen/Core>
+#include "GEPUtils.h"
 
-namespace GEPUtils
-{
+namespace GEPUtils {
+	namespace Graphics { 
+		class Device;
+		class CommandQueue;
+		class CommandList;
+		class Window; 
+		class GraphicsAllocatorBase;
+		struct Rect;
+		struct ViewPort;
+	}
+
+
 /*!
  * \class Application
  *
@@ -30,7 +37,8 @@ namespace GEPUtils
 	class Application
 	{
 	public:
-		~Application() { m_Instance = nullptr; }
+
+		~Application();
 
 		virtual void Initialize();
 
@@ -63,6 +71,8 @@ namespace GEPUtils
 		void OnWindowResize(uint32_t InNewWidth, uint32_t InNewHeight);
 
 		Graphics::Device& m_GraphicsDevice;
+
+		std::unique_ptr<Graphics::GraphicsAllocatorBase> m_GraphicsAllocator;
 
 		std::unique_ptr<Graphics::CommandQueue> m_CmdQueue;
 

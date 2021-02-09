@@ -14,6 +14,8 @@
 #include "GEPUtilsGeometry.h"
 #include "CommandList.h"
 #include "GraphicsAllocator.h"
+#include "Window.h"
+#include "Device.h"
 
 using namespace GEPUtils::Graphics;
 
@@ -92,8 +94,18 @@ namespace GEPUtils
 
 	}
 
+	Application::~Application()
+	{
+		m_Instance = nullptr;
+	}
+
 	void Application::Initialize()
 	{
+		m_GraphicsAllocator = GraphicsAllocator::CreateInstance();
+
+		// Application has now control over the graphics allocator default instance
+		GraphicsAllocator::SetDefaultInstance(m_GraphicsAllocator.get());
+
 		GEPUtils::Graphics::GraphicsAllocator::Get()->Initialize();
 
 		// Create Command Queue
@@ -167,7 +179,7 @@ namespace GEPUtils
 		m_CmdQueue.reset();
 
 		// Release all the allocated graphics resources
-		GEPUtils::Graphics::GraphicsAllocator::ShutDown();
+		m_GraphicsAllocator.reset();
 	}
 
 	void Application::Update()

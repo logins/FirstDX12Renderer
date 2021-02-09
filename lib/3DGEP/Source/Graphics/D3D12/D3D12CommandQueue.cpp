@@ -11,7 +11,7 @@
 #include "D3D12Device.h"
 #include "D3D12UtilsInternal.h"
 #include "D3D12CommandList.h"
-#include "../Public/CommandList.h"
+#include "CommandList.h"
 #include "GEPUtils.h"
 
 namespace D3D12GEPUtils {
@@ -145,9 +145,6 @@ namespace D3D12GEPUtils {
 		m_CmdAllocators.emplace( CmdAllocatorEntry{ fenceValue, cmdAllocator } ); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
 		m_CmdLists.push(InCmdList);
 
-		// We do not need the local command allocator Pointer anymore, we can release it because the allocator reference is stored in the queue
-
-
 		return fenceValue;
 	}
 
@@ -171,9 +168,6 @@ namespace D3D12GEPUtils {
 		m_CmdAllocators.emplace(CmdAllocatorEntry{ fenceValue, cmdAllocator }); // Note: implicit creation of a ComPtr from a raw pointer to create CmdAllocatorEntry
 		
 		m_CmdListsAvailable.push(&InCmdList);
-
-		// We do not need the local command allocator Pointer anymore, we can release it because the allocator reference is stored in the queue
-
 
 		return fenceValue;
 	}

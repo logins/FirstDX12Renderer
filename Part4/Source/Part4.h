@@ -10,6 +10,9 @@
 #define Part4_h__
 
 #include "Application.h"
+#include "GraphicsTypes.h"
+
+namespace GEPUtils { namespace Graphics { class PipelineState; } }
 
 class Part4Application : public GEPUtils::Application
 {
@@ -27,8 +30,8 @@ private:
 	void OnMouseMove(int32_t InX, int32_t InY);
 	void OnLeftMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
 	void OnRightMouseDrag(int32_t InDeltaX, int32_t InDeltaY);
-	void OnTypingKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedKey);
-	void OnControlKeyPressed(GEPUtils::Graphics::KEYBOARD_KEY InPressedKey);
+	void OnTypingKeyPressed(GEPUtils::KEYBOARD_KEY InPressedKey);
+	void OnControlKeyPressed(GEPUtils::KEYBOARD_KEY InPressedKey);
 
 	// Note: most of the following member variables should not belong to the application
 	// but instead to a draw command object for the current entity being drawn.

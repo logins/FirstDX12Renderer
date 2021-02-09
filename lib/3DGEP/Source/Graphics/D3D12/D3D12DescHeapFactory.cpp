@@ -13,8 +13,6 @@
 
 namespace GEPUtils { namespace Graphics {
 
-	std::unique_ptr<GEPUtils::Graphics::D3D12DescHeapFactory> D3D12DescHeapFactory::m_Instance;
-
 	D3D12DescriptorHeap::D3D12DescriptorHeap(D3D12_DESCRIPTOR_HEAP_TYPE InType, bool IsShaderVisible, uint32_t InDescSize, uint32_t InDescriptorsNum /*= 256*/, float InStaticDescPercentage /*= 1.0f*/) 
 		: m_Type(InType), m_IsShaderVisible(IsShaderVisible), m_DescriptorsNum(InDescriptorsNum), m_DescSize(InDescSize)
 	{
@@ -125,21 +123,15 @@ namespace GEPUtils { namespace Graphics {
 		// Views need to go first, before heaps get destroyed
 		m_ResourceViewArray.clear();
 	}
-
+	
 	GEPUtils::Graphics::D3D12DescriptorHeap& D3D12DescHeapFactory::GetCPUHeap()
 	{
-		return *Get()->m_CPUDescHeap.get();
+		return *m_CPUDescHeap;
 	}
 
 	GEPUtils::Graphics::D3D12DescriptorHeap& D3D12DescHeapFactory::GetGPUHeap()
 	{
-		return *Get()->m_GPUDescHeap.get();
-	}
-
-	GEPUtils::Graphics::D3D12DescHeapFactory* D3D12DescHeapFactory::Get()
-	{
-		if (!m_Instance) m_Instance = std::make_unique<D3D12DescHeapFactory>();
-		return m_Instance.get();
+		return *m_GPUDescHeap;
 	}
 
 	GEPUtils::Graphics::ResourceView& D3D12DescHeapFactory::AddViewObject(std::unique_ptr<GEPUtils::Graphics::ResourceView> InResourceView)

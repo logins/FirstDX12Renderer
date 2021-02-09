@@ -17,19 +17,12 @@
 
 namespace GEPUtils { namespace Graphics {
 
-	// In a bigger application this would go in an Input class
-	enum class KEYBOARD_KEY : uint32_t
-	{
-		KEY_V,
-		KEY_ESC
-	};
-
 	// Virtual class to be used as a platform-agnostic representation of a graphic window.
 	class Window
 	{
 	public:
 
-		virtual ~Window() = default; // Note: Virtual destructor is necessary to make the destructor of the derived class to be run first!
+		virtual ~Window(); // Note: Virtual destructor is necessary to make the destructor of the derived class to be run first!
 
 		// Struct containing the many params used to initialize a Window
 		struct WindowInitInput

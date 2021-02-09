@@ -9,19 +9,28 @@
 #ifndef D3D12GraphicsAllocator_h__
 #define D3D12GraphicsAllocator_h__
 
-#include "GraphicsAllocator.h"
 #include "d3d12.h"
-#include "D3D12BufferAllocator.h" // TODO can we forward declare it?
+#include "GraphicsAllocator.h"
 
 namespace GEPUtils { namespace Graphics {
 
+	class D3D12DescriptorHeap;
+	class D3D12LinearBufferAllocator;
+	class D3D12DescHeapFactory;
 
 class D3D12GraphicsAllocator : public GEPUtils::Graphics::GraphicsAllocatorBase
 {
 public:
-	D3D12GraphicsAllocator() = default;
+	// Note: The non-inline definition of the constructor is necessary to forward classes used in member smart pointers!!
+	// The constructor does NEED to know the complete type, hence it cannot be inlined !!
+	// The reason is the constructor also needs to know the destructors of the classes hold by the unique pointers, so that when an exception throws,
+	// the class will be able to roll-back initialization of all the members.
+	// More info in this thread: https://stackoverflow.com/questions/27336779/unique-ptr-and-forward-declaration
+	D3D12GraphicsAllocator();
 
-	virtual ~D3D12GraphicsAllocator() override; // We need to declar base destructor as virtual to make the derived class destructor to be executed first
+	// Note: As for the constructor, the destructor also need to know the class complete type, hence it cannot be inlined !!
+	// Note2: We need to declare base destructor as virtual to make the derived class destructor to be executed first
+	virtual ~D3D12GraphicsAllocator() override;
 
 	virtual void Initialize() override;
 
@@ -59,9 +68,14 @@ public:
 
 	void ReserveDynamicBufferMemory(size_t InSize, void*& OutCpuPtr, D3D12_GPU_VIRTUAL_ADDRESS& OutGpuPtr);
 
+	D3D12DescriptorHeap& GetCpuHeap();
+
+	D3D12DescriptorHeap& GetGpuHeap();
 
 private:
 	std::unique_ptr<GEPUtils::Graphics::D3D12LinearBufferAllocator> m_DynamicBufferAllocator;
+
+	std::unique_ptr<GEPUtils::Graphics::D3D12DescHeapFactory> m_DescHeapFactory;
 };
 	
 

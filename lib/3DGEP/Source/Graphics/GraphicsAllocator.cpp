@@ -16,18 +16,24 @@
 
 namespace GEPUtils { namespace Graphics {
 
-	std::unique_ptr<GEPUtils::Graphics::GraphicsAllocatorBase> GraphicsAllocator::m_Instance;
+	GEPUtils::Graphics::GraphicsAllocatorBase* GraphicsAllocator::m_DefaultInstance = nullptr;
 
-	GEPUtils::Graphics::GraphicsAllocatorBase* GraphicsAllocator::Get()
+	std::unique_ptr<GEPUtils::Graphics::GraphicsAllocatorBase> GraphicsAllocator::CreateInstance()
 	{
-		if (!m_Instance)
-		{
 #ifdef GRAPHICS_SDK_D3D12
-			m_Instance = std::make_unique<GEPUtils::Graphics::D3D12GraphicsAllocator>();
+		return std::make_unique<GEPUtils::Graphics::D3D12GraphicsAllocator>();
 #endif
-		}
-		return m_Instance.get();
 	}
+
+	void GraphicsAllocator::SetDefaultInstance(GraphicsAllocatorBase* InGraphicsAllocator)
+	{
+		m_DefaultInstance = InGraphicsAllocator;
+	}
+
+
+	GraphicsAllocatorBase::~GraphicsAllocatorBase() = default;
+
+	GraphicsAllocatorBase::GraphicsAllocatorBase() = default;
 
 }
 }

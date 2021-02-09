@@ -16,8 +16,6 @@ namespace D3D12GEPUtils { struct D3D12Resource; }
 
 namespace GEPUtils{ namespace Graphics {
 
-	class RangeAllocator;
-
 	/*
 	D3D12LinearBufferAllocator performs constant buffer sub-allocations in a single buffer resource.
 	*/
@@ -49,8 +47,6 @@ namespace GEPUtils{ namespace Graphics {
 		size_t m_TakenSize = 0;
 
 		size_t m_AllocationLimit = 0;
-
-		std::unique_ptr<RangeAllocator> m_RangeAllocator;
 
 		void* m_ResourceCpuPtr;
 		D3D12_GPU_VIRTUAL_ADDRESS m_ResourceGpuPtr;

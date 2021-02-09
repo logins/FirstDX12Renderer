@@ -18,9 +18,6 @@ namespace GEPUtils{ namespace Graphics {
 	D3D12LinearBufferAllocator::D3D12LinearBufferAllocator(D3D12GEPUtils::D3D12Resource& InResource)
 		: m_Resource(InResource)
 	{
-
-		m_RangeAllocator = std::make_unique<LinearRangeAllocator>(0, m_Resource.GetSizeInBytes() / D3D12_CONSTANT_BUFFER_DATA_PLACEMENT_ALIGNMENT);
-
 		m_ResourceGpuPtr = m_Resource.GetInner()->GetGPUVirtualAddress();
 
 		// Opening mapping channel with CPU

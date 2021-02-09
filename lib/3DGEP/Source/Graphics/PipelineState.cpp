@@ -12,4 +12,8 @@ namespace GEPUtils{ namespace Graphics {
 
 
 
+	PipelineState::PipelineState() = default;
+
+	PipelineState::~PipelineState() = default;
+
 } }

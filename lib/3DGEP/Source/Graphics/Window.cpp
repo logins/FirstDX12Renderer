@@ -35,4 +35,6 @@ namespace GEPUtils { namespace Graphics {
 	}
 
 
+	Window::~Window() = default;
+
 } }

@@ -16,7 +16,6 @@
 #include <dxgi1_6.h>
 #include <d3dx12.h>
 #include "GraphicsTypes.h"
-#include "../D3D12/D3D12BufferAllocator.h"
 #include "../D3D12/D3D12DescHeapFactory.h"
 
 #ifdef max
@@ -161,7 +160,6 @@ namespace D3D12GEPUtils {
 		std::vector<D3D12_SUBRESOURCE_DATA> m_SubresourceDesc;
 
 	};
-
 
 	struct D3D12ConstantBufferView : public GEPUtils::Graphics::ConstantBufferView
 	{

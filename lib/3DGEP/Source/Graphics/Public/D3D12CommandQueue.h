@@ -13,7 +13,6 @@
 #include <d3d12.h>
 #include <queue> // For std::queue
 #include "CommandQueue.h"
-#include "../D3D12/D3D12BufferAllocator.h"
 
 namespace D3D12GEPUtils {
 

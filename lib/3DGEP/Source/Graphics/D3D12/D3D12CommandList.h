@@ -17,7 +17,6 @@
 namespace GEPUtils { namespace Graphics {
 
 	class D3D12Device;
-	class D3D12BufferAllocator;
 
 	class D3D12CommandList : public GEPUtils::Graphics::CommandList
 	{
