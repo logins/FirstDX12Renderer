@@ -37,8 +37,16 @@ namespace GEPUtils {
 	class Application
 	{
 	public:
+		// Marking destructor as virtual will make destructor from derived classes to execute first
+		virtual ~Application();
 
-		~Application();
+		template<typename T>
+		static void Create()
+		{
+			m_Instance = std::make_unique<T>();
+		}
+
+		static Application* Get() { return m_Instance.get(); };
 
 		virtual void Initialize();
 
@@ -57,7 +65,7 @@ namespace GEPUtils {
 		// Singleton : Default constructor, copy constructor and assingment operators to be private
 		Application();
 
-		static Application* m_Instance; //Note: This is just a declaration, not a definition! m_Instance must be explicitly defined
+		static std::unique_ptr<Application> m_Instance; //Note: This is just a declaration, not a definition! m_Instance must be explicitly defined
 
 		virtual void UpdateContent(float InDeltaTime) = 0;
 
@@ -112,6 +120,5 @@ namespace GEPUtils {
 
 		bool CanComputeFrame();
 	};
-
 }
 #endif // Application_h__

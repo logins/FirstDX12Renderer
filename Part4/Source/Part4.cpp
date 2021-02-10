@@ -18,8 +18,7 @@
 #include "Window.h"
 #include "Device.h"
 
-#define Q(x) L#x
-#define LQUOTE(x) Q(x) // TODO these are re-defined .. find a way to link the original defines
+
 #define Part4_SHADERS_PATH(NAME) LQUOTE(PART4_PROJ_ROOT_PATH/shaders/NAME)
 #define Part4_CONTENT_PATH(NAME) LQUOTE(PART4_PROJ_ROOT_PATH/Content/NAME)
 
@@ -30,9 +29,11 @@ int main()
 {
 	std::cout << "Hello from Part 4: Texture Usage!" << std::endl;
 
-	Part4Application::Get()->Initialize();
+	Application::Create<Part4Application>();
 
-	Part4Application::Get()->Run();
+	Application::Get()->Initialize();
+
+	Application::Get()->Run();
 
 	Graphics::GetDevice().ShutDown();
 
@@ -40,12 +41,6 @@ int main()
 	GEPUtils::Graphics::GetDevice().ReportLiveObjects();
 }
 
-GEPUtils::Application* Part4Application::Get()
-{
-	if (m_Instance == nullptr)
-		m_Instance = new Part4Application();
-	return m_Instance;
-}
 
 void Part4Application::Initialize()
 {

@@ -17,10 +17,7 @@
 #include "Window.h"
 #include "Device.h"
 
-#define Q(x) L#x
-#define LQUOTE(x) Q(x) // TODO these are re-defined .. find a way to link the original defines
 #define PART3_SHADERS_PATH(NAME) LQUOTE(PART3_PROJ_ROOT_PATH/shaders/NAME)
-
 
 using namespace GEPUtils;
 
@@ -28,9 +25,11 @@ int main()
 {
 	std::cout << "Hello from Part 3!" << std::endl;
 
-	Part3Application::Get()->Initialize();
+	Application::Create<Part3Application>();
 
-	Part3Application::Get()->Run();
+	Application::Get()->Initialize();
+
+	Application::Get()->Run();
 
 	Graphics::GetDevice().ShutDown();
 
@@ -40,13 +39,6 @@ int main()
 }
 
 Part3Application::Part3Application() = default;
-
-GEPUtils::Application* Part3Application::Get()
-{
-	if (m_Instance == nullptr)
-		m_Instance = new Part3Application();
-	return m_Instance;
-}
 
 void Part3Application::Initialize()
 {

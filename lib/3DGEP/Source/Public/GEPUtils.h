@@ -30,6 +30,9 @@ namespace GEPUtils {
 		KEY_ESC
 	};
 
+#define Q(x) L#x
+#define LQUOTE(x) Q(x)
+
 #define StopForFail(X) do {if(DEBUG_TEST){ std::cout << X << std::endl; __debugbreak();}} while (0); // This last will generate a breakpoint
 
 #define DebugPrint(X) do {if(DEBUG_TEST) std::cout << X << std::endl;} while (0)

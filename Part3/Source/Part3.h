@@ -19,9 +19,6 @@ class Part3Application : public GEPUtils::Application
 public:
 	Part3Application();
 
-	// Note: this static Get() member function will replace the one in Application, effectively returning a Part3Application
-	static Application* Get();
-
 	virtual void Initialize() override;
 
 	virtual void OnQuitApplication() override;

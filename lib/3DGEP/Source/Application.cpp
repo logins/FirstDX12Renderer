@@ -21,7 +21,7 @@ using namespace GEPUtils::Graphics;
 
 namespace GEPUtils
 {
-	Application* Application::m_Instance; // Necessary (as standard 9.4.2.2 specifies) definition of the singleton instance
+	std::unique_ptr<GEPUtils::Application> Application::m_Instance; // Necessary (as standard 9.4.2.2 specifies) definition of the singleton instance
 
 	uint64_t Application::m_CpuFrameNumber = 1;
 
@@ -94,10 +94,7 @@ namespace GEPUtils
 
 	}
 
-	Application::~Application()
-	{
-		m_Instance = nullptr;
-	}
+	Application::~Application() = default;
 
 	void Application::Initialize()
 	{

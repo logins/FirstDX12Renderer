@@ -22,9 +22,6 @@
 #undef max // This is needed to avoid conflicts with functions called max(), like chrono::milliseconds::max()
 #endif
 
-#define Q(x) L#x
-#define LQUOTE(x) Q(x)
-
 namespace D3D12GEPUtils {
 
 	using namespace Microsoft::WRL;
