@@ -82,7 +82,7 @@ namespace GEPUtils {
 
 		std::unique_ptr<Graphics::GraphicsAllocatorBase> m_GraphicsAllocator;
 
-		std::unique_ptr<Graphics::CommandQueue> m_CmdQueue;
+		Graphics::CommandQueue* m_CmdQueue;
 
 		Graphics::Window* m_MainWindow;
 

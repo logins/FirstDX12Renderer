@@ -19,7 +19,7 @@ namespace D3D12GEPUtils {
 	using namespace Microsoft::WRL;
 
 	D3D12CommandQueue::D3D12CommandQueue(GEPUtils::Graphics::Device& InDevice, GEPUtils::Graphics::COMMAND_LIST_TYPE InCmdListType)
-		: GEPUtils::Graphics::CommandQueue(InDevice)
+		: m_GraphicsDevice(InDevice)
 	{
 		// Note: static cast reference conversion because at this point we should be certain that the device is a D3D12 one
 		Init(static_cast<GEPUtils::Graphics::D3D12Device&>(InDevice).GetInner(), D3D12GEPUtils::CmdListTypeToD3D12(InCmdListType));

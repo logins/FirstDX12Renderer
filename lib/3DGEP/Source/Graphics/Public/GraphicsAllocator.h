@@ -19,6 +19,7 @@ namespace GEPUtils { namespace Graphics {
 	class CommandList;
 	class Window;
 	class WindowInitInput;
+	class CommandQueue;
 
 // This pure virtual class serves as interface for any Graphics Allocator we want to implement.
 // In Application code we are going to use GraphicsAllocator with a factory pattern class, so we can call GraphicsAllocator::Get()
@@ -70,6 +71,8 @@ public:
 	virtual GEPUtils::Graphics::PipelineState& AllocatePipelineState() = 0;
 
 	virtual GEPUtils::Graphics::Window& AllocateWindow(GEPUtils::Graphics::WindowInitInput& InWindowInitInput) = 0;
+
+	virtual GEPUtils::Graphics::CommandQueue& AllocateCommandQueue(class Device& InDevice, COMMAND_LIST_TYPE InCmdListType) = 0;
 
 	// Deleting copy constructor, assignment operator, move constructor and move assignment
 	GraphicsAllocatorBase(const GraphicsAllocatorBase&) = delete;

@@ -33,7 +33,7 @@ namespace GEPUtils { namespace Graphics {
 	public:
 		struct WindowInitInput;
 
-		virtual ~Window(); // Note: Virtual destructor is necessary to make the destructor of the derived class to be run first!
+		virtual ~Window() = default; // Note: Virtual destructor is necessary to make the destructor of the derived class to be run first!
 
 		virtual void ShowWindow() = 0;
 

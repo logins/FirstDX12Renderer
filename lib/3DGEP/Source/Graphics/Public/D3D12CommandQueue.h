@@ -12,6 +12,7 @@
 #include <wrl.h>
 #include <d3d12.h>
 #include <queue> // For std::queue
+#include <memory>
 #include "CommandQueue.h"
 
 namespace D3D12GEPUtils {
@@ -56,6 +57,18 @@ namespace D3D12GEPUtils {
 		virtual void WaitForQueuedFramesOnGpu(uint64_t InFramesToWaitNum) override;
 
 	private:
+		uint64_t m_CompletedGPUFramesNum = 0;
+
+		using CmdListQueue = std::queue<std::unique_ptr<GEPUtils::Graphics::CommandList>>;
+		// Note: references are objects that are not copyable hence we cannot use them for containers and need to store pointers
+		using CmdListQueueRefs = std::queue<GEPUtils::Graphics::CommandList*>;
+
+		CmdListQueue m_CmdListPool;
+		CmdListQueueRefs m_CmdListsAvailable;
+
+		// Platform-agnostic reference to the device that holds this command queue
+		GEPUtils::Graphics::Device& m_GraphicsDevice;
+
 		// Keep track of command allocators in current execution
 		struct CmdAllocatorEntry
 		{

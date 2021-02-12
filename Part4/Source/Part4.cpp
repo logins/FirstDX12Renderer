@@ -17,6 +17,7 @@
 #include "CommandQueue.h"
 #include "Window.h"
 #include "Device.h"
+#include "CommandList.h"
 
 
 #define Part4_SHADERS_PATH(NAME) LQUOTE(PART4_PROJ_ROOT_PATH/shaders/NAME)

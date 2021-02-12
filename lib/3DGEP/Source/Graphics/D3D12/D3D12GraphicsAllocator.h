@@ -21,6 +21,7 @@ namespace GEPUtils { namespace Graphics {
 	class D3D12DescHeapFactory;
 	class Window;
 	struct WindowInitInput;
+	class CommandQueue;
 
 class D3D12GraphicsAllocator : public GEPUtils::Graphics::GraphicsAllocatorBase
 {
@@ -78,13 +79,16 @@ public:
 
 	virtual GEPUtils::Graphics::Window& AllocateWindow(GEPUtils::Graphics::WindowInitInput& InWindowInitInput) override;
 
+	virtual GEPUtils::Graphics::CommandQueue& AllocateCommandQueue(class Device& InDevice, COMMAND_LIST_TYPE InCmdListType) override;
+
 private:
 	std::deque<std::unique_ptr<GEPUtils::Graphics::Resource>> m_ResourceArray;
 	std::deque<std::unique_ptr<GEPUtils::Graphics::VertexBufferView>> m_VertexViewArray;
 	std::deque<std::unique_ptr<GEPUtils::Graphics::IndexBufferView>> m_IndexViewArray;
 	std::deque<std::unique_ptr<GEPUtils::Graphics::Shader>> m_ShaderArray;
 	std::deque<std::unique_ptr<GEPUtils::Graphics::PipelineState>> m_PipelineStateArray;
-	std::deque<std::unique_ptr<GEPUtils::Graphics::Window>> m_WindowVector;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::Window>> m_WindowArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::CommandQueue>> m_CommandQueueArray;
 
 	std::unique_ptr<GEPUtils::Graphics::D3D12LinearBufferAllocator> m_DynamicBufferAllocator;
 

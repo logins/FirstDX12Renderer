@@ -16,6 +16,7 @@
 #include "GraphicsAllocator.h"
 #include "Window.h"
 #include "Device.h"
+#include "CommandQueue.h"
 
 using namespace GEPUtils::Graphics;
 
@@ -106,7 +107,7 @@ namespace GEPUtils
 		GEPUtils::Graphics::GraphicsAllocator::Get()->Initialize();
 
 		// Create Command Queue
-		m_CmdQueue = Graphics::CreateCommandQueue(m_GraphicsDevice, Graphics::COMMAND_LIST_TYPE::COMMAND_LIST_TYPE_DIRECT);
+		m_CmdQueue = &GEPUtils::Graphics::GraphicsAllocator::Get()->AllocateCommandQueue(m_GraphicsDevice, Graphics::COMMAND_LIST_TYPE::COMMAND_LIST_TYPE_DIRECT);
 
 		uint32_t mainWindowWidth = 1024, mainWindowHeight = 768;
 
@@ -170,9 +171,6 @@ namespace GEPUtils
 	{
 		// Finish all the render commands currently in flight
 		m_CmdQueue->Flush();
-
-
-		m_CmdQueue.reset();
 
 		// Release all the allocated graphics resources
 		m_GraphicsAllocator.reset();

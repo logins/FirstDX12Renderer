@@ -9,16 +9,12 @@
 #ifndef CommandQueue_h__
 #define CommandQueue_h__
 
-#include <memory>
-#include <queue>
-#include "CommandList.h"
-#include "Delegate.h"
-
 namespace GEPUtils { namespace Graphics {
 
 enum class COMMAND_LIST_TYPE : int;
 
 class Device;
+class CommandList;
 
 /*!
  * \class CommandQueue
@@ -33,7 +29,6 @@ class Device;
 	public:
 		virtual ~CommandQueue() = default;
 
-		CommandQueue(GEPUtils::Graphics::Device& InDevice);
 
 		virtual GEPUtils::Graphics::CommandList& GetAvailableCommandList() = 0;
 
@@ -49,22 +44,8 @@ class Device;
 
 		virtual void WaitForQueuedFramesOnGpu(uint64_t InFramesToWaitNum) = 0;
 
-	protected:
-
-		uint64_t m_CompletedGPUFramesNum = 0;
-
-		using CmdListQueue = std::queue<std::unique_ptr<GEPUtils::Graphics::CommandList>>;
-		// Note: references are objects that are not copyable hence we cannot use them for containers and need to store pointers
-		using CmdListQueueRefs = std::queue<GEPUtils::Graphics::CommandList*>;
-
-		CmdListQueue m_CmdListPool;
-		CmdListQueueRefs m_CmdListsAvailable;
-
-		// Platform-agnostic reference to the device that holds this command queue
-		GEPUtils::Graphics::Device& m_GraphicsDevice;
 	};
 
-	std::unique_ptr<CommandQueue> CreateCommandQueue(class Device& InDevice, COMMAND_LIST_TYPE InCmdListType);
 
 
 } }

@@ -19,6 +19,7 @@
 #include "Application.h"
 #include "D3D12DescHeapFactory.h"
 #include "D3D12Window.h"
+#include "D3D12CommandQueue.h"
 
 namespace GEPUtils { namespace Graphics {
 
@@ -201,9 +202,16 @@ namespace GEPUtils { namespace Graphics {
 
 	GEPUtils::Graphics::Window& D3D12GraphicsAllocator::AllocateWindow(GEPUtils::Graphics::WindowInitInput& InWindowInitInput)
 	{
-		m_WindowVector.emplace_back(std::make_unique<D3D12GEPUtils::D3D12Window>(InWindowInitInput));
+		m_WindowArray.emplace_back(std::make_unique<D3D12GEPUtils::D3D12Window>(InWindowInitInput));
 
-		return *m_WindowVector.back();
+		return *m_WindowArray.back();
+	}
+
+	GEPUtils::Graphics::CommandQueue& D3D12GraphicsAllocator::AllocateCommandQueue(Device& InDevice, COMMAND_LIST_TYPE InCmdListType)
+	{
+		m_CommandQueueArray.emplace_back(std::make_unique<D3D12GEPUtils::D3D12CommandQueue>(InDevice, InCmdListType));
+
+		return *m_CommandQueueArray.back();
 	}
 
 	void D3D12GraphicsAllocator::OnNewFrameStarted()
