@@ -84,7 +84,7 @@ namespace GEPUtils {
 
 		std::unique_ptr<Graphics::CommandQueue> m_CmdQueue;
 
-		std::unique_ptr<Graphics::Window> m_MainWindow;
+		Graphics::Window* m_MainWindow;
 
 		std::unique_ptr<Graphics::Rect> m_ScissorRect = nullptr;
 

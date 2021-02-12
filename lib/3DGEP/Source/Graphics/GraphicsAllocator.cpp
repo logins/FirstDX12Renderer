@@ -7,7 +7,7 @@
 */
  
 #include "GraphicsAllocator.h"
-
+#include "Window.h"
 #ifdef GRAPHICS_SDK_D3D12
 
 #include "D3D12GraphicsAllocator.h"

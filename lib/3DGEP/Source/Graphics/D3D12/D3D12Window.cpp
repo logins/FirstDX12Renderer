@@ -18,14 +18,9 @@ namespace D3D12GEPUtils
 	D3D12Window::D3D12Window(const D3D12WindowInitInput& InInitParams)
 		: m_CmdQueue(InInitParams.CmdQueue)
 	{
-		Initialize(InInitParams);
-	}
-
-	void D3D12Window::Initialize(const D3D12WindowInitInput& InInitParams)
-	{
 		HINSTANCE InHInstance = ::GetModuleHandle(NULL); //Created windows will always refer to the current application instance
 		m_CurrentDevice = m_CmdQueue.GetD3D12Device();
-		
+	
 		// RTV Descriptor Size is vendor-dependent.
 		// We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
 		m_RTVDescIncrementSize = m_CurrentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
@@ -59,10 +54,51 @@ namespace D3D12GEPUtils
 		UpdateRenderTargetViews();
 
 		UpdateDepthStencil();
-
-		m_IsInitialized = true;
-
 	}
+
+	D3D12Window::D3D12Window(const GEPUtils::Graphics::WindowInitInput& InWindowInitInput)
+		: m_CmdQueue(static_cast<D3D12GEPUtils::D3D12CommandQueue&>(InWindowInitInput.CmdQueue))
+	{
+		HINSTANCE InHInstance = ::GetModuleHandle(NULL); //Created windows will always refer to the current application instance
+		m_CurrentDevice = m_CmdQueue.GetD3D12Device();
+
+		// RTV Descriptor Size is vendor-dependent.
+		// We need to retrieve it in order to know how much space to reserve per each descriptor in the Descriptor Heap
+		m_RTVDescIncrementSize = m_CurrentDevice->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+
+		m_TearingSupported = D3D12GEPUtils::CheckTearingSupport();
+		m_VSyncEnabled = InWindowInitInput.vSyncEnabled;
+		UpdatePresentFlags();
+
+		m_BackBuffers.reserve(m_DefaultBufferCount);
+		for (int i = 0; i < m_DefaultBufferCount; i++)
+			m_BackBuffers.push_back(std::make_unique<D3D12GEPUtils::D3D12Resource>(nullptr));
+
+		RegisterWindowClass(InHInstance, InWindowInitInput.WindowClassName, nullptr);
+
+		CreateHWND(InWindowInitInput.WindowClassName, InHInstance, InWindowInitInput.WindowTitle, InWindowInitInput.WinWidth, InWindowInitInput.WinHeight);
+
+		CreateSwapChain(m_CmdQueue.GetD3D12CmdQueue(), InWindowInitInput.BufWidth, InWindowInitInput.BufHeight);
+
+		m_CurrentBackBufferIndex = m_SwapChain->GetCurrentBackBufferIndex();
+
+		m_RTVDescriptorHeap = D3D12GEPUtils::CreateDescriptorHeap(m_CurrentDevice, D3D12_DESCRIPTOR_HEAP_TYPE_RTV, m_DefaultBufferCount);
+
+		// Create Descriptor Heap for the DepthStencil View
+		D3D12_DESCRIPTOR_HEAP_DESC dsvHeapDesc = {}; // Note: DepthStencil View requires storage in a heap even if we are going to use only 1 view
+		dsvHeapDesc.Type = D3D12_DESCRIPTOR_HEAP_TYPE_DSV;
+		dsvHeapDesc.NumDescriptors = 1;
+		dsvHeapDesc.Flags = D3D12_DESCRIPTOR_HEAP_FLAG_NONE;
+		dsvHeapDesc.NodeMask = 0;
+		D3D12GEPUtils::ThrowIfFailed(m_CurrentDevice->CreateDescriptorHeap(&dsvHeapDesc, IID_PPV_ARGS(&m_DSVHeap)));
+
+		UpdateRenderTargetViews();
+
+		UpdateDepthStencil();
+	}
+
+	D3D12Window::~D3D12Window() = default;
+
 
 	void D3D12Window::ShowWindow()
 	{
@@ -117,7 +153,7 @@ namespace D3D12GEPUtils
 
 	void D3D12Window::SetFullscreenState(bool InNowFullScreen)
 	{
-		if (m_IsInitialized && (m_IsFullScreen == InNowFullScreen))
+		if (m_IsFullScreen == InNowFullScreen)
 			return;
 
 		if (InNowFullScreen)

@@ -9,8 +9,6 @@
 #ifndef GraphicsAllocator_h__
 #define GraphicsAllocator_h__
 
-#include <deque>
-#include <memory> // for std::unique_ptr
 #include "GraphicsTypes.h"
 #include "PipelineState.h"
 
@@ -19,6 +17,8 @@ namespace GEPUtils { namespace Graphics {
 
 	class Device;
 	class CommandList;
+	class Window;
+	class WindowInitInput;
 
 // This pure virtual class serves as interface for any Graphics Allocator we want to implement.
 // In Application code we are going to use GraphicsAllocator with a factory pattern class, so we can call GraphicsAllocator::Get()
@@ -69,21 +69,13 @@ public:
 	virtual GEPUtils::Graphics::Shader& AllocateShader(wchar_t const* InShaderPath) = 0;
 	virtual GEPUtils::Graphics::PipelineState& AllocatePipelineState() = 0;
 
-
+	virtual GEPUtils::Graphics::Window& AllocateWindow(GEPUtils::Graphics::WindowInitInput& InWindowInitInput) = 0;
 
 	// Deleting copy constructor, assignment operator, move constructor and move assignment
 	GraphicsAllocatorBase(const GraphicsAllocatorBase&) = delete;
 	GraphicsAllocatorBase& operator=(const GraphicsAllocatorBase&) = delete;
 	GraphicsAllocatorBase(GraphicsAllocatorBase&&) = delete;
 	GraphicsAllocatorBase& operator=(GraphicsAllocatorBase&&) = delete;
-
-protected:
-	std::deque<std::unique_ptr<GEPUtils::Graphics::Resource>> m_ResourceArray;
-	std::deque<std::unique_ptr<GEPUtils::Graphics::VertexBufferView>> m_VertexViewArray;
-	std::deque<std::unique_ptr<GEPUtils::Graphics::IndexBufferView>> m_IndexViewArray;
-	std::deque<std::unique_ptr<GEPUtils::Graphics::Shader>> m_ShaderArray;
-	std::deque<std::unique_ptr<GEPUtils::Graphics::PipelineState>> m_PipelineStateArray;
-
 };
 
 

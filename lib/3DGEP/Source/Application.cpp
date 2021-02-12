@@ -118,14 +118,14 @@ namespace GEPUtils
 		SetAspectRatio(mainWindowWidth / static_cast<float>(mainWindowHeight));
 		SetFov(0.7853981634f);
 
-		Graphics::Window::WindowInitInput mainWindowInput = {
+		Graphics::WindowInitInput mainWindowInput = {
 		L"DX12WindowClass", L"Part3 Main Window",
 		*m_CmdQueue,
 		mainWindowWidth, mainWindowHeight, // Window sizes
 		mainWindowWidth, mainWindowHeight, // BackBuffer sizes
 		false // vsync disabled to test max fps, but you can set it here if the used monitor allows tearing to happen
 		};
-		m_MainWindow = Graphics::CreateGraphicsWindow(mainWindowInput);
+		m_MainWindow = &Graphics::GraphicsAllocator::Get()->AllocateWindow(mainWindowInput);
 
 		// Wiring Window events
 		m_MainWindow->OnPaintDelegate.Add<Application, &Application::OnWindowPaint>(this);
@@ -171,7 +171,6 @@ namespace GEPUtils
 		// Finish all the render commands currently in flight
 		m_CmdQueue->Flush();
 
-		m_MainWindow.reset();
 
 		m_CmdQueue.reset();
 

@@ -9,6 +9,8 @@
 #ifndef D3D12GraphicsAllocator_h__
 #define D3D12GraphicsAllocator_h__
 
+#include <deque>
+#include <memory> // for std::unique_ptr
 #include "d3d12.h"
 #include "GraphicsAllocator.h"
 
@@ -17,6 +19,8 @@ namespace GEPUtils { namespace Graphics {
 	class D3D12DescriptorHeap;
 	class D3D12LinearBufferAllocator;
 	class D3D12DescHeapFactory;
+	class Window;
+	struct WindowInitInput;
 
 class D3D12GraphicsAllocator : public GEPUtils::Graphics::GraphicsAllocatorBase
 {
@@ -72,7 +76,16 @@ public:
 
 	D3D12DescriptorHeap& GetGpuHeap();
 
+	virtual GEPUtils::Graphics::Window& AllocateWindow(GEPUtils::Graphics::WindowInitInput& InWindowInitInput) override;
+
 private:
+	std::deque<std::unique_ptr<GEPUtils::Graphics::Resource>> m_ResourceArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::VertexBufferView>> m_VertexViewArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::IndexBufferView>> m_IndexViewArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::Shader>> m_ShaderArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::PipelineState>> m_PipelineStateArray;
+	std::deque<std::unique_ptr<GEPUtils::Graphics::Window>> m_WindowVector;
+
 	std::unique_ptr<GEPUtils::Graphics::D3D12LinearBufferAllocator> m_DynamicBufferAllocator;
 
 	std::unique_ptr<GEPUtils::Graphics::D3D12DescHeapFactory> m_DescHeapFactory;

@@ -18,6 +18,7 @@
 #include "D3D12BufferAllocator.h"
 #include "Application.h"
 #include "D3D12DescHeapFactory.h"
+#include "D3D12Window.h"
 
 namespace GEPUtils { namespace Graphics {
 
@@ -196,6 +197,13 @@ namespace GEPUtils { namespace Graphics {
 	GEPUtils::Graphics::D3D12DescriptorHeap& D3D12GraphicsAllocator::GetGpuHeap()
 	{
 		return m_DescHeapFactory->GetGPUHeap();
+	}
+
+	GEPUtils::Graphics::Window& D3D12GraphicsAllocator::AllocateWindow(GEPUtils::Graphics::WindowInitInput& InWindowInitInput)
+	{
+		m_WindowVector.emplace_back(std::make_unique<D3D12GEPUtils::D3D12Window>(InWindowInitInput));
+
+		return *m_WindowVector.back();
 	}
 
 	void D3D12GraphicsAllocator::OnNewFrameStarted()

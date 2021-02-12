@@ -17,13 +17,6 @@
 
 namespace GEPUtils { namespace Graphics {
 
-	// Virtual class to be used as a platform-agnostic representation of a graphic window.
-	class Window
-	{
-	public:
-
-		virtual ~Window(); // Note: Virtual destructor is necessary to make the destructor of the derived class to be run first!
-
 		// Struct containing the many params used to initialize a Window
 		struct WindowInitInput
 		{
@@ -33,6 +26,14 @@ namespace GEPUtils { namespace Graphics {
 			uint32_t BufWidth; uint32_t BufHeight;
 			bool vSyncEnabled;
 		};
+
+	// Virtual class to be used as a platform-agnostic representation of a graphic window.
+	class Window
+	{
+	public:
+		struct WindowInitInput;
+
+		virtual ~Window(); // Note: Virtual destructor is necessary to make the destructor of the derived class to be run first!
 
 		virtual void ShowWindow() = 0;
 
@@ -83,7 +84,6 @@ namespace GEPUtils { namespace Graphics {
 
 	};
 
-	std::unique_ptr<Window> CreateGraphicsWindow(const Window::WindowInitInput& InWindowInitInput);
 
 } }
 

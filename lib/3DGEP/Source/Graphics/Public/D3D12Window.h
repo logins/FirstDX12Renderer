@@ -27,7 +27,13 @@ namespace D3D12GEPUtils {
 	{
 
 	public:
-		// Struct containing the many params used to initialize a D3D12Window
+		D3D12Window(const GEPUtils::Graphics::WindowInitInput& InWindowInitInput);
+
+		D3D12Window() = delete;
+
+		virtual ~D3D12Window() override;
+
+		// Struct containing the many params used to initialize a D3D12Window  (old version, used only in Part2)
 		struct D3D12WindowInitInput
 		{
 			const wchar_t* WindowClassName; const wchar_t* WindowTitle;
@@ -36,11 +42,9 @@ namespace D3D12GEPUtils {
 			uint32_t BufWidth; uint32_t BufHeight; WNDPROC WndProc;
 			bool VSyncEnabled;
 		};
-
-		D3D12Window() = delete;
+		// Constructor left for compatibility with Part2. For the other examples use the platform-agnostic constructor instead
 		D3D12Window(const D3D12WindowInitInput& InInitParams);
 
-		void Initialize(const D3D12WindowInitInput& InInitParams);
 
 		virtual void ShowWindow() override;
 
@@ -104,7 +108,6 @@ namespace D3D12GEPUtils {
 		bool m_TearingSupported = false;
 		UINT m_PresentFlags = 0;
 
-		bool m_IsInitialized = false;
 
 		D3D12GEPUtils::D3D12CpuDescriptorHandle CurrentRtvDescHandle;
 		D3D12GEPUtils::D3D12CpuDescriptorHandle CurrentDsvDescHandle;
