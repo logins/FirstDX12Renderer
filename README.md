@@ -1,10 +1,18 @@
 # FirstDX12Renderer
-A series of examples on how to use Direct3D 12 for real-time graphics applications (e.g. videogames).\\
+[![License: MIT](https://img.shields.io/badge/License-MIT-orange.svg)](https://opensource.org/licenses/MIT)
+
+A series of examples on how to use Direct3D 12 for real-time graphics applications (e.g. videogames).<br/>
 The examples will start from an empty window, and increase in complexity up to handle most of the base concepts when using this graphics API.
-## Base CMake Project Configuration
-  - Part1, Part2 and Part3 are target executables. These targets have dependencies on defined target libraries (both internal and external).
+
+### CMake Structure
+  - Part1, Part2, Part3 and Part4 are target executables. These targets have dependencies on defined target libraries (both internal and external).
   - GEPUtils (Game Engine Programming Utilities) is the library that contains most of the graphics functions.
   - You can read my [CMake Configuration Article](https://logins.github.io/programming/2020/05/17/CMakeInVisualStudio.html).
+
+### Third Party Dependencies
+  -  [Eigen](https://gitlab.com/libeigen/eigen.git)
+  -  [DirectXTex](https://github.com/microsoft/DirectXTex.git)
+
 # Part 1
 Part1 executable project is the simplest, an empty window that will showcase: 
 - **Handling a winapi window** with a D3D12 pipeline state object.
