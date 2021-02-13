@@ -7,8 +7,6 @@
 */
  
 #include "Application.h"
-#include <chrono>
-#include <Windows.h>
 #include "GraphicsUtils.h"
 #include "GraphicsTypes.h"
 #include "GEPUtilsGeometry.h"

@@ -8,13 +8,9 @@
  
 #include "D3D12GEPUtils.h"
 #include "D3D12UtilsInternal.h"
-#include <assert.h>
-#include <algorithm>
-#include <d3dx12.h>
-#include <d3dcompiler.h>
-#include "../../Public/GEPUtils.h"
+#include "GEPUtils.h"
 #include "D3D12Device.h"
-#include "../../Public/GEPUtilsMath.h"
+#include "GEPUtilsMath.h"
 #include "D3D12CommandList.h"
 #include "D3D12GraphicsAllocator.h"
 

@@ -7,8 +7,6 @@
 */
  
 #include "D3D12Device.h"
-#include "d3dx12.h"
-#include <dxgi1_6.h>
 #include "D3D12GEPUtils.h"
 
 using namespace Microsoft::WRL;

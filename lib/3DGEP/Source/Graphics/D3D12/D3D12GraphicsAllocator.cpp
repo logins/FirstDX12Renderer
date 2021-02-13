@@ -9,8 +9,6 @@
 #include "D3D12GraphicsAllocator.h"
 #include "D3D12GEPUtils.h"
 #include "D3D12PipelineState.h"
-#include "d3dcompiler.h"
-#include <wrl.h>
 #include "D3D12CommandList.h"
 #include "D3D12Device.h"
 #include "D3D12UtilsInternal.h"

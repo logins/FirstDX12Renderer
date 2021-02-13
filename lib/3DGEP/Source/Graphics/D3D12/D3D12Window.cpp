@@ -7,11 +7,8 @@
 */
 
 #include "D3D12Window.h"
-#include <algorithm>
-#include <assert.h>
-#include <D3D12GEPUtils.h>
-#include <D3D12UtilsInternal.h>
-#include <Windowsx.h>
+#include "D3D12GEPUtils.h"
+#include "D3D12UtilsInternal.h"
 
 namespace D3D12GEPUtils
 {

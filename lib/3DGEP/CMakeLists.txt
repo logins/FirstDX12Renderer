@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.16)
 
 # The following will find every .h and .cpp file from Source folder
 file(GLOB_RECURSE 3dgep_SRC
@@ -34,4 +34,10 @@ target_link_libraries(3dgep
 target_compile_definitions(3dgep 
 	PRIVATE
 		GRAPHICS_SDK_D3D12=1 # This define simulates a switch between possible graphics APIs. When defined, code will assume we chose D3D12
+)
+
+
+target_precompile_headers(3dgep
+    PRIVATE
+        ${CMAKE_CURRENT_LIST_DIR}/Source/GepPCH.h
 )

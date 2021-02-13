@@ -7,8 +7,6 @@
 */
  
 #include "RangeAllocators.h"
-#include <cmath>
-#include <iostream>
 #include "GEPUtils.h"
 
 namespace GEPUtils { namespace Graphics {

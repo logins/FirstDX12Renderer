@@ -7,13 +7,9 @@
 */
 
 #include "D3D12PipelineState.h"
-#include <d3dx12.h>
-#include <algorithm>
-#include <string>
-#include <csignal>
 #include "D3D12UtilsInternal.h"
 #include "D3D12Device.h"
-#include "../../Public/GEPUtils.h"
+#include "GEPUtils.h"
 
 #define FAILED(hr)      (((HRESULT)(hr)) < 0)
 

@@ -7,7 +7,7 @@
 */
  
 #include "D3D12CommandQueue.h"
-#include <D3D12GEPUtils.h>
+#include "D3D12GEPUtils.h"
 #include "D3D12Device.h"
 #include "D3D12UtilsInternal.h"
 #include "D3D12CommandList.h"
